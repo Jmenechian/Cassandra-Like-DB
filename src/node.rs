@@ -1,11 +1,13 @@
 use std::{
-    io::{prelude::*, BufReader},
+    io::{self, prelude::*, BufReader},
     net::{TcpListener, TcpStream},
     fs::{OpenOptions, File},
 };
 
 extern crate chrono;
 use chrono::prelude::*;
+use std::thread;
+use std::time::Duration;
 // use std::thread;
 
 #[derive(Debug)]
@@ -21,7 +23,7 @@ pub struct Node {
     pub file_path: String,
     pub nodes_path: String,
     pub neighbors: Vec<Node>, //RF
-    pub ring: Vec<Node>, //Gossip
+    pub ring: Vec<String>, //Gossip //ip solo?
 }
 
 impl Node {
@@ -46,46 +48,92 @@ impl Node {
         let reader = BufReader::new(file);
         for line in reader.lines() {
             let line = line.unwrap();
-            if line != self.ip {
-                let mut socket = TcpStream::connect(&line).unwrap();
-                let algo = Local::now();
-                let mensaje = format!("Hola soy {} vos sos {} y es la hora: {}", self.ip, line, algo);
-                let _ = socket.write(mensaje.as_bytes());
-                socket.flush().unwrap();
-                // println!("\n\n\n\n\n\n{:?}\n\n\n\n\n\n\n", socket);
+            if line != self.ip && !self.ring.contains(&line) { 
+                TcpStream::connect(&line).unwrap(); //conecto
+                self.ring.push(line); //guardo tu ip
             }
         }
-        // self.ring.push();
     }
 
-    pub fn print_node(&self) {
-        let mut file = OpenOptions::new().append(true).open(&self.nodes_path).unwrap();
+    pub fn write_nodes(&self) {
+        let file = OpenOptions::new().read(true).open(&self.nodes_path).unwrap();
+        let reader = BufReader::new(file);
+        let mut ip_exists = false;
 
-        writeln!(file, "{}", self.ip).unwrap();
+        for line in reader.lines() {
+            let line = line.unwrap();
+            if line == self.ip { //si ip ya estan en el archivo chau
+                ip_exists = true;
+                break;
+            }
+        }
 
+        if !ip_exists {
+            let mut file = OpenOptions::new().append(true).open(&self.nodes_path).unwrap();
+            writeln!(file, "{}", self.ip).unwrap();
+        }
     }
     
-    pub fn handle_connection(& mut self, stream: TcpStream) {
+    pub fn handle_connection(& mut self, stream: TcpStream) { //🤝
         
-        let reader = BufReader::new(stream);
+        let reader = BufReader::new(&stream);
         let mut lines = reader.lines();
-    // iteramos las lineas que recibimos de nuestro cliente
         while let Some(Ok(line)) = lines.next() {
-            println!("Recibido: {:?}", line);
+
+            println!("Protocolo: {:?}", stream); // addr -> server escucha / peer -> cliente / fd -> file descriptor sirve para algo aca?
+
+            if line == "connect" { //solo funciona una vez? 
+                for ip in &self.ring {
+                    let mut socket = TcpStream::connect(ip).unwrap();
+                    let mensaje = format!("Hola soy {} y me quiero conectar a vos que sos: {}", self.ip, ip);
+                    let _ = socket.write(mensaje.as_bytes());
+                }
+            }
+            println!("Recibido: {}", line); //mensaje del cliente
         }
     }
 
-    pub fn connect_node(& mut self) {
+    // pub fn connect_node2(& mut self) { //implementacion con thread, hay comunicacion server/server y client/server pero no podemos acceder a self (ver despues)
+    //     // para gossip y para conectar con cliente
+    //     self.write_nodes();
+
+    //     let listener = TcpListener::bind(&self.ip).unwrap();
+    //     let neighbor_ip = if self.ring.is_empty() {
+    //         ""
+    //     } else {
+    //         &self.ring[0]
+    //     };
+    //     let msg = format!("Hola soy {}, vos sos {} y la fecha es {}\n", self.ip, neighbor_ip, Local::now()); 
+    //     let stdin_thread = thread::spawn(move || {  //?
+    //         //buscar otra manera / ver como hacer para manejar threads e instancias de self
+    //         let stdin = io::stdin(); //input() para leer lo del server
+    //         for line in stdin.lock().lines() {
+    //             let input = line.unwrap();
+    //             let mut socket = TcpStream::connect("127.0.0.1:7879").unwrap();
+    //             let _ = socket.write(msg.as_bytes());
+    //             let _ = socket.write(input.as_bytes());
+    //             // socket.flush().unwrap();
+    //         }
+    //     });
+    //     for stream in listener.incoming() {
+    //         let stream = stream.unwrap();
+    //         self.add_ring(); //solo conecta
+    //         self.handle_connection(stream); //lee lo del cliente
+    //     }
+    // }
+
+    pub fn connect_node(& mut self) { //version limpia, no hay comunacion server/server
         // para gossip y para conectar con cliente
-        self.print_node();
+        self.write_nodes();
 
         let listener = TcpListener::bind(&self.ip).unwrap();
 
         for stream in listener.incoming() {
             let stream = stream.unwrap();
-            self.add_ring();
-            self.handle_connection(stream);
+            self.add_ring(); //solo conecta
+            self.handle_connection(stream); //lee lo del cliente
         }
     }
+
 }
 
