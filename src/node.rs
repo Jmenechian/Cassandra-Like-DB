@@ -105,41 +105,52 @@ impl Node {
         }
     }
 
-    pub fn connect_node2(& mut self) { //implementacion con thread, hay comunicacion server/server y client/server pero no podemos acceder a self (ver despues)
-        // para gossip y para conectar con cliente
-        self.write_nodes();
+    // pub fn connect_node2(& mut self) { //implementacion con thread, hay comunicacion server/server y client/server pero no podemos acceder a self (ver despues)
+    //     // para gossip y para conectar con cliente
+    //     self.write_nodes();
 
-        let listener = TcpListener::bind(&self.ip).unwrap();
+    //     let listener = TcpListener::bind(&self.ip).unwrap();
 
-        let neighbor_ip = if self.ring.is_empty() {
-            ""
-        } else {
-            &self.ring[0]
-        };
+    //     let neighbor_ip = if self.ring.is_empty() {
+    //         ""
+    //     } else {
+    //         &self.ring[0]
+    //     };
 
-        let msg = format!("Hola soy {}, vos sos {} y la fecha es {}\n", self.ip, neighbor_ip, Local::now()); 
-        let stdin_thread = thread::spawn(move || {  //?
-            //buscar otra manera / ver como hacer para manejar threads e instancias de self
-            func(msg);
-        });
+    //     let msg = format!("Hola soy {}, vos sos {} y la fecha es {}\n", self.ip, neighbor_ip, Local::now()); 
+    //     let stdin_thread = thread::spawn(move || {  //?
+    //         //buscar otra manera / ver como hacer para manejar threads e instancias de self
+    //         func(msg);
+    //     });
 
-        for stream in listener.incoming() {
-            let stream = stream.unwrap();
-            self.add_ring(); //solo conecta
-            self.handle_connection(stream); //lee lo del cliente
-        }
-    }
-
+    //     for stream in listener.incoming() {
+    //         let stream = stream.unwrap();
+    //         self.add_ring(); //solo conecta
+    //         self.handle_connection(stream); //lee lo del cliente
+    //     }
+    // }
+    
     pub fn send_message(&mut self, stream: &TcpStream) {
-        let reader = BufReader::new(stream);
-        let mut lines = reader.lines();
-        
-        while let Some(Ok(line)) = lines.next() {
-            if !line.is_empty() {
-            let mut socket = TcpStream::connect(&self.ring[0]).unwrap(); //conecto
-            let msg = format!("Hola soy {} y mi mensaje es: {}", self.server_ip, line);
-            let _ = socket.write(msg.as_bytes());
+        let stdin = io::stdin(); //input() para leer lo del server
+        for line in stdin.lock().lines() {
+            let input = line.unwrap();
+            // let mi_ip = self.ip;
+            println!("{}", self.ring[0]);
+            let mut socket = TcpStream::connect(&self.ring[0]).unwrap();
+            socket.set_nonblocking(true).expect("Cannot set non-blocking");
+            let new_msg = format!("{}", input);
+            match socket.write(new_msg.as_bytes()) {
+                Ok(_) => {
+                    // Message sent successfully
+                }
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    // Would block, try again later
+                }
+                Err(e) => {
+                    eprintln!("Failed to send message: {:?}", e);
+                }
             }
+            break;
         }
     }
 
@@ -158,15 +169,12 @@ impl Node {
             // Handling server listener
             match server_listener.accept() {
                 Ok((stream, _)) => {
-                    // println!("Server connection to server established");
-                    // println!("{:?}", stream);
-                    self.add_ring();
+                    // self.add_ring();
                     // self.send_message(&stream);
                     self.handle_connection(stream); // Lee lo del cliente
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                     self.add_ring();
-                    // println!("todavia no me conecte al server");
                     // No server connection ready, continue to the next iteration
                 }
                 Err(e) => {
@@ -180,7 +188,6 @@ impl Node {
                     self.handle_connection(stream); // Lee lo del cliente
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    // No client connection ready, continue to the next iteration
                 }
                 Err(e) => {
                     eprintln!("Error accepting client connection: {:?}", e);
@@ -201,7 +208,7 @@ pub fn func(msg:  String) {
                 let input = line.unwrap();
                 // let mi_ip = self.ip;
                 let mut socket = TcpStream::connect("127.0.0.1:7879").unwrap();
-                let new_msg = format!("{} AAAAAAAAAAAA{}", msg, Local::now());
+                let new_msg = format!("{} {}", msg, Local::now());
                 let _ = socket.write(new_msg.as_bytes());
                 // let _ = socket.write(input.as_bytes());
                 // socket.flush().unwrap();
