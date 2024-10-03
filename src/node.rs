@@ -9,6 +9,7 @@ use chrono::prelude::*;
 use std::thread;
 use std::time::Duration;
 // use std::thread;
+use rand::prelude::*;
 
 #[derive(Debug)]
 pub enum StatusNode {
@@ -46,7 +47,18 @@ impl Node {
     pub fn add_ring(&mut self) {
         let file = File::open(&self.nodes_path).unwrap();
         let reader = BufReader::new(file);
-        for line in reader.lines() {
+
+        let mut rng = rand::thread_rng();
+        let mut nums: Vec<i32> = (0..8).collect();
+        nums.shuffle(&mut rng);
+        println!("{:?}", nums);
+        nums = nums[0..2].to_vec();
+        println!("{:?}", nums);
+
+        for (index, line) in reader.lines().enumerate() {
+            if !nums.contains(&(index as i32)) {
+                continue
+            }
             let line = line.unwrap();
             if line != self.ip && !self.ring.contains(&line) { 
                 TcpStream::connect(&line).unwrap(); //conecto
