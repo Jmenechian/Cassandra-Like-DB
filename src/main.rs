@@ -15,3 +15,10 @@ fn main() {
 }
 
 //cargo run -- puerto
+
+//ip format -> 127.0.0.{}: 
+//2 ips:
+//ip_server :7000, 7001 si encriptado
+//ip_client :9042
+
+//idea -> threads para leer los 2 puertos, tokio crate?
