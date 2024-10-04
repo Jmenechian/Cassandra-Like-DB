@@ -1,14 +1,14 @@
 use std::{
+    fs::{File, OpenOptions},
     io::{self, prelude::*, BufReader},
     net::{TcpListener, TcpStream},
-    fs::{OpenOptions, File},
 };
 
 extern crate chrono;
 use chrono::prelude::*;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::sync::{Arc, Mutex};
 // use std::thread;
 use rand::prelude::*;
 
@@ -27,17 +27,16 @@ pub struct Node {
     pub file_path: String,
     pub nodes_path: String,
     pub neighbors: Vec<Node>, //RF
-    pub ring: Vec<String>, //Gossip //ip solo?
+    pub ring: Vec<String>,    //Gossip //ip solo?
 }
 
 impl Node {
-
     pub fn new(puerto: &str) -> Self {
         Self {
             status: StatusNode::Desconnected,
-            ip: format!("127.0.0.1:{}",puerto),
-            server_ip: format!("127.0.0.{}:7000",puerto),
-            client_ip: format!("127.0.0.{}:9042",puerto),
+            ip: format!("127.0.0.1:{}", puerto),
+            server_ip: format!("127.0.0.{}:7000", puerto),
+            client_ip: format!("127.0.0.{}:9042", puerto),
             file_path: "".to_string(),
             nodes_path: "nodes.txt".to_string(),
             neighbors: Vec::new(),
@@ -66,9 +65,12 @@ impl Node {
             //     continue
             // }
             let line = line.unwrap();
-            if line != self.server_ip && !self.ring.contains(&line) { 
+            if line != self.server_ip && !self.ring.contains(&line) {
                 let mut socket = TcpStream::connect(&line).unwrap(); //conecto
-                let msg = format!("Hola soy {} y me conecte a vos que sos: {}", self.server_ip, line);
+                let msg = format!(
+                    "Hola soy {} y me conecte a vos que sos: {}",
+                    self.server_ip, line
+                );
                 let _ = socket.write(msg.as_bytes());
                 self.ring.push(line); //guardo tu ip
             }
@@ -76,29 +78,36 @@ impl Node {
     }
 
     pub fn write_nodes(&self) {
-        let file = OpenOptions::new().read(true).open(&self.nodes_path).unwrap();
+        let file = OpenOptions::new()
+            .read(true)
+            .open(&self.nodes_path)
+            .unwrap();
         let reader = BufReader::new(file);
         let mut ip_exists = false;
 
         for line in reader.lines() {
             let line = line.unwrap();
-            if line == self.server_ip { //si ip ya estan en el archivo chau
+            if line == self.server_ip {
+                //si ip ya estan en el archivo chau
                 ip_exists = true;
                 break;
             }
         }
 
         if !ip_exists {
-            let mut file = OpenOptions::new().append(true).open(&self.nodes_path).unwrap();
+            let mut file = OpenOptions::new()
+                .append(true)
+                .open(&self.nodes_path)
+                .unwrap();
             writeln!(file, "{}", self.server_ip).unwrap();
         }
     }
-    
-    pub fn handle_connection(& mut self, stream: TcpStream) { //🤝
+
+    pub fn handle_connection(&mut self, stream: TcpStream) {
+        //🤝
         let reader = BufReader::new(&stream);
         let mut lines = reader.lines();
         while let Some(Ok(line)) = lines.next() {
-
             // println!("Protocolo: {:?}", stream); // addr -> server escucha / peer -> cliente / fd -> file descriptor sirve para algo aca?
 
             println!("Recibido: {}", line); //mensaje del cliente
@@ -117,7 +126,7 @@ impl Node {
     //         &self.ring[0]
     //     };
 
-    //     let msg = format!("Hola soy {}, vos sos {} y la fecha es {}\n", self.ip, neighbor_ip, Local::now()); 
+    //     let msg = format!("Hola soy {}, vos sos {} y la fecha es {}\n", self.ip, neighbor_ip, Local::now());
     //     let stdin_thread = thread::spawn(move || {  //?
     //         //buscar otra manera / ver como hacer para manejar threads e instancias de self
     //         func(msg);
@@ -129,7 +138,7 @@ impl Node {
     //         self.handle_connection(stream); //lee lo del cliente
     //     }
     // }
-    
+
     pub fn send_message(&mut self, stream: &TcpStream) {
         let stdin = io::stdin(); //input() para leer lo del server
         for line in stdin.lock().lines() {
@@ -137,7 +146,9 @@ impl Node {
             // let mi_ip = self.ip;
             println!("{}", self.ring[0]);
             let mut socket = TcpStream::connect(&self.ring[0]).unwrap();
-            socket.set_nonblocking(true).expect("Cannot set non-blocking");
+            socket
+                .set_nonblocking(true)
+                .expect("Cannot set non-blocking");
             let new_msg = format!("{}", input);
             match socket.write(new_msg.as_bytes()) {
                 Ok(_) => {
@@ -154,18 +165,22 @@ impl Node {
         }
     }
 
-    pub fn connect_node(&mut self) { // Version limpia, no hay comunicacion server/server
+    pub fn connect_node(&mut self) {
+        // Version limpia, no hay comunicacion server/server
         // Para gossip y para conectar con cliente
         self.write_nodes();
-    
+
         let client_listener = TcpListener::bind(&self.client_ip).unwrap();
-        client_listener.set_nonblocking(true).expect("Cannot set non-blocking");
-        
+        client_listener
+            .set_nonblocking(true)
+            .expect("Cannot set non-blocking");
+
         let server_listener = TcpListener::bind(&self.server_ip).unwrap();
-        server_listener.set_nonblocking(true).expect("Cannot set non-blocking");
-    
+        server_listener
+            .set_nonblocking(true)
+            .expect("Cannot set non-blocking");
+
         loop {
-            
             // Handling server listener
             match server_listener.accept() {
                 Ok((stream, _)) => {
@@ -187,8 +202,7 @@ impl Node {
                     println!("Client connection to client established");
                     self.handle_connection(stream); // Lee lo del cliente
                 }
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                }
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
                 Err(e) => {
                     eprintln!("Error accepting client connection: {:?}", e);
                 }
@@ -198,19 +212,17 @@ impl Node {
             thread::sleep(Duration::from_millis(100));
         }
     }
-    
-
 }
 
-pub fn func(msg:  String) {
+pub fn func(msg: String) {
     let stdin = io::stdin(); //input() para leer lo del server
-            for line in stdin.lock().lines() {
-                let input = line.unwrap();
-                // let mi_ip = self.ip;
-                let mut socket = TcpStream::connect("127.0.0.1:7879").unwrap();
-                let new_msg = format!("{} {}", msg, Local::now());
-                let _ = socket.write(new_msg.as_bytes());
-                // let _ = socket.write(input.as_bytes());
-                // socket.flush().unwrap();
-            }
+    for line in stdin.lock().lines() {
+        let input = line.unwrap();
+        // let mi_ip = self.ip;
+        let mut socket = TcpStream::connect("127.0.0.1:7879").unwrap();
+        let new_msg = format!("{} {}", msg, Local::now());
+        let _ = socket.write(new_msg.as_bytes());
+        // let _ = socket.write(input.as_bytes());
+        // socket.flush().unwrap();
+    }
 }
