@@ -68,7 +68,8 @@ impl Node {
         // HACER LA QUERY Y DEVOLVER LA TABLA //
         ////////////////////////////////////////
 
-        "tabla csv en formato String".to_string()
+        // "tabla csv en formato String".to_string()
+        "".to_string() // no se para que sirve lo de arriba, puse esto para handlear Received, se puede borrar
     }
 }
 
@@ -131,6 +132,8 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: TcpStream) {
 
     while let Some(Ok(line)) = lines.next() {
         let message = node.desarialize(&line);
+        // println!("{:?}", message);
+        //message se manda 2 veces, tipo request y tipo received
         match message.message_type {
             MessageType::Request => {
                 // Recibe una query CQL 
@@ -165,7 +168,7 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: TcpStream) {
             }
             MessageType::Received => {
                 // Todo
-                println!("El mensaje fue recibido");
+                println!("El mensaje fue recibido, {}", message.message);
             }
             MessageType::Test => {
                 //// usar para debuggear
@@ -183,14 +186,18 @@ pub fn handle_query(query: Query) {
 }
 
 //🤝
-pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
-    let reader = BufReader::new(&stream);
+pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream2: TcpStream, mut stream: TcpStream) {
+    let reader = BufReader::new(&stream2);
     let mut lines = reader.lines();
     let node = node.lock().unwrap();
 
     while let Some(Ok(line)) = lines.next() {
         println!("RECEIVED:{}", line); // query que manda cliente
     
+        let res = format!("Mensaje recibido: {}, soy el nodo {}\n", line, node.client_ip).to_string();
+        stream.write(res.as_bytes());
+        //asi se responde al cliente, guardar el stream para responder despues?
+
         let query = Query::new(line, node.client_ip.clone()); 
 
         ///////////////////
@@ -250,8 +257,13 @@ pub fn initialize(port: String) {
         let client_listener = TcpListener::bind(&current_node_client.lock().unwrap().client_ip).expect("Error al conectarse al puerto client_ip");
 
         for stream in client_listener.incoming() {
-            let stream = stream.unwrap();
-            handle_connection_client(current_node_client.clone(), stream);
+            let mut stream = stream.unwrap();
+            let stream2 = stream.try_clone().unwrap();
+
+            // bufreader queda con el ownership de stream, por ahora clono y uso 2
+
+            handle_connection_client(current_node_client.clone(), stream2, stream);
+            
         }
     });
 
