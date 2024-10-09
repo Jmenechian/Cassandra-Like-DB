@@ -10,27 +10,69 @@ use std::sync::MutexGuard;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-
-static GOSSIP: i64 = 3;
+use crate::config::{CLIENT_PORT, PORTS_FILE, SERVER_PORT};
+use crate::config::STRONG_CONSISTENCY;
+use crate::query::Query;
+use crate::server_message::ServerMessage;
+use crate::server_message::MessageType;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Estado {
-    Activo,
-    Levantando,
-    Caído,
-    Cayendo,
+pub enum Status {
+    Connected,
+    Disconnected,
 }
+
+// Representa a todos los otros nodos del ring
 #[derive(Debug, Clone, PartialEq)]
-pub struct Nodo {
-    pub puerto: u16,
-    pub estado: Estado,
+pub struct NeighborNode {
+    pub server_ip: String,
+    pub status: Status,
     pub time: DateTime<Local>,
-}
-#[derive(Debug, Clone, PartialEq)]
-pub struct Mensaje {
-    pub contenido: String,
+    pub primary_key: String, // para saber a quien mandarle la query
 }
 
+// Representa al nodo en el que estamos parados
+#[derive(Debug, Clone, PartialEq)]
+pub struct Node {
+    pub ip: String, //temp
+    pub server_ip: String, // IP donde nodo se comunica con el servidor
+    pub client_ip: String, // IP donde nodo se comunica con el cliente
+    pub file_path: String,
+    pub nodes_path: String,
+    pub neighbors: Vec<NeighborNode>, // todos los otros nodos
+    pub replication_nodes: Vec<NeighborNode>, // RF
+}
+
+impl Node {
+    pub fn new(port: &str, neighbor_nodes: Vec<NeighborNode>) -> Self {
+        Self {
+            ip: format!("127.0.0.1:{}", port),
+            server_ip: format!("127.0.0.{}:{}", port, SERVER_PORT),
+            client_ip: format!("127.0.0.{}:{}", port, CLIENT_PORT),
+            file_path: "".to_string(),
+            nodes_path: "nodes.txt".to_string(),
+            neighbors: neighbor_nodes, // todos los nodos que estan en el ring
+            replication_nodes: Vec::new(),
+        }
+    }
+
+    pub fn desarialize(&self, line: &String) -> ServerMessage {
+        let message = ServerMessage::new(line.clone()).unwrap();
+        message
+    }
+
+    // Proceso la query y devuelve la tabla en formato String
+    pub fn process_query(&self, query: &Query) -> String {
+
+        ////////////////////////////////////////
+        // HACER LA QUERY Y DEVOLVER LA TABLA //
+        ////////////////////////////////////////
+
+        "tabla csv en formato String".to_string()
+    }
+}
+
+// Lee los puertos del archivo
 fn read_ports_from_file(filename: &str) -> Vec<u16> {
     let file = File::open(filename).expect("No se pudo abrir el archivo de puertos.");
     let reader = BufReader::new(file);
@@ -40,259 +82,216 @@ fn read_ports_from_file(filename: &str) -> Vec<u16> {
         .collect()
 }
 
-fn serialize_nodo(nodo: &Nodo) -> String {
-    format!(
-        "Nodo:{}:{}:{}",
-        nodo.puerto,
-        match nodo.estado {
-            Estado::Activo => "Activo",
-            Estado::Levantando => "Levantando",
-            Estado::Caído => "Caído",
-            Estado::Cayendo => "Cayendo",
-        },
-        nodo.time.to_rfc3339(),
-    )
-}
-
-fn deserialize_nodo(data: &str) -> Option<Nodo> {
-    let mut parts: Vec<&str> = data.split(':').collect();
-
-    if parts.len() >= 4 && parts[0] == "Nodo" {
-        let puerto = parts[1].parse::<u16>().ok()?;
-        let estado = match parts[2] {
-            "Activo" => Estado::Activo,
-            "Levantando" => Estado::Levantando,
-            "Caído" => Estado::Caído,
-            "Cayendo" => Estado::Cayendo,
-            _ => return None,
-        };
-        let time = parts.split_off(3);
-        let time = time.join(":");
-        
-        let time = DateTime::parse_from_rfc3339(&time).ok()?.into();
-        Some(Nodo {
-            puerto,
-            estado,
-            time,
-        })
-    } else {
-        None
-    }
-}
-
-fn serialize_mensaje(mensaje: &Mensaje) -> String {
-    format!("Mensaje:{}", mensaje.contenido)
-}
-
-fn deserialize_mensaje(data: &str) -> Option<Mensaje> {
-    if data.starts_with("Mensaje:") {
-        Some(Mensaje {
-            contenido: data["Mensaje:".len()..].to_string(),
-        })
-    } else {
-        None
-    }
-}
-
 fn try_connect(port: u16) -> Option<TcpStream> {
-    match TcpStream::connect(format!("127.0.0.1:{}", port)) {
+    match TcpStream::connect(format!("127.0.0.{}:7000", port)) {
         Ok(stream) => Some(stream),
         Err(_) => None,
     }
 }
 
-fn handle_user_input(known_nodes: Arc<Mutex<Vec<u16>>>, current_port: u16) {
-    let stdin = io::stdin();
-    for line in stdin.lock().lines() {
-        if let Ok(msg) = line {
-            let message = Mensaje { contenido: msg };
-            let serialized_msg = serialize_mensaje(&message);
-
-            let mut nodes_to_remove = vec![];
-            {
-                let nodes = known_nodes.lock().unwrap();
-                for &node_port in nodes.iter() {
-                    if let Ok(mut stream) = TcpStream::connect(format!("127.0.0.1:{}", node_port)) {
-                        if stream.write_all(serialized_msg.as_bytes()).is_err() {
-                            println!("No se pudo enviar mensaje a {}", node_port);
-                        }
-                    } else {
-                        println!("No se pudo conectar al nodo en el puerto {}", node_port);
-                        nodes_to_remove.push(node_port);
-                    }
-                }
-            }
-
-            if !nodes_to_remove.is_empty() {
-                let mut nodes = known_nodes.lock().unwrap();
-                for port in nodes_to_remove {
-                    if let Some(pos) = nodes.iter().position(|&x| x == port) {
-                        nodes.remove(pos);
-                    }
-
-                    println!(
-                        "El nodo {} se eliminó de la lista de nodos conocidos.",
-                        port
-                    );
-                    gossip2(
-                        &nodes,
-                        serialize_nodo(&Nodo {
-                            puerto: port,
-                            estado: Estado::Caído,
-                            time: Local::now(),
-                        }),
-                    );
-                }
-            }
-        }
-    }
-}
-
-fn gossip2(nodes: &MutexGuard<'_, Vec<u16>>, serialized_nodo: String) {
-    {
-        let mut rng = rand::thread_rng();
-        let mut nodos_shuffle = nodes.to_vec();
-        nodos_shuffle.shuffle(&mut rng);
-
-        for &node_port in nodos_shuffle.iter().take(3) {
-            if let Some(mut stream) = try_connect(node_port) {
-                if stream.write_all(serialized_nodo.as_bytes()).is_err() {
-                    println!(
-                        "Error enviando mensaje de estado inicial al nodo en el puerto {}",
-                        node_port
-                    );
-                }
-            }
-        }
-    }
-}
-
-fn handle_connection(mut stream: TcpStream, known_nodes: Arc<Mutex<Vec<u16>>>) {
-    let mut buffer = [0; 512];
-    while match stream.read(&mut buffer) {
-        Ok(size) if size > 0 => {
-            let data = String::from_utf8_lossy(&buffer[..size]);
-            if let Some(nodo) = deserialize_nodo(&data) {
-                println!("Nodo conectado: {:?}", nodo);
-
-                let mut nodes = known_nodes.lock().unwrap();
-                if !nodes.contains(&nodo.puerto) {
-                    if nodo.estado != Estado::Caído {
-                        nodes.push(nodo.puerto);
-                        println!(
-                            "Nodo {} agregado a la lista de nodos conocidos.",
-                            nodo.puerto
-                        );
-                        gossip2(&nodes, serialize_nodo(&nodo));
-                    }
-                }
-            } else if let Some(msg) = deserialize_mensaje(&data) {
-                println!("Mensaje recibido: {:?}", msg);
-            } else {
-                println!("Mensaje desconocido: {}", data);
-            }
-            true
-        }
-        _ => false,
-    } {}
-}
-
-fn start_node_listener(port: u16, known_nodes: Arc<Mutex<Vec<u16>>>) {
-    let listener =
-        TcpListener::bind(format!("127.0.0.1:{}", port)).expect("No se pudo enlazar al puerto.");
-    println!("Nodo escuchando en el puerto: {}", port);
-
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
-                let addr = stream.peer_addr().unwrap();
-                println!("Nueva conexión desde {}", addr);
-
-                let known_nodes = Arc::clone(&known_nodes);
-
-                thread::spawn(move || {
-                    handle_connection(stream, known_nodes);
-                });
-            }
-            Err(e) => {
-                println!("Error al aceptar conexión: {}", e);
-            }
-        }
-    }
-}
-
-fn connect_to_ports(ports: Vec<u16>, known_nodes: &mut Vec<u16>) -> Option<u16> {
-    let mut port_to_listen = None;
+// Se guarda a TODOS los nodos vecinos
+// Tiene guardado el estado de cada nodo
+fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
+    let mut known_nodes: Vec<NeighborNode> = Vec::new();
 
     for &port in &ports {
-        if let Some(mut stream) = try_connect(port) {
-            known_nodes.push(port);
-            println!("Conectado exitosamente al nodo en el puerto {}", port);
-
-            let nodo_actual = Nodo {
-                puerto: port,
-                estado: Estado::Levantando,
-                time: Local::now(),
-            };
-            let serialized_nodo = serialize_nodo(&nodo_actual);
-            if stream.write_all(serialized_nodo.as_bytes()).is_err() {
-                println!("Error enviando mensaje al nodo en el puerto {}", port);
-            }
-        } else if port_to_listen.is_none() {
-            port_to_listen = Some(port);
+        if &port.to_string() == my_port {
+            continue;
         }
+        let status: Status;
+        if let Some(mut stream) = try_connect(port) {
+            status = Status::Connected;
+            println!("Conectado exitosamente al nodo en el puerto {}", port);
+            // Avisar al nodo que me conecte??
+            // Hacerlo por Gossip....
+        }
+        else {
+            status = Status::Connected; ///////// DEBERIA EMPEZAR DESCONECTADO Y ACTUALIZARSE CON GOSSIP
+            // status = Status::Disconnected;
+            println!("No se pudo conectar al nodo en el puerto {}", port);
+        }
+
+        let nodo_vecino = NeighborNode {
+            server_ip: format!("127.0.0.{}:7000", port),
+            status: status,
+            time: Local::now(),
+            primary_key: "".to_string(), // falta de alguna forma conseguirlo
+        };
+        known_nodes.push(nodo_vecino);
     }
-    return port_to_listen;
+    known_nodes
 }
 
-fn gossip(known_nodes: Arc<Mutex<Vec<u16>>>, serialized_nodo: String) {
-    {
-        let mut nodes = known_nodes.lock().unwrap();
-        let mut rng = rand::thread_rng();
-        let mut nodos_shuffle = nodes.to_vec();
-        nodos_shuffle.shuffle(&mut rng);
+// Recibe un mensaje y lo procesa
+// Mensajes del tipo ServerMessage
+fn handle_connection_server(node: Arc<Mutex<Node>>, stream: TcpStream) {
+    let reader = BufReader::new(&stream);
+    let mut lines = reader.lines();
+    let node = node.lock().unwrap();
 
-        for &node_port in nodos_shuffle.iter().take(1) {
-            if let Some(mut stream) = try_connect(node_port) {
-                if stream.write_all(serialized_nodo.as_bytes()).is_err() {
-                    println!(
-                        "Error enviando mensaje de estado inicial al nodo en el puerto {}",
-                        node_port
-                    );
+    while let Some(Ok(line)) = lines.next() {
+        let message = node.desarialize(&line);
+        match message.message_type {
+            MessageType::Request => {
+                // Recibe una query CQL 
+                let query = Query::new(message.message, node.server_ip.clone());
+                let tabla = node.process_query(&query);
+
+                // Mando la tabla al nodo original
+                let mut socket: TcpStream = TcpStream::connect(query.sender_node_ip).unwrap(); 
+                socket.write(format!("RECEIVED:{}",query.query).as_bytes()); // aviso al nodo que se recibio la query
+                socket.write(tabla.as_bytes());
+            }
+            MessageType::Result => {
+                let mut respuestas: Vec<String> = Vec::new();
+                respuestas.push(message.message);
+                if respuestas.len() == STRONG_CONSISTENCY {
+                    // mandarle respuesta al cliente
+                    // A que IP se manda?????????????????????????????????????
+                    let mut socket = TcpStream::connect(&node.client_ip).unwrap();
+                    // habria que chequear que las respuestas son todas iguales
+                    socket.write(respuestas[0].as_bytes());
+                } else {
+                    // estos IPs creo que estan mal!!!!!!!!!!!!!!!
+                    let mut socket = TcpStream::connect(&node.client_ip).unwrap();
+                    socket.write("HUBO UN ERROR".as_bytes());
                 }
             }
+            MessageType::Gossip => {
+                //hace gossip
+                println!("Llego un mensaje de gossip: {}",line);
+                // FALTA CAMBIAR EL ESTADO DE NODO VECINO A CONECTADO
+                // todo!();
+            }
+            MessageType::Received => {
+                // Todo
+                println!("El mensaje fue recibido");
+            }
+            MessageType::Test => {
+                //// usar para debuggear
+                println!("{:?}", message.message_type);
+            }
+        
         }
     }
 }
 
-pub fn initialize(ports_file: &String) {
-    let ports = read_ports_from_file(ports_file);
-    let mut known_nodes = Vec::new();
+// Le deberia mandar la query a los nodos correspondientes!
+pub fn handle_query(query: Query) {
+    // TO DO
+    // println!("Llego la query: {}", query.query);
+}
 
-    let mut port_to_listen = connect_to_ports(ports, &mut known_nodes);
+//🤝
+pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
+    let reader = BufReader::new(&stream);
+    let mut lines = reader.lines();
+    let node = node.lock().unwrap();
 
-    let port_to_listen = port_to_listen.expect("No se encontró un puerto libre para escuchar.");
+    while let Some(Ok(line)) = lines.next() {
+        println!("RECEIVED:{}", line); // query que manda cliente
+    
+        let query = Query::new(line, node.client_ip.clone()); 
 
-    let known_nodes: Arc<Mutex<Vec<u16>>> = Arc::new(Mutex::new(known_nodes));
+        ///////////////////
+        // PARSEAR QUERY //
+        ///////////////////
 
-    let known_nodes_clone = Arc::clone(&known_nodes);
-    thread::spawn(move || {
-        start_node_listener(port_to_listen, known_nodes_clone);
+        handle_query(query.clone()); // deberia devolver la query parseada
+        send_query_to_nodes(&node.neighbors, query);
+    }
+}
+
+// Envia la query a los nodos correspondientes
+// HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
+pub fn send_query_to_nodes(neighbors: &Vec<NeighborNode>, query: Query) {
+    for neighbor in neighbors {
+        if neighbor.server_ip == query.sender_node_ip {
+            // ignoramos al que mando la query original
+            println!("Nodo original: {}", neighbor.server_ip);
+            continue;
+        }
+        if neighbor.status == Status::Disconnected {
+            println!("Nodo desconectado: {}", neighbor.server_ip);
+            continue;
+        }
+        if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
+            socket.write(format!("REQUEST:{}", query.query).as_bytes()).unwrap();
+            println!("Enviando mensaje a {}", neighbor.server_ip);
+        } else {
+            println!("Error conectando a {}", neighbor.server_ip);
+        }
+    }
+}
+
+// Inicializa el nodo
+// Lo conecta a los otros nodos que esten abiertos y se queda escuchando
+pub fn initialize(port: String) {
+    let ports = read_ports_from_file(PORTS_FILE);
+
+    let neighbor_nodes: Vec<NeighborNode> = connect_to_ports(ports, &port);
+
+    let current_node: Node = Node::new(&port, neighbor_nodes);
+
+    println!("Soy nodo en ip: {}", current_node.server_ip);
+
+    let current_node = Arc::new(Mutex::new(current_node)); //node para MAIN THREAD
+
+    ////////////////////////////
+    // FALTA HACER GOSSIP ACA //
+    ////////////////////////////
+
+    let current_node_client = Arc::clone(&current_node); // node para CLIENT THREAD
+
+    // Single thread cliente-servidor
+    // Hay que hacer un thread pool!!!!!!!
+    let thread_cliente = thread::spawn(move || {
+
+        let client_listener = TcpListener::bind(&current_node_client.lock().unwrap().client_ip).expect("Error al conectarse al puerto client_ip");
+
+        for stream in client_listener.incoming() {
+            let stream = stream.unwrap();
+            handle_connection_client(current_node_client.clone(), stream);
+        }
     });
 
-    let nodo_actual = Nodo {
-        puerto: port_to_listen,
-        estado: Estado::Activo,
-        time: Local::now(),
-    };
-    let serialized_nodo = serialize_nodo(&nodo_actual);
-    gossip(Arc::clone(&known_nodes), serialized_nodo);
+    let current_node_server = Arc::clone(&current_node); // node para SERVER THREAD
+    
+    // Single thread servidor-servidor
+    // Escucha mensajes de otros nodos
+    let thread_servidor = thread::spawn(move || {
+        let server_listener = TcpListener::bind(&current_node_server.lock().unwrap().server_ip).expect("Error al conectarse al puerto server_ip");
 
-    println!(
-        "Nodo iniciado y escuchando en el puerto: {}",
-        port_to_listen
-    );
-    println!("Nodos conocidos: {:?}", *known_nodes.lock().unwrap());
+        for stream in server_listener.incoming() {
+            let stream: TcpStream = stream.unwrap();
+            handle_connection_server(current_node_server.clone(), stream);
+        }
+    });
 
-    handle_user_input(Arc::clone(&known_nodes), port_to_listen);
+    // Handle user input in the main thread
+    // Escucha mensajes de terminal
+    // loop {
+    //     let mut input = String::new();
+    //     print!("Enter a query/message: ");
+    //     io::stdout().flush().unwrap(); // Make sure the prompt is shown
+    //     io::stdin().read_line(&mut input).expect("Failed to read input");
+
+    //     let input = input.trim().to_string();
+    //     if input.is_empty() {
+    //         continue; // Skip if no input is provided
+    //     }
+
+    //     if input == "exit" {
+    //         break; // Exit the loop when the user types 'exit'
+    //     }
+
+    //     // Broadcast the input to other nodes (for example, as a query)
+    //     let query = Query::new(input.clone(), current_node.lock().unwrap().client_ip.clone());
+    //     println!("tamos aca");
+    //     gossip(&current_node, query);
+    // }
+
+    thread_cliente.join().unwrap();
+    thread_servidor.join().unwrap();
+
 }
