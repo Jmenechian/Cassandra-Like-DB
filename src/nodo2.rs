@@ -134,8 +134,6 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: TcpStream) {
 
     while let Some(Ok(line)) = lines.next() {
         let message = node.desarialize(&line);
-        // println!("{:?}", message);
-        //message se manda 2 veces, tipo request y tipo received
         match message.message_type {
             MessageType::Request => {
                 println!("Llego un mensaje de request: {}, de ip: {}",line, message.original_sender_ip);
@@ -166,11 +164,11 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: TcpStream) {
 
                 // Aviso que llego el mensaje
                 let mut socket: TcpStream = TcpStream::connect(&query.sender_node_ip).unwrap();
-                socket.write(format!("RECEIVED:{}:{}",query.sender_node_ip, line).as_bytes()).expect("[ERROR] no se pudo mandar RECEIVED"); 
+                socket.write(format!("RECEIVED:{}:{}\n",query.sender_node_ip, line).as_bytes()).expect("[ERROR] no se pudo mandar RECEIVED"); 
                 socket.flush().expect("flush no funciono");
 
                 // Mando la tabla resultado
-                socket.write(format!("RESULT:{}:{}",query.sender_node_ip,tabla).as_bytes()).expect("[ERROR] no se pudo mandar tabla");
+                socket.write(format!("RESULT:{}:{}\n",query.sender_node_ip,tabla).as_bytes()).expect("[ERROR] no se pudo mandar tabla");
                 socket.flush().expect("flush no funciono"); 
             }
             MessageType::Result => {
@@ -183,11 +181,11 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: TcpStream) {
                     // A que IP se manda?????????????????????????????????????
                     let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
                     // habria que chequear que las respuestas son todas iguales
-                    socket.write(respuestas[0].as_bytes());
+                    socket.write(format!("{}\n",respuestas[0]).as_bytes()).expect("[ERROR] no se pudo mandar tabla a cliente");
                 } else {
                     // estos IPs creo que estan mal!!!!!!!!!!!!!!!
                     let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
-                    socket.write("HUBO UN ERROR".as_bytes());
+                    socket.write("HUBO UN ERROR\n".as_bytes());
                 }
             }
             MessageType::Gossip => {
@@ -258,7 +256,7 @@ pub fn send_query_to_nodes(node_server_ip: &str ,neighbors: &Vec<NeighborNode>, 
         }
         if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
             // Mando mensaje y el IP del nodo que se conecto con el cliente
-            socket.write(format!("REQUEST:{}:{}",node_server_ip, query.query).as_bytes()).unwrap();
+            socket.write(format!("REQUEST:{}:{}\n",node_server_ip, query.query).as_bytes()).unwrap();
             println!("Enviando mensaje a {}", neighbor.server_ip);
         } //else {
             // println!("Error conectando a {}", neighbor.server_ip);
