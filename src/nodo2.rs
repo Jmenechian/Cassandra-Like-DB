@@ -67,9 +67,11 @@ impl Node {
         ////////////////////////////////////////
         // HACER LA QUERY Y DEVOLVER LA TABLA //
         ////////////////////////////////////////
+        
+        println!("Procesando tabla...");
 
-        // "tabla csv en formato String".to_string()
-        "".to_string() // no se para que sirve lo de arriba, puse esto para handlear Received, se puede borrar
+        "tabla csv en formato String".to_string()
+        // "".to_string() // no se para que sirve lo de arriba, puse esto para handlear Received, se puede borrar
     }
 }
 
@@ -136,27 +138,55 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: TcpStream) {
         //message se manda 2 veces, tipo request y tipo received
         match message.message_type {
             MessageType::Request => {
-                // Recibe una query CQL 
-                let query = Query::new(message.message, node.server_ip.clone());
+                println!("Llego un mensaje de request: {}, de ip: {}",line, message.original_sender_ip);
+ 
+                // Proceso la query
+                let query = Query::new(message.message, message.original_sender_ip);
+                // let node_clone = node.clone();
+                
+                // nueva thread para mandar respuesta
+                // thread::spawn(move || {
+                //     let tabla = node_clone.process_query(&query);
+
+                //     let mut socket = TcpStream::connect(&query.sender_node_ip).unwrap();
+
+                //     // Aviso que llego el mensaje
+                //     socket.write(format!("RECEIVED:{}:{}", query.sender_node_ip, line).as_bytes()).expect("[ERROR] no se pudo mandar RECEIVED");
+                //     socket.flush().expect("flush no funciono");
+
+
+                //     // Mando la tabla resultado
+                //     socket.write(format!("RESULT:{}:{}", query.sender_node_ip, tabla).as_bytes()).expect("[ERROR] no se pudo mandar tabla");
+                //     socket.flush().expect("flush no funciono");
+                // });
+
+
+                // ESTOS WRITES CREO QUE HAY QUE METERLOS EN OTRO THREAD
                 let tabla = node.process_query(&query);
 
-                // Mando la tabla al nodo original
-                let mut socket: TcpStream = TcpStream::connect(query.sender_node_ip).unwrap(); 
-                socket.write(format!("RECEIVED:{}",query.query).as_bytes()); // aviso al nodo que se recibio la query
-                socket.write(tabla.as_bytes());
+                // Aviso que llego el mensaje
+                let mut socket: TcpStream = TcpStream::connect(&query.sender_node_ip).unwrap();
+                socket.write(format!("RECEIVED:{}:{}",query.sender_node_ip, line).as_bytes()).expect("[ERROR] no se pudo mandar RECEIVED"); 
+                socket.flush().expect("flush no funciono");
+
+                // Mando la tabla resultado
+                socket.write(format!("RESULT:{}:{}",query.sender_node_ip,tabla).as_bytes()).expect("[ERROR] no se pudo mandar tabla");
+                socket.flush().expect("flush no funciono"); 
             }
             MessageType::Result => {
+                println!("Llego resultado: {}, de nodo: {}", message.message, message.original_sender_ip);
                 let mut respuestas: Vec<String> = Vec::new();
                 respuestas.push(message.message);
                 if respuestas.len() == STRONG_CONSISTENCY {
+                    println!("Cumple con Quorum");
                     // mandarle respuesta al cliente
                     // A que IP se manda?????????????????????????????????????
-                    let mut socket = TcpStream::connect(&node.client_ip).unwrap();
+                    let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
                     // habria que chequear que las respuestas son todas iguales
                     socket.write(respuestas[0].as_bytes());
                 } else {
                     // estos IPs creo que estan mal!!!!!!!!!!!!!!!
-                    let mut socket = TcpStream::connect(&node.client_ip).unwrap();
+                    let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
                     socket.write("HUBO UN ERROR".as_bytes());
                 }
             }
@@ -168,11 +198,11 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: TcpStream) {
             }
             MessageType::Received => {
                 // Todo
-                println!("El mensaje fue recibido, {}", message.message);
+                println!("El mensaje fue recibido: {}", message.message);
             }
             MessageType::Test => {
                 //// usar para debuggear
-                println!("{:?}", message.message_type);
+                println!("{:?}", message.message);
             }
         
         }
@@ -186,14 +216,16 @@ pub fn handle_query(query: Query) {
 }
 
 //🤝
+// Recibe el mismo stream dos veces (clones), hay que ver de arreglarlo
 pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream2: TcpStream, mut stream: TcpStream) {
     let reader = BufReader::new(&stream2);
     let mut lines = reader.lines();
     let node = node.lock().unwrap();
 
     while let Some(Ok(line)) = lines.next() {
-        println!("RECEIVED:{}", line); // query que manda cliente
-    
+        println!("Mensaje de cliente: {}", line);
+        
+        // Le digo al cliente que recibi su query
         let res = format!("Mensaje recibido: {}, soy el nodo {}\n", line, node.client_ip).to_string();
         stream.write(res.as_bytes());
         //asi se responde al cliente, guardar el stream para responder despues?
@@ -205,13 +237,15 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream2: TcpStream, mut 
         ///////////////////
 
         handle_query(query.clone()); // deberia devolver la query parseada
-        send_query_to_nodes(&node.neighbors, query);
+
+        // Mando query a los nodos correspondientes
+        send_query_to_nodes(&node.server_ip, &node.neighbors, query);
     }
 }
 
 // Envia la query a los nodos correspondientes
 // HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
-pub fn send_query_to_nodes(neighbors: &Vec<NeighborNode>, query: Query) {
+pub fn send_query_to_nodes(node_server_ip: &str ,neighbors: &Vec<NeighborNode>, query: Query) {
     for neighbor in neighbors {
         if neighbor.server_ip == query.sender_node_ip {
             // ignoramos al que mando la query original
@@ -223,11 +257,12 @@ pub fn send_query_to_nodes(neighbors: &Vec<NeighborNode>, query: Query) {
             continue;
         }
         if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
-            socket.write(format!("REQUEST:{}", query.query).as_bytes()).unwrap();
+            // Mando mensaje y el IP del nodo que se conecto con el cliente
+            socket.write(format!("REQUEST:{}:{}",node_server_ip, query.query).as_bytes()).unwrap();
             println!("Enviando mensaje a {}", neighbor.server_ip);
-        } else {
-            println!("Error conectando a {}", neighbor.server_ip);
-        }
+        } //else {
+            // println!("Error conectando a {}", neighbor.server_ip);
+        //}
     }
 }
 
