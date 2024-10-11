@@ -69,7 +69,7 @@ impl Node {
         // HACER LA QUERY Y DEVOLVER LA TABLA //
         ////////////////////////////////////////
         
-        println!("Procesando tabla...");
+        println!("Procesando tabla para query {}....", query.query);
 
         "tabla csv en formato String".to_string()
         // "".to_string() // no se para que sirve lo de arriba, puse esto para handlear Received, se puede borrar
@@ -190,7 +190,7 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
 }
 
 // Le deberia mandar la query a los nodos correspondientes!
-pub fn handle_query(query: Query) {
+pub fn handle_query(_query: Query) {
     // TO DO
     // println!("Llego la query: {}", query.query);
 }
