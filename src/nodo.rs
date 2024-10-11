@@ -1,16 +1,16 @@
-use std::io::{BufRead, BufReader,Write};
+use bufstream::BufStream;
 use std::fs::File;
+use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use threadpool::ThreadPool;
-use bufstream::BufStream;
 
-use crate::config::{N_WORKERS, PORTS_FILE};
 use crate::config::STRONG_CONSISTENCY;
+use crate::config::{N_WORKERS, PORTS_FILE};
 use crate::query::Query;
-use crate::server_message::ServerMessage;
 use crate::server_message::MessageType;
+use crate::server_message::ServerMessage;
 use crate::NeighborNode;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,7 +22,7 @@ pub enum Status {
 // Representa al nodo en el que estamos parados
 #[derive(Debug, Clone, PartialEq)]
 pub struct Node {
-    pub ip: String, //temp
+    pub ip: String,        //temp
     pub server_ip: String, // IP donde nodo se comunica con el servidor
     pub client_ip: String, // IP donde nodo se comunica con el cliente
     pub file_path: String,
@@ -55,11 +55,10 @@ impl Node {
 
     // Proceso la query y devuelve la tabla en formato String
     pub fn process_query(&self, query: &Query) -> String {
-
         ////////////////////////////////////////
         // HACER LA QUERY Y DEVOLVER LA TABLA //
         ////////////////////////////////////////
-        
+
         println!("Procesando tabla para query {}....", query.query);
 
         "tabla csv en formato String".to_string()
@@ -99,10 +98,9 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
             println!("Conectado exitosamente al nodo en el puerto {}", port);
             // Avisar al nodo que me conecte??
             // Hacerlo por Gossip....
-        }
-        else {
+        } else {
             status = Status::Connected; ///////// DEBERIA EMPEZAR DESCONECTADO Y ACTUALIZARSE CON GOSSIP
-            // status = Status::Disconnected;
+                                        // status = Status::Disconnected;
             println!("No se pudo conectar al nodo en el puerto {}", port);
         }
 
@@ -110,7 +108,7 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
         if status == Status::Connected {
             neighbor_node.connect_node();
         }
-        
+
         known_nodes.push(neighbor_node);
     }
     known_nodes
@@ -127,24 +125,34 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
         let message = node.desarialize(&line);
         match message.message_type {
             MessageType::Request => {
-                println!("Llego un mensaje de request: {}, de ip: {}\n",line, message.original_sender_ip);
- 
+                println!(
+                    "Llego un mensaje de request: {}, de ip: {}\n",
+                    line, message.original_sender_ip
+                );
+
                 // Proceso la query
                 let query = Query::new(message.message, message.original_sender_ip);
                 // let node_clone = node.clone();
-            
+
                 let tabla = node.process_query(&query);
 
                 // Aviso que llego el mensaje --- No necesito concetarme de nuevo, se usa el mismo Stream.
-                buf.write_all(format!("RECEIVED: {} : {}\n",query.sender_node_ip, line).as_bytes()).expect("[ERROR] no se pudo mandar RECEIVED"); 
+                buf.write_all(
+                    format!("RECEIVED: {} : {}\n", query.sender_node_ip, line).as_bytes(),
+                )
+                .expect("[ERROR] no se pudo mandar RECEIVED");
                 buf.flush().expect("flush no funciono");
 
                 // Mando la tabla resultado
-                buf.write_all(format!("RESULT: {} : {}\n",query.sender_node_ip, tabla).as_bytes()).expect("[ERROR] no se pudo mandar tabla");
+                buf.write_all(format!("RESULT: {} : {}\n", query.sender_node_ip, tabla).as_bytes())
+                    .expect("[ERROR] no se pudo mandar tabla");
                 buf.flush().expect("flush no funciono");
             }
             MessageType::Result => {
-                println!("Llego resultado: {}, de nodo: {}", message.message, message.original_sender_ip);
+                println!(
+                    "Llego resultado: {}, de nodo: {}",
+                    message.message, message.original_sender_ip
+                );
                 let mut respuestas: Vec<String> = Vec::new();
                 respuestas.push(message.message);
                 if respuestas.len() == STRONG_CONSISTENCY {
@@ -153,7 +161,8 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
                     // A que IP se manda?????????????????????????????????????
                     //let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
                     // habria que chequear que las respuestas son todas iguales
-                    buf.write_all(format!("{}\n",respuestas[0]).as_bytes()).expect("[ERROR] no se pudo mandar tabla a cliente");
+                    buf.write_all(format!("{}\n", respuestas[0]).as_bytes())
+                        .expect("[ERROR] no se pudo mandar tabla a cliente");
                 } else {
                     // estos IPs creo que estan mal!!!!!!!!!!!!!!!
                     //let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
@@ -162,7 +171,7 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
             }
             MessageType::Gossip => {
                 //hace gossip
-                println!("Llego un mensaje de gossip: {}",line);
+                println!("Llego un mensaje de gossip: {}", line);
                 // FALTA CAMBIAR EL ESTADO DE NODO VECINO A CONECTADO
                 // todo!();
             }
@@ -194,16 +203,19 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
     let mut line = String::new();
 
     while buf.read_line(&mut line).is_ok() {
-        
         println!("Mensaje de cliente: {}\n", line);
-        
+
         // Le digo al cliente que recibi su query
-        let res = format!("Mensaje recibido: {}, soy el nodo {}\n", line, node.client_ip).to_string();
+        let res = format!(
+            "Mensaje recibido: {}, soy el nodo {}\n",
+            line, node.client_ip
+        )
+        .to_string();
         let _ = buf.write(res.as_bytes());
         let _ = buf.flush();
         //asi se responde al cliente, guardar el stream para responder despues?
 
-        let query = Query::new(line.clone(), node.client_ip.clone()); 
+        let query = Query::new(line.clone(), node.client_ip.clone());
 
         ///////////////////
         // PARSEAR QUERY //
@@ -214,7 +226,7 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
         // Mando query a los nodos correspondientes
         let all_results = send_query_to_nodes(&node.server_ip, &node.neighbors, query);
 
-        // Le devuelvo el resultado que me devolvieron todos los nodos al cliente 
+        // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
         // Luego se tiene que implementar Read-repear.
         let res = all_results.join(" - ");
         let _ = buf.write(res.as_bytes());
@@ -226,7 +238,11 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
 
 // Envia la query a los nodos correspondientes
 // HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
-pub fn send_query_to_nodes(node_server_ip: &str ,neighbors: &Vec<NeighborNode>, query: Query) -> Vec<String> {
+pub fn send_query_to_nodes(
+    node_server_ip: &str,
+    neighbors: &Vec<NeighborNode>,
+    query: Query,
+) -> Vec<String> {
     let mut all_response = vec![];
     for neighbor in neighbors {
         if neighbor.server_ip == query.sender_node_ip {
@@ -243,17 +259,21 @@ pub fn send_query_to_nodes(node_server_ip: &str ,neighbors: &Vec<NeighborNode>, 
             // - Mando mensaje:
             let mut buf = BufStream::new(socket);
             println!("Enviando mensaje a {}", neighbor.server_ip);
-            buf.write_all(format!("REQUEST:{}:{}\n",node_server_ip, query.query).as_bytes()).unwrap();
+            buf.write_all(format!("REQUEST:{}:{}\n", node_server_ip, query.query).as_bytes())
+                .unwrap();
             let _ = buf.flush();
 
             // - Escucho respuesta:
             let mut response = String::new();
             let _ = buf.read_line(&mut response);
-            println!("El nodo: {}, nos respondio: {}\n", neighbor.server_ip, response);
+            println!(
+                "El nodo: {}, nos respondio: {}\n",
+                neighbor.server_ip, response
+            );
             all_response.push(response);
         } //else {
-            // println!("Error conectando a {}", neighbor.server_ip);
-        //}
+          // println!("Error conectando a {}", neighbor.server_ip);
+          //}
     }
     all_response
 }
@@ -280,18 +300,18 @@ pub fn initialize(port: String) {
 
     // Single thread cliente-servidor
     // Hay que hacer un thread pool!!!!!!! --> Lo agregué: lo usamos para controlar la máxima cantidad de thread que podemos tener.
-    
+
     let pool_client = ThreadPool::new(N_WORKERS);
 
     let thread_cliente = thread::spawn(move || {
-
-        let client_listener = TcpListener::bind(&current_node_client.lock().unwrap().client_ip).expect("Error al conectarse al puerto client_ip");
+        let client_listener = TcpListener::bind(&current_node_client.lock().unwrap().client_ip)
+            .expect("Error al conectarse al puerto client_ip");
 
         for stream in client_listener.incoming() {
             let stream = stream.unwrap();
 
             let node_thread = Arc::clone(&current_node_client);
-            pool_client.execute(move|| {
+            pool_client.execute(move || {
                 // bufreader queda con el ownership de stream --> usamos BufStream para solucionarlo
                 handle_connection_client(node_thread, stream);
             });
@@ -301,17 +321,18 @@ pub fn initialize(port: String) {
     let current_node_server = Arc::clone(&current_node); // node para SERVER THREAD
 
     let pool_server = ThreadPool::new(N_WORKERS);
-    
+
     // Single thread servidor-servidor
     // Escucha mensajes de otros nodos
     let thread_servidor = thread::spawn(move || {
-        let server_listener = TcpListener::bind(&current_node_server.lock().unwrap().server_ip).expect("Error al conectarse al puerto server_ip");
+        let server_listener = TcpListener::bind(&current_node_server.lock().unwrap().server_ip)
+            .expect("Error al conectarse al puerto server_ip");
 
         for stream in server_listener.incoming() {
             let mut stream: TcpStream = stream.unwrap();
 
             let node_thread = Arc::clone(&current_node_server);
-            pool_server.execute(move|| {
+            pool_server.execute(move || {
                 handle_connection_server(node_thread.clone(), &mut stream);
             });
         }
@@ -319,5 +340,4 @@ pub fn initialize(port: String) {
 
     thread_cliente.join().unwrap();
     thread_servidor.join().unwrap();
-
 }
