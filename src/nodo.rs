@@ -1,4 +1,3 @@
-use chrono::prelude::*;
 use std::io::{BufRead, BufReader,Write};
 use std::fs::File;
 use std::net::{TcpListener, TcpStream};
@@ -12,20 +11,12 @@ use crate::config::STRONG_CONSISTENCY;
 use crate::query::Query;
 use crate::server_message::ServerMessage;
 use crate::server_message::MessageType;
+use crate::NeighborNode;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Status {
     Connected,
     Disconnected,
-}
-
-// Representa a todos los otros nodos del ring
-#[derive(Debug, Clone, PartialEq)]
-pub struct NeighborNode {
-    pub server_ip: String,
-    pub status: Status,
-    pub time: DateTime<Local>,
-    pub primary_key: String, // para saber a quien mandarle la query
 }
 
 // Representa al nodo en el que estamos parados
@@ -115,13 +106,12 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
             println!("No se pudo conectar al nodo en el puerto {}", port);
         }
 
-        let nodo_vecino = NeighborNode {
-            server_ip: format!("127.0.0.1:700{}", port),
-            status,
-            time: Local::now(),
-            primary_key: "".to_string(), // falta de alguna forma conseguirlo
-        };
-        known_nodes.push(nodo_vecino);
+        let mut neighbor_node = NeighborNode::new(&port.to_string());
+        if status == Status::Connected {
+            neighbor_node.connect_node();
+        }
+        
+        known_nodes.push(neighbor_node);
     }
     known_nodes
 }
