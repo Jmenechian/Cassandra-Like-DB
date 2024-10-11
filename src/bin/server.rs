@@ -7,6 +7,7 @@ fn main() {
         eprintln!("Uso: {} <archivo_de_puertos>", args[0]);
         std::process::exit(1);
     }
+    println!("args: {:?}", args);
     let ports_file = args[1].to_string();
 
     nodo::initialize(ports_file);

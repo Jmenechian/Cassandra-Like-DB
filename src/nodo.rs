@@ -9,6 +9,7 @@ use bufstream::BufStream;
 
 use crate::config::{N_WORKERS, PORTS_FILE};
 use crate::config::STRONG_CONSISTENCY;
+use crate::messagestuff::message::Message;
 use crate::query::Query;
 use crate::server_message::ServerMessage;
 use crate::server_message::MessageType;
@@ -205,14 +206,19 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
 
     while buf.read_line(&mut line).is_ok() {
         
-        println!("Mensaje de cliente: {}\n", line);
+        let message = Message::from_bytes(line.as_bytes());
+        println!("Mensaje de cliente: {:?}\n", message);
         
-        // Le digo al cliente que recibi su query
-        let res = format!("Mensaje recibido: {}, soy el nodo {}\n", line, node.client_ip).to_string();
-        let _ = buf.write(res.as_bytes());
-        let _ = buf.flush();
-        //asi se responde al cliente, guardar el stream para responder despues?
+        let ans_msg = Message::new("Processing...".to_string());
 
+        let _ = buf.write(&ans_msg.to_bytes());
+        buf.write_all(b"\n"); //sino no se manda hasta que cierra
+        let _ = buf.flush();
+
+
+        /////////////////////////////////////////
+        // LO QUE SIGUE ABAJO DEBE ROMPER TODO //
+        /////////////////////////////////////////
         let query = Query::new(line.clone(), node.client_ip.clone()); 
 
         ///////////////////
