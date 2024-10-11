@@ -134,11 +134,9 @@ mod tests {
         let second = NeighborNode::new("5");
         let third = NeighborNode::new("6");
 
-        let expected_result = vec![first, second, third];
-
-        assert_eq!(nodes_result[0].server_ip, expected_result[0].server_ip);
-        assert_eq!(nodes_result[1].server_ip, expected_result[1].server_ip);
-        assert_eq!(nodes_result[2].server_ip, expected_result[2].server_ip);
+        assert_eq!(nodes_result[0].server_ip, first.server_ip);
+        assert_eq!(nodes_result[1].server_ip, second.server_ip);
+        assert_eq!(nodes_result[2].server_ip, third.server_ip);
     }
 
     #[test]
@@ -169,11 +167,9 @@ mod tests {
         let second = NeighborNode::new("2");
         let third = NeighborNode::new("1");
 
-        let expected_result = vec![first, second, third];
-
-        assert_eq!(nodes_result[0].server_ip, expected_result[0].server_ip);
-        assert_eq!(nodes_result[1].server_ip, expected_result[1].server_ip);
-        assert_eq!(nodes_result[2].server_ip, expected_result[2].server_ip);
+        assert_eq!(nodes_result[0].server_ip, first.server_ip);
+        assert_eq!(nodes_result[1].server_ip, second.server_ip);
+        assert_eq!(nodes_result[2].server_ip, third.server_ip);
     }
 
     #[test]
@@ -204,10 +200,8 @@ mod tests {
         let second = NeighborNode::new("1");
         let third = NeighborNode::new("4");
 
-        let expected_result = vec![first, second, third];
-
-        assert_eq!(nodes_result[0].server_ip, expected_result[0].server_ip);
-        assert_eq!(nodes_result[1].server_ip, expected_result[1].server_ip);
-        assert_eq!(nodes_result[2].server_ip, expected_result[2].server_ip);
+        assert_eq!(nodes_result[0].server_ip, first.server_ip);
+        assert_eq!(nodes_result[1].server_ip, second.server_ip);
+        assert_eq!(nodes_result[2].server_ip, third.server_ip);
     }
 }
