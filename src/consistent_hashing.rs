@@ -32,21 +32,21 @@ impl ConsistentHash<NeighborNode> {
 
     // Agregar un nodo al anillo
     pub fn add_node(&mut self, node: NeighborNode) {
-        self.total = self.total + 1;
+        self.total += 1;
         let mut hash = self.hash(&node.server_ip);
         while self.ring.contains_key(&hash) {
-            hash = hash + 1;
+            hash += 1;
         }
         self.ring.insert(hash, node.clone());
     }
 
     // Agregar un nodo al anillo
     pub fn add_nodes(&mut self, nodes: Vec<NeighborNode>) {
-        self.total = self.total + nodes.len();
+        self.total += nodes.len();
         for node in nodes {
             let mut hash = self.hash(&node.server_ip);
             while self.ring.contains_key(&hash) {
-                hash = hash + 1;
+                hash += 1;
             }
             self.ring.insert(hash, node.clone());
         }
