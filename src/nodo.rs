@@ -1,19 +1,13 @@
 use chrono::prelude::*;
-use rand;
-use rand::prelude::*;
-use std::{env, result};
-use std::f32::consts::E;
+use std::io::{BufRead, BufReader,Write};
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Read, Write};
-use std::net::{Shutdown, TcpListener, TcpStream};
-use std::sync::MutexGuard;
+use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 use threadpool::ThreadPool;
 use bufstream::BufStream;
 
-use crate::config::{CLIENT_PORT, N_WORKERS, PORTS_FILE, SERVER_PORT};
+use crate::config::{N_WORKERS, PORTS_FILE};
 use crate::config::STRONG_CONSISTENCY;
 use crate::query::Query;
 use crate::server_message::ServerMessage;
@@ -64,9 +58,8 @@ impl Node {
         self.neighbors = neighbor_nodes;
     }
 
-    pub fn desarialize(&self, line: &String) -> ServerMessage {
-        let message = ServerMessage::new(line.clone()).unwrap();
-        message
+    pub fn desarialize(&self, line: &str) -> ServerMessage {
+        ServerMessage::new(line.to_owned()).unwrap()
     }
 
     // Proceso la query y devuelve la tabla en formato String
@@ -110,7 +103,7 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
             continue;
         }
         let status: Status;
-        if let Some(mut stream) = try_connect(port) {
+        if try_connect(port).is_some() {
             status = Status::Connected;
             println!("Conectado exitosamente al nodo en el puerto {}", port);
             // Avisar al nodo que me conecte??
@@ -124,7 +117,7 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
 
         let nodo_vecino = NeighborNode {
             server_ip: format!("127.0.0.1:700{}", port),
-            status: status,
+            status,
             time: Local::now(),
             primary_key: "".to_string(), // falta de alguna forma conseguirlo
         };
@@ -149,33 +142,15 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
                 // Proceso la query
                 let query = Query::new(message.message, message.original_sender_ip);
                 // let node_clone = node.clone();
-                
-                // nueva thread para mandar respuesta
-                // thread::spawn(move || {
-                //     let tabla = node_clone.process_query(&query);
-
-                //     let mut socket = TcpStream::connect(&query.sender_node_ip).unwrap();
-
-                //     // Aviso que llego el mensaje
-                //     socket.write(format!("RECEIVED:{}:{}", query.sender_node_ip, line).as_bytes()).expect("[ERROR] no se pudo mandar RECEIVED");
-                //     socket.flush().expect("flush no funciono");
-
-
-                //     // Mando la tabla resultado
-                //     socket.write(format!("RESULT:{}:{}", query.sender_node_ip, tabla).as_bytes()).expect("[ERROR] no se pudo mandar tabla");
-                //     socket.flush().expect("flush no funciono");
-                // });
-
-
-                // ESTOS WRITES CREO QUE HAY QUE METERLOS EN OTRO THREAD --> No, se hace por el mismo stream.
+            
                 let tabla = node.process_query(&query);
 
                 // Aviso que llego el mensaje --- No necesito concetarme de nuevo, se usa el mismo Stream.
-                buf.write(format!("RECEIVED: {} : {}\n",query.sender_node_ip, line).as_bytes()).expect("[ERROR] no se pudo mandar RECEIVED"); 
+                buf.write_all(format!("RECEIVED: {} : {}\n",query.sender_node_ip, line).as_bytes()).expect("[ERROR] no se pudo mandar RECEIVED"); 
                 buf.flush().expect("flush no funciono");
 
                 // Mando la tabla resultado
-                buf.write(format!("RESULT: {} : {}\n",query.sender_node_ip, tabla).as_bytes()).expect("[ERROR] no se pudo mandar tabla");
+                buf.write_all(format!("RESULT: {} : {}\n",query.sender_node_ip, tabla).as_bytes()).expect("[ERROR] no se pudo mandar tabla");
                 buf.flush().expect("flush no funciono");
             }
             MessageType::Result => {
@@ -188,7 +163,7 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
                     // A que IP se manda?????????????????????????????????????
                     //let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
                     // habria que chequear que las respuestas son todas iguales
-                    buf.write(format!("{}\n",respuestas[0]).as_bytes()).expect("[ERROR] no se pudo mandar tabla a cliente");
+                    buf.write_all(format!("{}\n",respuestas[0]).as_bytes()).expect("[ERROR] no se pudo mandar tabla a cliente");
                 } else {
                     // estos IPs creo que estan mal!!!!!!!!!!!!!!!
                     //let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
@@ -278,7 +253,7 @@ pub fn send_query_to_nodes(node_server_ip: &str ,neighbors: &Vec<NeighborNode>, 
             // - Mando mensaje:
             let mut buf = BufStream::new(socket);
             println!("Enviando mensaje a {}", neighbor.server_ip);
-            buf.write(format!("REQUEST:{}:{}\n",node_server_ip, query.query).as_bytes()).unwrap();
+            buf.write_all(format!("REQUEST:{}:{}\n",node_server_ip, query.query).as_bytes()).unwrap();
             let _ = buf.flush();
 
             // - Escucho respuesta:
@@ -351,29 +326,6 @@ pub fn initialize(port: String) {
             });
         }
     });
-
-    // Handle user input in the main thread
-    // Escucha mensajes de terminal
-    // loop {
-    //     let mut input = String::new();
-    //     print!("Enter a query/message: ");
-    //     io::stdout().flush().unwrap(); // Make sure the prompt is shown
-    //     io::stdin().read_line(&mut input).expect("Failed to read input");
-
-    //     let input = input.trim().to_string();
-    //     if input.is_empty() {
-    //         continue; // Skip if no input is provided
-    //     }
-
-    //     if input == "exit" {
-    //         break; // Exit the loop when the user types 'exit'
-    //     }
-
-    //     // Broadcast the input to other nodes (for example, as a query)
-    //     let query = Query::new(input.clone(), current_node.lock().unwrap().client_ip.clone());
-    //     println!("tamos aca");
-    //     gossip(&current_node, query);
-    // }
 
     thread_cliente.join().unwrap();
     thread_servidor.join().unwrap();

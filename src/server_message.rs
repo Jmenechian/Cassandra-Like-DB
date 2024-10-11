@@ -45,19 +45,19 @@ impl ServerMessage {
 
     pub fn assert_message_type(message: &str) -> MessageType {
         if message.starts_with("REQUEST") {
-            return MessageType::Request;
+            MessageType::Request
         } else if message.starts_with("RESULT") {
-            return MessageType::Result;
+            MessageType::Result
         } else if message.starts_with("GOSSIP") {
-            return MessageType::Gossip;
+            MessageType::Gossip
         } else if message.starts_with("RECEIVED") {
-            return MessageType::Received;
+            MessageType::Received
         } else {
-            return MessageType::Test;
+            MessageType::Test
         }
     }
 
-    pub fn get_clean_message(message: &String, message_type: &MessageType) -> (String,String) {
+    pub fn get_clean_message(message: &str, message_type: &MessageType) -> (String,String) {
         match message_type {
             MessageType::Test => return ("".to_string(), "".to_string()),
             MessageType::Gossip => return ("".to_string(), "".to_string()), // falta implementar
