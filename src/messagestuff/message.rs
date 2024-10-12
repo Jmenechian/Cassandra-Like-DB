@@ -1,5 +1,6 @@
 use std::io::{self, Write, Read};
 use std::net::TcpStream;
+use std::io::Cursor;
 
 #[derive(Debug)]
 pub struct Message { // No se como agregar un campo sin tener que rearmar el serialize
@@ -12,10 +13,9 @@ pub struct Message { // No se como agregar un campo sin tener que rearmar el ser
     pub ip: String //esta hardcodeado 1000 porque igual no lo usamos por ahora
 } //faltan mas 
 
-impl Message { // Idea del protocolo nativo? 
+impl Message {
     pub fn new(message: String) -> Self {
         Self {
-            // version,
             message,
             ip: "127.0.0.1:45450".to_string(),
         }
@@ -31,38 +31,45 @@ impl Message { // Idea del protocolo nativo?
     }
 
     fn serialize_field(&self, field: &str) -> Vec<u8> {
-        let length = field.len() as u32; // Get the length of the field
+        let length = field.len() as u32;
         let mut field_bytes = Vec::new();
-        
 
-        field_bytes.extend(&length.to_be_bytes()); // Use Big-Endian byte order
-        field_bytes.extend(field.as_bytes()); // Append the actual field bytes
-        
+        field_bytes.extend(&length.to_be_bytes());
+        field_bytes.extend(field.as_bytes());
+
         field_bytes
     }
 
-    fn deserialize_field<R: Read>(reader: &mut R) -> String { //rompe con "todo bien?" raro, tal vez signo '?'
-        let mut length_bytes = [0u8; 4]; 
+    fn deserialize_field<R: Read>(reader: &mut R) -> String {
+        let mut length_bytes = [0u8; 4];
         reader.read_exact(&mut length_bytes).expect("Failed to read length");
+
         let length = u32::from_be_bytes(length_bytes) as usize;
+        println!("Reading field of length: {}", length); // Debug log
 
-        let mut field_bytes = vec![0u8; length]; 
+        if length > 10_000 {
+            panic!("Field length too large: {}", length);
+        }
+
+        let mut field_bytes = vec![0u8; length];
         reader.read_exact(&mut field_bytes).expect("Failed to read field");
-        String::from_utf8(field_bytes).expect("Invalid UTF-8 sequence")
-    }
 
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        let mut cursor = std::io::Cursor::new(bytes);
-        let message = Self::deserialize_field(&mut cursor);
-        let ip = Self::deserialize_field(&mut cursor);
-
-        Self {
-            // version,
-            message,
-            ip,
+        match String::from_utf8(field_bytes) {
+            Ok(field) => field,
+            Err(e) => {
+                eprintln!("Invalid UTF-8 sequence: {}", e);
+                "<Invalid UTF-8>".to_string()
+            }
         }
     }
 
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let mut cursor = Cursor::new(bytes);
+        let message = Self::deserialize_field(&mut cursor);
+        let ip = Self::deserialize_field(&mut cursor);
+
+        Self { message, ip }
+    }
 }
 
 // OPCODE

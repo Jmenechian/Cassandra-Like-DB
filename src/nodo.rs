@@ -10,7 +10,7 @@ use bufstream::BufStream;
 use crate::config::{N_WORKERS, PORTS_FILE};
 use crate::config::STRONG_CONSISTENCY;
 use crate::messagestuff::message::Message;
-use crate::query::Query;
+use crate::cql::query::Query;
 use crate::server_message::ServerMessage;
 use crate::server_message::MessageType;
 
@@ -39,6 +39,8 @@ pub struct Node {
     pub nodes_path: String,
     pub neighbors: Vec<NeighborNode>, // todos los otros nodos
     pub replication_nodes: Vec<NeighborNode>, // RF
+    pub table: String, // tabla del nodo
+
 }
 
 impl Node {
@@ -52,6 +54,7 @@ impl Node {
             nodes_path: "nodes.txt".to_string(),
             neighbors: vec![], // todos los nodos que estan en el ring
             replication_nodes: Vec::new(),
+            table: format!("tablas/tabla{}.csv",{port}).to_string(),
         }
     }
 
@@ -215,24 +218,35 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
         
         let message = Message::from_bytes(line.as_bytes());
         println!("Mensaje de cliente: {:?}\n", message);
-        
-        let ans_msg = Message::new("Processing...".to_string());
 
+        
+        // en un futuro pasarlo a "otro nodo"
+        let consulta = message.message;
+        let mut query = Query::new(consulta, node.client_ip.clone());
+        let tabla = query.execute(&node.table.clone());
+        println!("Tabla: {}", tabla);
+
+        let ans_msg = Message::new(tabla);
         let _ = buf.write(&ans_msg.to_bytes());
         buf.write_all(b"\n"); //sino no se manda hasta que cierra
         let _ = buf.flush();
 
 
+        // let ans_msg = Message::new("Processing...".to_string());
+        // let _ = buf.write(&ans_msg.to_bytes());
+        // buf.write_all(b"\n"); //sino no se manda hasta que cierra
+        // let _ = buf.flush();
+
+
         /////////////////////////////////////////
         // LO QUE SIGUE ABAJO DEBE ROMPER TODO //
         /////////////////////////////////////////
-        let query = Query::new(line.clone(), node.client_ip.clone()); 
 
         ///////////////////
         // PARSEAR QUERY //
         ///////////////////
 
-        handle_query(query.clone()); // deberia devolver la query parseada
+        // handle_query(query); // deberia devolver la query parseada
 
         // Mando query a los nodos correspondientes
         let all_results = send_query_to_nodes(&node.server_ip, &node.neighbors, query);
