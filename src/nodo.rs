@@ -131,10 +131,18 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
 // Mensajes del tipo ServerMessage
 fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
     let mut buf = BufStream::new(stream);
+    println!("Antes de pedir el lock en handle connection server");
     let node = node.lock().unwrap();
     let mut line = String::new();
+    println!("Despues de pedir el lock en handle connection server");
+    println!("este es mi ip: {}", node.server_ip);
 
     while buf.read_line(&mut line).is_ok() {
+        if line.is_empty() {
+            println!("linea vacia");
+            continue;
+        }
+        println!("leyendo la puta linea: {}", line);
         let message = node.desarialize(&line);
         match message.message_type {
             MessageType::Request => {
@@ -183,7 +191,7 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
             }
             MessageType::Test => {
                 //// usar para debuggear
-                //println!("{:?}", message.message);
+                println!("testeo: {:?}", message.message);
             }
         }
         line = String::new();
@@ -245,11 +253,6 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
 pub fn send_query_to_nodes(node_server_ip: &str ,neighbors: &Vec<NeighborNode>, query: Query) -> Vec<String> {
     let mut all_response = vec![];
     for neighbor in neighbors {
-        if neighbor.server_ip == query.sender_node_ip {
-            // ignoramos al que mando la query original
-            println!("Nodo original: {}", neighbor.server_ip);
-            continue;
-        }
         if neighbor.status == Status::Disconnected {
             println!("Nodo desconectado: {}", neighbor.server_ip);
             continue;
@@ -316,20 +319,30 @@ pub fn initialize(port: String) {
 
     let current_node_server = Arc::clone(&current_node); // node para SERVER THREAD
 
-    let pool_server = ThreadPool::new(N_WORKERS);
+    // let pool_server = ThreadPool::new(N_WORKERS);
     
     // Single thread servidor-servidor
     // Escucha mensajes de otros nodos
+    // let thread_servidor = thread::spawn(move || {
+    //     let server_listener = TcpListener::bind(&current_node_server.lock().unwrap().server_ip).expect("Error al conectarse al puerto server_ip");
+
+    //     for stream in server_listener.incoming() {
+    //         let mut stream: TcpStream = stream.unwrap();
+
+    //         let node_thread = Arc::clone(&current_node_server);
+    //         pool_server.execute(move|| {
+    //             handle_connection_server(node_thread.clone(), &mut stream);
+    //         });
+    //     }
+    // });
+
     let thread_servidor = thread::spawn(move || {
         let server_listener = TcpListener::bind(&current_node_server.lock().unwrap().server_ip).expect("Error al conectarse al puerto server_ip");
 
         for stream in server_listener.incoming() {
             let mut stream: TcpStream = stream.unwrap();
-
-            let node_thread = Arc::clone(&current_node_server);
-            pool_server.execute(move|| {
-                handle_connection_server(node_thread.clone(), &mut stream);
-            });
+            println!("estoy acaa!!!!!!!!!!!!!");
+            handle_connection_server(current_node_server.clone(), &mut stream);
         }
     });
 
