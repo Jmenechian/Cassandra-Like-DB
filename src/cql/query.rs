@@ -73,7 +73,7 @@ impl Query {
             QType::None => return Err(Box::from("No query to parse".to_string())),
             QType::Select(select) => select.parse_select(&self.query),
             // QType::Update(update) => update.parse_update(query)?,
-            // QType::Insert(insert) => insert.parse_insert(query)?,
+            QType::Insert(insert) => insert.parse_insert(&self.query),
             // QType::Delete(delete) => delete.parse_delete(query)?,
             _ => {Ok(())}
         }
@@ -85,7 +85,7 @@ impl Query {
             QType::None => return Err(Box::from("No query to execute".to_string())),
             QType::Select(select) => select.execute_command(path),
             // QType::Update(update) => update.execute_command(path)?,
-            // QType::Insert(insert) => insert.execute_command(path)?,
+            QType::Insert(insert) => insert.execute_command(path),
             // QType::Delete(delete) => delete.execute_command(path)?,
             _ => {Ok("nada".to_string())}
         }

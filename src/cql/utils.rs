@@ -1,3 +1,5 @@
+use std::{error::Error, fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write,iter::Peekable};
+
 pub fn get_full_quote(parts: &[&str], index: usize) -> String {
     let mut name = String::new();
 
@@ -11,11 +13,25 @@ pub fn get_full_quote(parts: &[&str], index: usize) -> String {
     name
 }
 
-// * módulo (file_utils)
-// Este modulo se usa para guardar funciones auxiliares.
-// Estas funciones son las que se encargan del manejo de archivos.
+// Returns the full quote inside ' ' while advancing iterator
+pub fn get_full_quote_iter<'a, I>(parts: &mut Peekable<I>) -> String
+where
+    I: Iterator<Item = &'a &'a str>,
+{
+    let mut name = String::new();
 
-use std::{error::Error, fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write};
+    for part in parts.by_ref() {
+        let p = *part;
+        let p_cleaned = p.replace(",", "").replace("(", "").replace(")", "");
+        if p_cleaned.ends_with("'") {
+            name.push_str(&p_cleaned.replace("'", ""));
+            break;
+        }
+        name.push_str(&p_cleaned.replace("'", ""));
+        name.push(' ');
+    }
+    name
+}
 
 // Gets the complete file path, returns it as String
 pub fn get_file_path(path: &str, file_name: &str) -> String {

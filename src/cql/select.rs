@@ -9,6 +9,12 @@ pub struct Select {
     pub condition_tokens: String,
 }
 
+impl Default for Select {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Select {
     pub fn new() -> Select {
         Select { columns: Vec::new(), table: "".to_string(), condition_tokens: "".to_string() }
