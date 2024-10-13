@@ -1,6 +1,8 @@
+pub mod config;
+pub mod consistent_hashing;
+pub mod neighbor_node;
 pub mod nodo;
 pub mod server_message;
-pub mod config;
 pub mod cql {
     pub mod query;
     pub mod select;
@@ -16,11 +18,9 @@ pub mod messagestuff {
     pub mod message;
 }
 
-
 // pub use node::Node;
-pub use server_message::ServerMessage;
-pub use cql::query::Query;
+pub use consistent_hashing::ConsistentHash;
+pub use neighbor_node::NeighborNode;
 pub use nodo::Node;
-pub use nodo::NeighborNode;
-pub use clientstuff::client_cql;
-pub use messagestuff::message::Message;
+pub use server_message::ServerMessage;
+

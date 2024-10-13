@@ -90,4 +90,9 @@ impl Query {
             _ => {Ok("nada".to_string())}
         }
     }
+
+    // Debe devolver de la query los valores de los campos de las columnas que pertenecen a la partición de esa tabla.
+    pub fn get_key_representing_partition(&self) -> String {
+        self.query.clone()
+    }
 }
