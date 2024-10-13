@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
         match *self.show(pos.head()) {
             Token::Lpar => {
                 pos._move();
-                let expr = self.parse_whereclause(pos, Token::Rpar)?;
+                let expr = self.parse_whereclause(&mut pos, Token::Rpar)?;
                 if self.show(pos.previous()) != &Token::Rpar {
                     return Err(Box::new(MyError::InvalidSyntax("Invalid Sysntax: <where_clause> with unbalanced parentheses")))
                 }
@@ -94,32 +94,32 @@ impl<'a> Parser<'a> {
             }
             Token::Not => {
                 pos._move();
-                let whereclause = self.parse_whereclause(pos, end)?;
+                let whereclause = self.parse_whereclause(&mut pos, end)?;
                 return Ok(WhereClause::Not(Box::new(whereclause)))
             },
             Token::Identifier(_) => {
-                let rela = self.parse_relation(pos)?;
+                let rela = self.parse_relation(&mut pos)?;
                 match self.show(pos.head()) {
                     Token::And => {
                         pos._move();
-                        let arg2 = self.parse_whereclause(pos, end)?;
+                        let arg2 = self.parse_whereclause(&mut pos, end)?;
                         return Ok(WhereClause::And(Box::new(WhereClause::Relation(rela)), Box::new(arg2)))
                     },
                     Token::Or => {
                         pos._move();
-                        let arg2 = self.parse_whereclause(pos, end)?;
-                        return Ok(WhereClause::Or(Box::new(WhereClause::Relation(rela)), Box::new(arg2)))
+                        let arg2 = self.parse_whereclause(&mut pos, end)?;
+                        return Ok(WhereClause::Or(Box::new(WhereClause::Relation(rela)), Box::new(arg2)));
                     },
                     Token::EOF => {
-                        return Ok(WhereClause::Relation(rela))
+                        return Ok(WhereClause::Relation(rela));
                     }
                     end => {
-                        return Ok(WhereClause::Relation(rela))
+                        return Ok(WhereClause::Relation(rela));
                     },
-                    _ => return Err(Box::new(MyError::InvalidSyntax("Invalid Sysntax: <where_clause> 1")))
+                    _ => return Err(Box::new(MyError::InvalidSyntax("Invalid Sysntax: <where_clause> 1"))),
                 }
             },
-            _ => return Err(Box::new(MyError::InvalidSyntax("Invalid Sysntax: <where_clause> 2")))
+            _ => return Err(Box::new(MyError::InvalidSyntax("Invalid Sysntax: <where_clause> 2"))),
         }
     }
 }

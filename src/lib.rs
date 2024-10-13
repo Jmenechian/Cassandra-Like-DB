@@ -10,6 +10,12 @@ pub mod cql {
     pub mod select;
     pub mod update;
     pub mod utils;
+    pub mod parser;
+    pub mod lexer;
+    pub mod relation;
+    pub mod where_clause;
+    pub mod my_errors;
+    pub mod filter;
 }
 pub mod clientstuff {
     pub mod client_cql;

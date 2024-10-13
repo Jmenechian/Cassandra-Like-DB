@@ -15,7 +15,7 @@ impl<'a> WhereClause<'a> {
         let mut lexer: Lexer = Lexer::new(input);
         let tokens: Vec<Token> = lexer.tokenize()?;
         let parser: Parser::new(&tokens);
-        parser.parse_whereclause()?;
+        parser.parse_whereclause()?
     }
     
     pub fn relate(& self, cols: &Vec<str>, vals: &Vec<str>) -> bool {
