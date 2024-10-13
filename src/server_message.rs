@@ -34,7 +34,8 @@ pub struct ServerMessage {
 impl ServerMessage {
     pub fn new(message: String) -> Result<ServerMessage, Box<dyn Error>> {
         let message_type = ServerMessage::assert_message_type(&message);
-        let (original_sender_ip, message) = ServerMessage::get_clean_message(&message, &message_type);
+        let (original_sender_ip, message) =
+            ServerMessage::get_clean_message(&message, &message_type);
 
         Ok(ServerMessage {
             message_type,
@@ -57,7 +58,7 @@ impl ServerMessage {
         }
     }
 
-    pub fn get_clean_message(message: &str, message_type: &MessageType) -> (String,String) {
+    pub fn get_clean_message(message: &str, message_type: &MessageType) -> (String, String) {
         match message_type {
             MessageType::Test => return ("".to_string(), "".to_string()),
             MessageType::Gossip => return ("".to_string(), "".to_string()), // falta implementar
