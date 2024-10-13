@@ -1,5 +1,5 @@
 use std::error::Error;
-use crate::my_errors::MyError;
+use crate::cql::my_errors::MyError;
 
 const EQUAL: i32 = 0;
 const GREATER_THAN: i32 = 1;

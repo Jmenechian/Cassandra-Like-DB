@@ -1,13 +1,13 @@
 use std::error::Error;
-use crate::my_errors::MyError;
-use crate::relation::Relation;
+use crate::cql::my_errors::MyError;
+use crate::cql::relation::Relation;
 
 #[derive(Debug, PartialEq)]
 pub enum WhereClause<'a> {
     True,
     Relation(Relation<'a>),
     And(Box<WhereClause<'a>>, Box<WhereClause<'a>>),
-    Or(Box<BoolExpr<'a>>, Box<BoolExpr<'a>>),
+    Or(Box<WhereClause<'a>>, Box<WhereClause<'a>>),
 }
 
 impl<'a> WhereClause<'a> {

@@ -1,7 +1,7 @@
 use std::error::Error;
-use crate::my_errors::MyError;
-use crate::where_clause::WhereClause;
-use crate::relation::Relation;
+use crate::cql::my_errors::MyError;
+use crate::cql::where_clause::WhereClause;
+use crate::cql::relation::Relation;
 
 #[derive(Debug, PartialEq)]
 pub struct Pos {

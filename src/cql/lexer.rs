@@ -1,5 +1,5 @@
 use std::error::Error;
-use crate::my_errors::MyError;
+use crate::cql::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub enum Token<'a> {

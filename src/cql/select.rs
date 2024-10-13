@@ -3,7 +3,7 @@ use crate::cql::utils::*;
 use std::{fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write};
 
 
-use super::*;
+use crate::cql::where_clause::WhereClause;
 
 
 #[derive(Debug, Eq, PartialEq)]
