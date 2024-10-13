@@ -20,7 +20,6 @@ impl Select {
 
     pub fn parse_select(&mut self, query: &str) -> Result<(), Box<dyn Error>> {
         let mut parts: Vec<&str> = query.split_whitespace().collect();
-
         if parts.len() < 4 || parts[0] != "SELECT" || parts[1] == "FROM" {
             return Err(Box::from("Select query not valid"));
         }
@@ -78,16 +77,22 @@ impl Select {
     // sets WHERE condition
     // returns error if condition query is not valid
     fn parse_where_condition(&mut self, parts: &mut [&str]) -> Result<(), Box<dyn Error>> {
-        let parts_string: Vec<String> = parts.into_iter().map(|s| s.to_string()).collect();
-        let where_clause = WhereClause::new(parts_string.join(" "))?;
-        self.whereclause = where_clause;
+        
+        // let parts_string: Vec<String> = parts.into_iter().map(|s| s.to_string()).collect();
+        if let Some(where_index) = parts.iter().position(|&x| x == "WHERE") {
+            let (_, right) = parts.split_at(where_index);
+            let condition_query = right[1..].join(" ");
+            let where_clause = WhereClause::new(condition_query)?;
+            self.whereclause = where_clause;
+        }
+        
         Ok(())
     }
 
     pub fn execute_command(&mut self, path: &str) -> Result<String, Box<dyn Error>> {
         println!("self table: {}", self.table);
         let mut rdr =
-            get_reader("/home/loli/Documents/Taller/Grupal/aerolineas_rusticas/src/tablas", &self.table)?;
+            get_reader("src/tablas", &self.table)?;
 
         
         let mut tabla: String = String::new();

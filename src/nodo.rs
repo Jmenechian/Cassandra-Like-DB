@@ -61,14 +61,8 @@ impl Node {
     }
 
     // Proceso la query y devuelve la tabla en formato String
-    pub fn process_query(&self, query: &Query) -> String {
-        ////////////////////////////////////////
-        // HACER LA QUERY Y DEVOLVER LA TABLA //
-        ////////////////////////////////////////
-
-        println!("Procesando tabla para query {}....", query.query);
-
-        "tabla csv en formato String".to_string()
+    pub fn process_query(&self, query: & mut Query) -> String {
+        query.execute(&self.table.clone())
         // "".to_string() // no se para que sirve lo de arriba, puse esto para handlear Received, se puede borrar
     }
 }
@@ -145,9 +139,9 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
                 );
 
                 // Proceso la query
-                let query = Query::new(message.message, message.original_sender_ip);
+                let mut query = Query::new(message.message, message.original_sender_ip);
 
-                let tabla = node.process_query(&query);
+                let tabla = node.process_query(& mut query);
 
                 // Aviso que llego el mensaje --- No necesito concetarme de nuevo, se usa el mismo Stream.
                 buf.write_all(
@@ -219,40 +213,24 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
         let message = Message::from_bytes(line.as_bytes());
         println!("Mensaje de cliente: {:?}\n", message);
 
+        
         // en un futuro pasarlo a "otro nodo"
         let consulta = message.message;
+
         let mut query = Query::new(consulta, node.client_ip.clone());
-        let tabla = query.execute(&node.table.clone());
-        println!("Tabla: {}", tabla);
-
-        let ans_msg = Message::new(tabla);
-        let _ = buf.write(&ans_msg.to_bytes());
-        let _ = buf.write_all(b"\n"); //sino no se manda hasta que cierra
-        let _ = buf.flush();
-
-        // let ans_msg = Message::new("Processing...".to_string());
-        // let _ = buf.write(&ans_msg.to_bytes());
-        // buf.write_all(b"\n"); //sino no se manda hasta que cierra
-        // let _ = buf.flush();
-
-        /////////////////////////////////////////
-        // LO QUE SIGUE ABAJO DEBE ROMPER TODO //
-        /////////////////////////////////////////
-
-        ///////////////////
-        // PARSEAR QUERY //
-        ///////////////////
-
-        // handle_query(query); // deberia devolver la query parseada
 
         // Mando query a los nodos correspondientes
-        let all_results = send_query_to_nodes(&mut node, query);
+        let all_results = send_query_to_nodes(&mut node,&mut query);
 
         // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
         // Luego se tiene que implementar Read-repear.
         let res = all_results.join(" - ") + "\n";
-        let _ = buf.write_all(res.as_bytes());
-        let _ = buf.flush();
+        //consistency level / read-repair
+        let mensaje = Message::new(res.to_string()); // Create the message
+        println!("{:?}", mensaje);
+        buf.write_all(&mensaje.to_bytes());
+        buf.write_all(b"\n");
+        buf.flush();
 
         line = String::new();
     }
@@ -260,7 +238,7 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
 
 // Envia la query a los nodos correspondientes
 // HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
-pub fn send_query_to_nodes(node: &mut MutexGuard<'_, Node>, query: Query) -> Vec<String> {
+pub fn send_query_to_nodes(node: &mut MutexGuard<'_, Node>, query: & mut Query) -> Vec<String> {
     let mut all_response = vec![];
     let mut hash = ConsistentHash::new(RF);
     let server_ip = node.server_ip.clone();
@@ -283,11 +261,7 @@ pub fn send_query_to_nodes(node: &mut MutexGuard<'_, Node>, query: Query) -> Vec
                 "- Buscando el resultado en el nodo original: {}",
                 neighbor.server_ip
             );
-            let _ = node.process_query(&query);
-            let response = format!(
-                "RECEIVED:{}:REQUEST:{}:{}",
-                node.server_ip, neighbor.server_ip, key
-            );
+            let response = node.process_query(query);
             all_response.push(response);
             continue;
         }
