@@ -7,8 +7,11 @@ use std::thread;
 use threadpool::ThreadPool;
 
 use crate::config::{N_WORKERS, PORTS_FILE};
-use crate::config::{RF, STRONG_CONSISTENCY};
-use crate::query::Query;
+
+use crate::config::RF;
+use crate::config::STRONG_CONSISTENCY;
+use crate::cql::query::Query;
+use crate::messagestuff::message::Message;
 use crate::server_message::MessageType;
 use crate::server_message::ServerMessage;
 use crate::{ConsistentHash, NeighborNode};
@@ -22,24 +25,26 @@ pub enum Status {
 // Representa al nodo en el que estamos parados
 #[derive(Debug, Clone, PartialEq)]
 pub struct Node {
+    pub ip: String,        //temp
     pub server_ip: String, // IP donde nodo se comunica con el servidor
     pub client_ip: String, // IP donde nodo se comunica con el cliente
     pub file_path: String,
     pub nodes_path: String,
-    pub neighbors: Vec<NeighborNode>, // todos los otros nodos que están conectados al momento que se crea el nodo. Luego se debe actualizar este campo con Gossip.
-                                      //pub replication_nodes: Vec<NeighborNode>, // RF
+    pub neighbors: Vec<NeighborNode>, // todos los otros nodos
+    pub table: String,                // tabla del nodo
 }
 
 impl Node {
     pub fn new(port: &str) -> Self {
         Self {
+            ip: format!("127.0.0.1:{}", port),
             server_ip: format!("127.0.0.1:700{}", port),
             client_ip: format!("127.0.0.1:800{}", port),
             //gossip_ip: puertos 900X,
             file_path: "".to_string(),
             nodes_path: "nodes.txt".to_string(),
             neighbors: vec![], // todos los nodos que estan en el ring
-                               //replication_nodes: Vec::new(),
+            table: format!("tablas/tabla{}.csv", { port }).to_string(),
         }
     }
 
@@ -120,10 +125,17 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
 // Mensajes del tipo ServerMessage
 fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
     let mut buf = BufStream::new(stream);
+    println!("Antes de pedir el lock en handle connection server");
     let node = node.lock().unwrap();
     let mut line = String::new();
+    println!("Despues de pedir el lock en handle connection server");
+    println!("este es mi ip: {}", node.server_ip);
 
     while buf.read_line(&mut line).is_ok() {
+        if line.is_empty() {
+            continue;
+        }
+        println!("leyendo la puta linea: {}", line);
         let message = node.desarialize(&line);
         match message.message_type {
             MessageType::Request => {
@@ -182,7 +194,7 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
             }
             MessageType::Test => {
                 //// usar para debuggear
-                //println!("{:?}", message.message);
+                println!("testeo: {:?}", message.message);
             }
         }
         line = String::new();
@@ -202,32 +214,44 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
     let mut buf = BufStream::new(&stream);
     let mut node = node.lock().unwrap();
     let mut line = String::new();
-    let id = node.client_ip.clone();
 
     while buf.read_line(&mut line).is_ok() {
-        println!("Mensaje de cliente: {}\n", line);
+        let message = Message::from_bytes(line.as_bytes());
+        println!("Mensaje de cliente: {:?}\n", message);
 
-        // Le digo al cliente que recibi su query
-        let res = format!("Mensaje recibido: {}, soy el nodo {}\n", line, id).to_string();
-        let _ = buf.write(res.as_bytes());
+        // en un futuro pasarlo a "otro nodo"
+        let consulta = message.message;
+        let mut query = Query::new(consulta, node.client_ip.clone());
+        let tabla = query.execute(&node.table.clone());
+        println!("Tabla: {}", tabla);
+
+        let ans_msg = Message::new(tabla);
+        let _ = buf.write(&ans_msg.to_bytes());
+        let _ = buf.write_all(b"\n"); //sino no se manda hasta que cierra
         let _ = buf.flush();
-        //asi se responde al cliente, guardar el stream para responder despues?
 
-        let query = Query::new(line.clone(), id.clone());
+        // let ans_msg = Message::new("Processing...".to_string());
+        // let _ = buf.write(&ans_msg.to_bytes());
+        // buf.write_all(b"\n"); //sino no se manda hasta que cierra
+        // let _ = buf.flush();
+
+        /////////////////////////////////////////
+        // LO QUE SIGUE ABAJO DEBE ROMPER TODO //
+        /////////////////////////////////////////
 
         ///////////////////
         // PARSEAR QUERY //
         ///////////////////
 
-        handle_query(query.clone()); // deberia devolver la query parseada
+        // handle_query(query); // deberia devolver la query parseada
 
         // Mando query a los nodos correspondientes
         let all_results = send_query_to_nodes(&mut node, query);
 
         // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
         // Luego se tiene que implementar Read-repear.
-        let res = all_results.join(" - ");
-        let _ = buf.write(res.as_bytes());
+        let res = all_results.join(" - ") + "\n";
+        let _ = buf.write_all(res.as_bytes());
         let _ = buf.flush();
 
         line = String::new();
@@ -238,7 +262,6 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
 // HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
 pub fn send_query_to_nodes(node: &mut MutexGuard<'_, Node>, query: Query) -> Vec<String> {
     let mut all_response = vec![];
-
     let mut hash = ConsistentHash::new(RF);
     let server_ip = node.server_ip.clone();
     node.add_neighbor(NeighborNode::new(
@@ -262,12 +285,13 @@ pub fn send_query_to_nodes(node: &mut MutexGuard<'_, Node>, query: Query) -> Vec
             );
             let _ = node.process_query(&query);
             let response = format!(
-                "RECEIVED: {} : REQUEST: {}: {}",
+                "RECEIVED:{}:REQUEST:{}:{}",
                 node.server_ip, neighbor.server_ip, key
             );
             all_response.push(response);
             continue;
         }
+
         if neighbor.status == Status::Disconnected {
             println!("- Nodo desconectado: {}", neighbor.server_ip);
             continue;
@@ -277,9 +301,10 @@ pub fn send_query_to_nodes(node: &mut MutexGuard<'_, Node>, query: Query) -> Vec
             // - Mando mensaje:
             let mut buf = BufStream::new(socket);
             println!("- Enviando mensaje a {}", neighbor.server_ip);
-            buf.write_all(format!("REQUEST: {} : {}\n", neighbor.server_ip, key).as_bytes())
+            buf.write_all(format!("REQUEST:{}:{}\n", neighbor.server_ip, key).as_bytes())
                 .unwrap();
             let _ = buf.flush();
+            println!("se envio? el mensaje a {}", neighbor.server_ip);
 
             // - Escucho respuesta:
             let mut response = String::new();
@@ -355,6 +380,16 @@ pub fn initialize(port: String) {
             });
         }
     });
+
+    // let thread_servidor = thread::spawn(move || {
+    //     let server_listener = TcpListener::bind(&current_node_server.lock().unwrap().server_ip).expect("Error al conectarse al puerto server_ip");
+
+    //     for stream in server_listener.incoming() {
+    //         let mut stream: TcpStream = stream.unwrap();
+    //         println!("estoy acaa!!!!!!!!!!!!!");
+    //         handle_connection_server(current_node_server.clone(), &mut stream);
+    //     }
+    // });
 
     thread_cliente.join().unwrap();
     thread_servidor.join().unwrap();
