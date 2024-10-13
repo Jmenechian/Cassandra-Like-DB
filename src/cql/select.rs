@@ -2,19 +2,19 @@ use std::{error::Error};
 use crate::cql::utils::*;
 use std::{fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write};
 
-
 use crate::cql::where_clause::WhereClause;
+use crate::cql::filter::Filter;
 
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct Select {
+pub struct Select{
     pub columns: Vec<String>,
     pub table: String,
     pub whereclause: WhereClause,
 }
 
 impl Select {
-    pub fn new() -> Select {
+    pub fn new() -> Select{
         Select { columns: Vec::new(), table: "".to_string(), whereclause: WhereClause::True}
     }
 
@@ -78,7 +78,8 @@ impl Select {
     // sets WHERE condition
     // returns error if condition query is not valid
     fn parse_where_condition(&mut self, parts: &mut [&str]) -> Result<(), Box<dyn Error>> {
-        let where_clause = WhereClause::new(parts.map(|s| s.to_string()).join(" "))?;
+        let parts_string: Vec<String> = parts.into_iter().map(|s| s.to_string()).collect();
+        let where_clause = WhereClause::new(parts_string.join(" "))?;
         self.whereclause = where_clause;
         Ok(())
     }
@@ -92,12 +93,13 @@ impl Select {
         let mut tabla: String = String::new();
 
         let mut line = String::new();
-        let _ = read_buff.read_line(&mut line);
-        let col_names: Vec<str> = line.trim_end().split(',').collect();
-        let filter = Filter::new(&col_names, &self.whereclause)?;
+        let _ = rdr.read_line(&mut line);
+        let col_names: Vec<String> = line.trim_end().split(',').map(|s| s.to_string()).collect();
+        let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
         for line in rdr.lines() {
             let line = line?;
-            if filter.filter(line.split(",")) {
+            let split_line = line.split(",").collect::<Vec<&str>>();
+            if filter.filter(split_line.into_iter().map(|s| s.to_string()).collect()) {
                 tabla.push_str(&line);
             }
         }

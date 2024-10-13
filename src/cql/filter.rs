@@ -2,21 +2,17 @@ use std::error::Error;
 use crate::cql::my_errors::MyError;
 use crate::cql::where_clause::WhereClause;
 
-pub struct Filter<'a> {
-    pub columns: &'a Vec<str>,
-    pub expr: &'a WhereClause<'a>,
+pub struct Filter{
+    pub columns: Vec<String>,
+    pub expr: WhereClause,
 }
 
-impl<'a> Filter<'a> {
-    pub fn new(cols: &'a Vec<str>, expr: &'a WhereClause) ->Result<Self, Box<dyn Error>> {
-        if expr.check(cols)? {
-            Ok(Filter{columns: cols, expr: expr})
-        } else {
-            return Err(Box::new(MyError::Error("Invalid <where_clause>")))
-        }
+impl Filter {
+    pub fn new(cols: Vec<String>, expr: WhereClause) ->Result<Self, Box<dyn Error>> {
+        Ok(Filter{columns: cols, expr: expr})
     }
 
-    pub fn filter(& self, vals: &Vec<str>) -> bool {
-        self.expr.relate(self.columns, vals)
+    pub fn filter(& self, vals: Vec<String>) -> bool {
+        self.expr.relate(&self.columns, &vals)
     }
 }

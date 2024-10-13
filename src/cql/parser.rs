@@ -2,6 +2,7 @@ use std::error::Error;
 use crate::cql::my_errors::MyError;
 use crate::cql::where_clause::WhereClause;
 use crate::cql::relation::Relation;
+use crate::cql::lexer::*;
 
 #[derive(Debug, PartialEq)]
 pub struct Pos {
@@ -27,23 +28,23 @@ impl Pos {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Parser<'a> {
-    tokens: &'a Vec<Token<'a>>,
+pub struct Parser {
+    tokens: Vec<Token>,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(tokens: &'a Vec<Token>) -> Self {
+impl Parser {
+    pub fn new(tokens: Vec<Token>) -> Self {
         Parser { tokens }
     }
 
-    pub fn show(&self, pos: usize) -> &Token<'a> {
+    pub fn show(&self, pos: usize) -> &Token {
         &self.tokens[pos]
     }
 
-    pub fn parse_relation(&'a self, pos: &mut Pos) -> Result<Relation, Box<dyn Error>> {
+    pub fn parse_relation(& self, pos: &mut Pos) -> Result<Relation, Box<dyn Error>> {
         let arg1;
-        if let Token::Identifier(name) = *self.show(pos.head()) {
-            arg1 = name;
+        if let Token::Identifier(name) = self.show(pos.head()) {
+            arg1 = name.to_string();
         } else {
             return Err(Box::new(MyError::InvalidSyntax("Invalid Syntax: <comparison> 1")))
         }
@@ -61,8 +62,8 @@ impl<'a> Parser<'a> {
         }
         pos._move();
         let arg2;
-        if let Token::Identifier(name) = *self.show(pos.head()) {
-            arg2 = name;
+        if let Token::Identifier(name) = self.show(pos.head()) {
+            arg2 = name.to_string();
         } else {
             return Err(Box::new(MyError::InvalidSyntax("Invalid Syntax: <Relation> 3")))
         }
@@ -80,34 +81,28 @@ impl<'a> Parser<'a> {
         Ok(relation)
     }
 
-    pub fn parse_whereclause(&'a self, pos: &mut Pos, end: Token<'a>) -> Result<WhereClause, Box<dyn Error>> {
-        let mut pos = Pos::new();
+    pub fn parse_whereclause(&self, pos: &mut Pos, end: Token) -> Result<WhereClause, Box<dyn Error>> {
         match *self.show(pos.head()) {
             Token::Lpar => {
                 pos._move();
-                let expr = self.parse_whereclause(&mut pos, Token::Rpar)?;
+                let expr = self.parse_whereclause(pos, Token::Rpar)?;
                 if self.show(pos.previous()) != &Token::Rpar {
                     return Err(Box::new(MyError::InvalidSyntax("Invalid Sysntax: <where_clause> with unbalanced parentheses")))
                 }
                 pos._move();
                 return Ok(expr)
             }
-            Token::Not => {
-                pos._move();
-                let whereclause = self.parse_whereclause(&mut pos, end)?;
-                return Ok(WhereClause::Not(Box::new(whereclause)))
-            },
             Token::Identifier(_) => {
-                let rela = self.parse_relation(&mut pos)?;
+                let rela = self.parse_relation(pos)?;
                 match self.show(pos.head()) {
                     Token::And => {
                         pos._move();
-                        let arg2 = self.parse_whereclause(&mut pos, end)?;
+                        let arg2 = self.parse_whereclause(pos, end)?;
                         return Ok(WhereClause::And(Box::new(WhereClause::Relation(rela)), Box::new(arg2)))
                     },
                     Token::Or => {
                         pos._move();
-                        let arg2 = self.parse_whereclause(&mut pos, end)?;
+                        let arg2 = self.parse_whereclause(pos, end)?;
                         return Ok(WhereClause::Or(Box::new(WhereClause::Relation(rela)), Box::new(arg2)));
                     },
                     Token::EOF => {
