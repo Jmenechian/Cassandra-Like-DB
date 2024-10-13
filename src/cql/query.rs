@@ -1,9 +1,8 @@
-use crate::cql::select::Select;
 use crate::cql::delete::Delete;
-use crate::cql::update::Update;
 use crate::cql::insert::Insert;
-use std::{error::Error};
-
+use crate::cql::select::Select;
+use crate::cql::update::Update;
+use std::error::Error;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum QType {
@@ -14,29 +13,31 @@ pub enum QType {
     Delete(Delete),
 }
 
-
 #[derive(Debug)]
 pub struct Query {
     pub query: String, //SELECT * FROM table WHERE id = 1
-    pub sender_node_ip: String, 
+    pub sender_node_ip: String,
     pub qtype: QType,
     // pub client_ip: String, // de alguna forma hay que conseguir el IP del cliente que mando la request
 }
 
 impl Query {
     pub fn new(query: String, sender_node_ip: String) -> Query {
-        Query { query, sender_node_ip, qtype: QType::None }
-    }
-
-    pub fn execute(&mut self, table: &String) -> String {
-        self.get_type();
-        self.parse_query();
-        match self.execute_command(table){
-            Ok(result) => result,
-            Err(e) => e.to_string()
+        Query {
+            query,
+            sender_node_ip,
+            qtype: QType::None,
         }
     }
 
+    pub fn execute(&mut self, table: &str) -> String {
+        self.get_type();
+        let _ = self.parse_query();
+        match self.execute_command(table) {
+            Ok(result) => result,
+            Err(e) => e.to_string(),
+        }
+    }
 
     fn get_type(&mut self) {
         let q_upper = self.query.to_ascii_uppercase();
@@ -46,7 +47,7 @@ impl Query {
             self.set_update();
         } else if q_upper.contains("INSERT") {
             self.set_insert();
-        } else  {
+        } else {
             self.set_delete();
         }
     }
@@ -70,24 +71,24 @@ impl Query {
     // Delegates the parsing
     pub fn parse_query(&mut self) -> Result<(), Box<dyn Error>> {
         match &mut self.qtype {
-            QType::None => return Err(Box::from("No query to parse".to_string())),
+            QType::None => Err(Box::from("No query to parse".to_string())),
             QType::Select(select) => select.parse_select(&self.query),
             // QType::Update(update) => update.parse_update(query)?,
             QType::Insert(insert) => insert.parse_insert(&self.query),
             // QType::Delete(delete) => delete.parse_delete(query)?,
-            _ => {Ok(())}
+            _ => Ok(()),
         }
     }
 
     // Delegates the command execution
     pub fn execute_command(&mut self, path: &str) -> Result<String, Box<dyn Error>> {
         match &mut self.qtype {
-            QType::None => return Err(Box::from("No query to execute".to_string())),
+            QType::None => Err(Box::from("No query to execute".to_string())),
             QType::Select(select) => select.execute_command(path),
             // QType::Update(update) => update.execute_command(path)?,
             QType::Insert(insert) => insert.execute_command(path),
             // QType::Delete(delete) => delete.execute_command(path)?,
-            _ => {Ok("nada".to_string())}
+            _ => Ok("nada".to_string()),
         }
     }
 

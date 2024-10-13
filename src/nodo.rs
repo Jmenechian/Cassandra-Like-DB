@@ -8,12 +8,12 @@ use threadpool::ThreadPool;
 
 use crate::config::{N_WORKERS, PORTS_FILE};
 
+use crate::config::RF;
 use crate::config::STRONG_CONSISTENCY;
-use crate::messagestuff::message::Message;
 use crate::cql::query::Query;
-use crate::server_message::ServerMessage;
-use crate::config::{RF};
+use crate::messagestuff::message::Message;
 use crate::server_message::MessageType;
+use crate::server_message::ServerMessage;
 use crate::{ConsistentHash, NeighborNode};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -25,13 +25,13 @@ pub enum Status {
 // Representa al nodo en el que estamos parados
 #[derive(Debug, Clone, PartialEq)]
 pub struct Node {
-    pub ip: String, //temp
+    pub ip: String,        //temp
     pub server_ip: String, // IP donde nodo se comunica con el servidor
     pub client_ip: String, // IP donde nodo se comunica con el cliente
     pub file_path: String,
     pub nodes_path: String,
     pub neighbors: Vec<NeighborNode>, // todos los otros nodos
-    pub table: String, // tabla del nodo
+    pub table: String,                // tabla del nodo
 }
 
 impl Node {
@@ -44,7 +44,7 @@ impl Node {
             file_path: "".to_string(),
             nodes_path: "nodes.txt".to_string(),
             neighbors: vec![], // todos los nodos que estan en el ring
-            table: format!("tablas/tabla{}.csv",{port}).to_string(),
+            table: format!("tablas/tabla{}.csv", { port }).to_string(),
         }
     }
 
@@ -65,7 +65,7 @@ impl Node {
         ////////////////////////////////////////
         // HACER LA QUERY Y DEVOLVER LA TABLA //
         ////////////////////////////////////////
-        
+
         println!("Procesando tabla para query {}....", query.query);
 
         "tabla csv en formato String".to_string()
@@ -107,7 +107,7 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
             // Hacerlo por Gossip....
         } else {
             status = Status::Connected; ///////// DEBERIA EMPEZAR DESCONECTADO Y ACTUALIZARSE CON GOSSIP
-            // status = Status::Disconnected;
+                                        // status = Status::Disconnected;
             println!("No se pudo conectar al nodo en el puerto {}", port);
         }
 
@@ -143,10 +143,10 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
                     "Llego un mensaje de request: {}, de ip: {}\n",
                     line, message.original_sender_ip
                 );
- 
+
                 // Proceso la query
                 let query = Query::new(message.message, message.original_sender_ip);
-            
+
                 let tabla = node.process_query(&query);
 
                 // Aviso que llego el mensaje --- No necesito concetarme de nuevo, se usa el mismo Stream.
@@ -214,14 +214,11 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
     let mut buf = BufStream::new(&stream);
     let mut node = node.lock().unwrap();
     let mut line = String::new();
-    let id = node.client_ip.clone();
 
     while buf.read_line(&mut line).is_ok() {
-        
         let message = Message::from_bytes(line.as_bytes());
         println!("Mensaje de cliente: {:?}\n", message);
 
-        
         // en un futuro pasarlo a "otro nodo"
         let consulta = message.message;
         let mut query = Query::new(consulta, node.client_ip.clone());
@@ -230,15 +227,13 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
 
         let ans_msg = Message::new(tabla);
         let _ = buf.write(&ans_msg.to_bytes());
-        buf.write_all(b"\n"); //sino no se manda hasta que cierra
+        let _ = buf.write_all(b"\n"); //sino no se manda hasta que cierra
         let _ = buf.flush();
-
 
         // let ans_msg = Message::new("Processing...".to_string());
         // let _ = buf.write(&ans_msg.to_bytes());
         // buf.write_all(b"\n"); //sino no se manda hasta que cierra
         // let _ = buf.flush();
-
 
         /////////////////////////////////////////
         // LO QUE SIGUE ABAJO DEBE ROMPER TODO //
@@ -253,7 +248,7 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
         // Mando query a los nodos correspondientes
         let all_results = send_query_to_nodes(&mut node, query);
 
-        // Le devuelvo el resultado que me devolvieron todos los nodos al cliente 
+        // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
         // Luego se tiene que implementar Read-repear.
         let res = all_results.join(" - ") + "\n";
         let _ = buf.write_all(res.as_bytes());
@@ -320,8 +315,8 @@ pub fn send_query_to_nodes(node: &mut MutexGuard<'_, Node>, query: Query) -> Vec
             );
             all_response.push(response);
         } //else {
-            // println!("Error conectando a {}", neighbor.server_ip);
-        //}
+          // println!("Error conectando a {}", neighbor.server_ip);
+          //}
     }
     all_response
 }
@@ -348,7 +343,7 @@ pub fn initialize(port: String) {
 
     // Single thread cliente-servidor
     // Hay que hacer un thread pool!!!!!!! --> Lo agregué: lo usamos para controlar la máxima cantidad de thread que podemos tener.
-    
+
     let pool_client = ThreadPool::new(N_WORKERS);
 
     let thread_cliente = thread::spawn(move || {
@@ -369,7 +364,7 @@ pub fn initialize(port: String) {
     let current_node_server = Arc::clone(&current_node); // node para SERVER THREAD
 
     let pool_server = ThreadPool::new(N_WORKERS);
-    
+
     // Single thread servidor-servidor
     // Escucha mensajes de otros nodos
     let thread_servidor = thread::spawn(move || {

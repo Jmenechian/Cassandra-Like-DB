@@ -1,6 +1,6 @@
-use std::{error::Error};
 use crate::cql::utils::*;
 use std::collections::HashMap;
+use std::error::Error;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Insert {
@@ -17,7 +17,11 @@ impl Default for Insert {
 
 impl Insert {
     pub fn new() -> Insert {
-        Insert { table: "".to_string(), columns: Vec::new(), values: Vec::new() }
+        Insert {
+            table: "".to_string(),
+            columns: Vec::new(),
+            values: Vec::new(),
+        }
     }
 
     // Parses the query for later execution
@@ -87,7 +91,7 @@ impl Insert {
     }
 
     // Returns columns and values mapped into a HashMap
-    fn get_mapped_values(&self) -> Result<HashMap<&str, &str>, Box<dyn Error>>{
+    fn get_mapped_values(&self) -> Result<HashMap<&str, &str>, Box<dyn Error>> {
         let mut map: HashMap<&str, &str> = HashMap::new();
         for (key, value) in self.columns.iter().zip(self.values.iter()) {
             if map.keys().any(|k| k == &key.as_str()) {
@@ -99,7 +103,7 @@ impl Insert {
     }
 
     // No se si es necesaria
-    fn check_columns_are_valid(&self, file_headers: &[String]) -> Result<(), Box<dyn Error>>{
+    fn check_columns_are_valid(&self, file_headers: &[String]) -> Result<(), Box<dyn Error>> {
         for header in &self.columns {
             if !file_headers.contains(header) {
                 return Err(Box::from("Column not valid"));
@@ -107,7 +111,8 @@ impl Insert {
         }
         if self.columns.len() != self.values.len() {
             return Err(Box::from(
-                "Different number of values and columns".to_string()));
+                "Different number of values and columns".to_string(),
+            ));
         }
 
         if self.columns.len() > file_headers.len() {
@@ -117,8 +122,7 @@ impl Insert {
     }
 
     pub fn execute_command(&self, path: &str) -> Result<String, Box<dyn Error>> {
-        let mut rdr =
-            get_reader(path, &self.table)?;
+        let mut rdr = get_reader(path, &self.table)?;
         let headers = get_file_headers(&mut rdr)?;
 
         // INSERT INTO VALUES (val1, val2)
@@ -146,5 +150,4 @@ impl Insert {
         append_row(path, &self.table, &new_record)?;
         Ok("linea fue agregada".to_string())
     }
-
 }

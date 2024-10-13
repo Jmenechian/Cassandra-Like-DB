@@ -1,4 +1,6 @@
-use std::{error::Error, fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write,iter::Peekable};
+use std::{
+    error::Error, fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write, iter::Peekable,
+};
 
 pub fn get_full_quote(parts: &[&str], index: usize) -> String {
     let mut name = String::new();
@@ -43,7 +45,7 @@ pub fn get_file_path(path: &str, file_name: &str) -> String {
 pub fn get_reader(path: &str, table_name: &str) -> Result<BufReader<File>, Box<dyn Error>> {
     let file_path = get_file_path(path, table_name);
     // let file_path = format!("{}/{}.csv", path, table_name);
-    // println!("file path: {}", file_path);    
+    // println!("file path: {}", file_path);
     let file = File::open(file_path)?;
     let rdr = BufReader::new(file);
     Ok(rdr)

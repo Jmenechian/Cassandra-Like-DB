@@ -4,11 +4,11 @@ pub mod neighbor_node;
 pub mod nodo;
 pub mod server_message;
 pub mod cql {
+    pub mod delete;
+    pub mod insert;
     pub mod query;
     pub mod select;
     pub mod update;
-    pub mod insert;
-    pub mod delete;
     pub mod utils;
 }
 pub mod clientstuff {
@@ -23,4 +23,3 @@ pub use consistent_hashing::ConsistentHash;
 pub use neighbor_node::NeighborNode;
 pub use nodo::Node;
 pub use server_message::ServerMessage;
-

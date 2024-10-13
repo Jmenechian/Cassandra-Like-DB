@@ -13,12 +13,12 @@ fn main() -> std::io::Result<()> {
 
     println!("Cliente: {:?}", client);
 
-    client.handle_connection(); //solo manda no escucha
+    let _ = client.handle_connection(); //solo manda no escucha
 
     Ok(())
 }
 
-// cuando escuche: ->esto ya anda 
+// cuando escuche: ->esto ya anda
 //     agarras solo message.message en nodo y podes procesar la query
 
 // aparte:

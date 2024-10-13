@@ -1,17 +1,17 @@
-use std::io::{self, Write, Read};
-use std::net::TcpStream;
 use std::io::Cursor;
+use std::io::Read;
 
 #[derive(Debug)]
-pub struct Message { // No se como agregar un campo sin tener que rearmar el serialize
-    // pub version: u8, 
+pub struct Message {
+    // No se como agregar un campo sin tener que rearmar el serialize
+    // pub version: u8,
     // pub stream_id: u32, //no se si entra para nosotros
     // pub opcode: u8, //puede ser util
-    // lenght: u32, 
+    // lenght: u32,
     // consistency_level: u8, // -> notations tiene todo esto o solo usamos este?
     pub message: String,
-    pub ip: String //esta hardcodeado 1000 porque igual no lo usamos por ahora
-} //faltan mas 
+    pub ip: String, //esta hardcodeado 1000 porque igual no lo usamos por ahora
+} //faltan mas
 
 impl Message {
     pub fn new(message: String) -> Self {
@@ -42,7 +42,9 @@ impl Message {
 
     fn deserialize_field<R: Read>(reader: &mut R) -> String {
         let mut length_bytes = [0u8; 4];
-        reader.read_exact(&mut length_bytes).expect("Failed to read length");
+        reader
+            .read_exact(&mut length_bytes)
+            .expect("Failed to read length");
 
         let length = u32::from_be_bytes(length_bytes) as usize;
         println!("Reading field of length: {}", length); // Debug log
@@ -52,7 +54,9 @@ impl Message {
         }
 
         let mut field_bytes = vec![0u8; length];
-        reader.read_exact(&mut field_bytes).expect("Failed to read field");
+        reader
+            .read_exact(&mut field_bytes)
+            .expect("Failed to read field");
 
         match String::from_utf8(field_bytes) {
             Ok(field) => field,

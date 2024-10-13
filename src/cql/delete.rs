@@ -4,8 +4,17 @@ pub struct Delete {
     pub condition_tokens: String, // to create Delete without initializing Tok.
 }
 
+impl Default for Delete {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Delete {
     pub fn new() -> Delete {
-        Delete { table: "".to_string(), condition_tokens: "".to_string() }
+        Delete {
+            table: "".to_string(),
+            condition_tokens: "".to_string(),
+        }
     }
 }
