@@ -11,7 +11,7 @@ use crate::config::{N_WORKERS, PORTS_FILE};
 use crate::config::RF;
 use crate::config::STRONG_CONSISTENCY;
 use crate::cql::query::Query;
-use crate::messagestuff::message::Message;
+use crate::messagestuff::message::{self, Message};
 use crate::server_message::MessageType;
 use crate::server_message::ServerMessage;
 use crate::{ConsistentHash, NeighborNode};
@@ -156,42 +156,17 @@ fn handle_connection_server(node: Arc<RwLock<Node>>, stream: TcpStream) {
                     .expect("[ERROR] no se pudo mandar tabla");
                 buf.flush().expect("flush no funciono");
             }
-            MessageType::Result => {
-                println!(
-                    "Llego resultado: {}, de nodo: {}",
-                    message.message, message.original_sender_ip
-                );
-                let mut respuestas: Vec<String> = Vec::new();
-                respuestas.push(message.message);
-
-                if respuestas.len() == STRONG_CONSISTENCY {
-                    println!("Cumple con Quorum");
-                    // mandarle respuesta al cliente
-                    // A que IP se manda?????????????????????????????????????
-                    //let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
-                    // habria que chequear que las respuestas son todas iguales
-                    buf.write_all(format!("{}\n", respuestas[0]).as_bytes())
-                        .expect("[ERROR] no se pudo mandar tabla a cliente");
-                } else {
-                    // estos IPs creo que estan mal!!!!!!!!!!!!!!!
-                    //let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
-                    let _ = buf.write("HUBO UN ERROR\n".as_bytes());
-                }
-            }
             MessageType::Gossip => {
                 //hace gossip
                 println!("Llego un mensaje de gossip: {}", line);
                 // FALTA CAMBIAR EL ESTADO DE NODO VECINO A CONECTADO
                 // todo!();
             }
-            MessageType::Received => {
-                // Todo
-                println!("El mensaje fue recibido: {}", message.message);
-            }
             MessageType::Test => {
                 //// usar para debuggear
                 println!("testeo: {:?}", message.message);
             }
+            _ => println!("{:?}", message.message_type),
         }
         line = String::new();
     }
@@ -206,6 +181,10 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) {
     let mut line = String::new();
 
     while buf.read_line(&mut line).is_ok() {
+        if line.is_empty() {
+            line = String::new();
+            continue;
+        }
         let message = match Message::from_bytes(line.as_bytes()) {
             Ok(message) => message,
             Err(_) => {
@@ -227,15 +206,14 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) {
 
         // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
         // Luego se tiene que implementar Read-repear.
-        let res = all_results.join(" - ") + "\n";
+        let res = all_results.join(" - ");
 
         //consistency level / read-repair
 
-        let mut message = Message::create_message_as_server(res, node.server_ip.clone()); // Create the message
+        let message:Message = Message::create_message_as_server(res, node.client_ip.clone()); // Create the message
         println!("{:?}", message);
 
-        let _ = buf.write_all(&message.to_bytes());
-        let _ = buf.write_all(b"\n");
+        let _ = buf.write_all(message.message.as_bytes());
         let _ = buf.flush();
 
         line = String::new();
@@ -285,25 +263,41 @@ pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: & mut Query)
 
             // - Escucho respuesta:
             let mut response = String::new();
-            let _ = buf.read_line(&mut response);
-            println!(
-                "El nodo: {}, nos respondio: {}\n",
-                neighbor.server_ip, response
-            );
+            while buf.read_line(&mut response).is_ok() {
+                if response.trim().is_empty() {
+                    response = String::new();
+                    continue;
+                }
+                let message: ServerMessage;
+                match ServerMessage::new(response.clone()) {
+                    Ok(s) => message = s,
+                    Err(e) => { 
+                        println!("Error");
+                        return vec![];
+                    }
+                }
+                match message.message_type {
+                    MessageType::Result => {
+                        println!(
+                            "Llego resultado: {}, de nodo: {}",
+                            message.message, message.original_sender_ip
+                        );
+                        all_response.push(response);
+                        break;
+                    }
+                    MessageType::Received => {
+                        println!("El mensaje fue recibido: {}", message.message);
+                        response = String::new();
+                    }
+                    _ => println!("Error: {}", response)
+                }
+            }
 
-            
-            
-            
-            // if message.message_type == MessageType::Result {
-            //     all_response.push(response);
-            //     // mandar a cliente
-            // } else {
+            //if cons_level == 1
+            // return all_response
+            // else 
+            // el más actualizado
 
-            // }
-
-
-
-            all_response.push(response);
         } //else {
           // println!("Error conectando a {}", neighbor.server_ip);
           //}

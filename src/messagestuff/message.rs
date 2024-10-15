@@ -50,15 +50,14 @@ impl Message {
     //
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, MyError> {
+        if bytes.len() < 8 {
+            return Err(MyError::Error("error en from_bytes, len < 8"));
+        }
         let opcode = bytes[0];
         let version = bytes[1];
         let consistency_level = bytes[2];
         let len_msg = u32::from_be_bytes([bytes[3], bytes[4], bytes[5], bytes[6]]);
         let message = String::from_utf8(bytes[7..].to_vec()).map_err(|_| MyError::Error("error en from_bytes"))?;
-
-
-
-
 
         // let mut cursor = Cursor::new(bytes);
         // let opcode = read_u8(&mut cursor)?;
