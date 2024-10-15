@@ -1,6 +1,11 @@
+// [1 Byte opcode] [1 byte version] [1 byte consistency level] [4 bytes Length_msg] [msg]  ////// [4 bytes len_ip] [ip_para_responder]
+
+
 use std::io::{self, Write};
 use std::net::TcpStream;
 use std::io::{Cursor, Read};
+
+use crate::cql::my_errors::MyError;
 
 const REQUEST: u8 = 0x03;
 const QUORUM: u8 = 0x0004;
@@ -14,54 +19,67 @@ const RESULT: u8 = 0x08;
 pub struct Message { 
     pub version: u8, 
     pub opcode: u8,
-    pub length: u32, 
+    pub len_msg: u32, 
     pub consistency_level: u8,
     pub message: String,
-    pub ip: String 
 } 
 
 impl Message {
-    pub fn new(message: String, ip: String, version: u8, opcode: u8, length: u32, consistency_level: u8) -> Self {
+    pub fn new(message: String, version: u8, opcode: u8, len_msg: u32, consistency_level: u8) -> Self {
         Self {
             version,
             opcode,
-            length,
+            len_msg,
             consistency_level,
             message,
-            ip,
         }
     }
 
-    pub fn to_bytes(&self) -> Vec<u8> {
+    //opcode version consistency_level length_msg message len_ip ip
+    pub fn to_bytes(&mut self) -> Vec<u8> {
         let mut combined = Vec::new();
-        combined.push(self.version);
         combined.push(self.opcode);
-        combined.extend(&self.length.to_be_bytes());
+        combined.push(self.version);
         combined.push(self.consistency_level);
-
-        combined.extend(Self::serialize_string(&self.ip));
-        combined.extend(Self::serialize_string(&self.message));
+        combined.extend(&self.len_msg.to_be_bytes());
+        combined.extend(self.message.as_bytes());
         combined
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        let mut cursor = Cursor::new(bytes);
-        let version = read_u8(&mut cursor);
-        let opcode = read_u8(&mut cursor);
-        let length = read_u32(&mut cursor);
-        let consistency_level = read_u8(&mut cursor);
-        
-        let ip = Self::deserialize_string(&mut cursor);
-        let message = Self::deserialize_string(&mut cursor);
+    // 48 bits para ip+puerto
+    //
 
-        Self {
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, MyError> {
+        let opcode = bytes[0];
+        let version = bytes[1];
+        let consistency_level = bytes[2];
+        let len_msg = u32::from_be_bytes([bytes[3], bytes[4], bytes[5], bytes[6]]);
+        let message = String::from_utf8(bytes[7..].to_vec()).map_err(|_| MyError::Error("error en from_bytes"))?;
+
+
+
+
+
+        // let mut cursor = Cursor::new(bytes);
+        // let opcode = read_u8(&mut cursor)?;
+        // let version = read_u8(&mut cursor)?;
+        // let consistency_level = read_u8(&mut cursor)?;
+        // let len_msg = read_u32(&mut cursor)?;
+
+        // let msg = Self::deserialize_string(&mut cursor, len_msg)?;
+
+        // let mut buf_msg = vec![0u8; len_msg as usize];
+        // let _ = cursor.read_exact(&mut buf_msg).map_err(|_| MyError::Error("error en dezerialize"))?;
+        // let message = String::from_utf8(buf_msg).map_err(|_| MyError::Error("error en dezerialize"))?;
+
+        Ok(Self {
             version,
             opcode,
-            length,
+            len_msg,
             consistency_level,
             message,
-            ip,
-        }
+        })
+
     }
 
     fn serialize_string(field: &str) -> Vec<u8> {
@@ -74,11 +92,16 @@ impl Message {
         field_bytes
     }
 
-    fn deserialize_string<R: Read>(reader: &mut R) -> String {
-        let length = read_u32(reader) as usize;
-        let mut buf = vec![0u8; length];
-        reader.read_exact(&mut buf).expect("Failed to read string");
-        String::from_utf8(buf).expect("Invalid UTF-8 sequence")
+    fn deserialize_string<R: Read>(reader: &mut R, len_msg: u32) -> Result<String, MyError> {
+        let mut buf_msg = vec![0u8; len_msg as usize];
+        let _ = reader.read_exact(&mut buf_msg).map_err(|_| MyError::Error("error en dezerialize"))?;
+        String::from_utf8(buf_msg).map_err(|_| MyError::Error("error en dezerialize"))
+
+
+        // let length = read_u32(reader)? as usize;
+        // let mut buf = vec![0u8; length];
+        // reader.read_exact(&mut buf).map_err(|_| MyError::Error("error en deserlize"))?;
+        // String::from_utf8(buf).map_err(|_| MyError::Error("error en deserlize"))
     }
 
     pub fn create_message_as_client(input: String) -> Message {
@@ -86,7 +109,6 @@ impl Message {
         let lenght = (ip.len() + input.len()) as u32;
         Message::new(
             input, 
-            ip,
             REQUEST,
             QUERY,
             lenght,
@@ -99,7 +121,6 @@ impl Message {
 //saca el ip.len() fijo
         Message::new(
             input, 
-            ip,
             RESPONSE,
             RESULT,
             lenght,
@@ -109,17 +130,35 @@ impl Message {
 
 }
 
-fn read_u32<R: Read>(reader: &mut R) -> u32 {
+fn read_u32<R: Read>(reader: &mut R) -> Result<u32, MyError> {
     let mut buf = [0u8; 4]; // 4 bytes
-    reader.read_exact(&mut buf).expect("Failed to read u32");
-    u32::from_be_bytes(buf)
+    match reader.read_exact(&mut buf) {
+        Ok(_) => (),
+        Err(_) => return Err(MyError::Error("Failed to read u32")),
+    }
+    Ok(u32::from_be_bytes(buf))
 }
 
-fn read_u8<R: Read>(reader: &mut R) -> u8 {
+
+fn read_u8<R: Read>(reader: &mut R) -> Result<u8, MyError> {
     let mut buf = [0u8; 1];
-    reader.read_exact(&mut buf).expect("Failed to read u8");
-    buf[0]
+    match reader.read_exact(&mut buf) {
+        Ok(_) => (),
+        Err(_) => return Err(MyError::Error("Failed to read u8")),
+    }
+    Ok(buf[0])
 }
+
+// macro_rules! read_u8 {
+//     ($reader:expr) => {{
+//         let mut buf = [0u8; 1];
+//         match $reader.read_exact(&mut buf) {
+//             Ok(_) => (),
+//             Err(_) => return Err(MyError::Error("Failed to read u8".to_string())),
+//         }
+//         Ok(buf[0])
+//     }};
+// }
 
 
 // OPCODE

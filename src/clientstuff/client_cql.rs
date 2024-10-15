@@ -1,6 +1,7 @@
 use crate::messagestuff::message::Message;
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::TcpStream;
+use bufstream::BufStream;
 use std::thread;
 
 #[derive(Debug)]
@@ -31,7 +32,7 @@ impl Client {
 
         // Spawn a thread to listen for incoming messages from the stream
         let stream_clone = stream.try_clone()?; // Clone the stream for the listener thread
-        let reader = BufReader::new(stream_clone); // Wrap the cloned stream in a BufReader
+        let reader = BufStream::new(stream_clone); 
 
         thread::spawn(move || {
             for line in reader.lines() {
@@ -54,7 +55,7 @@ impl Client {
             let trimmed_input = input.trim(); // Trim whitespace from input
 
             if !trimmed_input.is_empty() {
-                let mensaje = Message::new(trimmed_input.to_string()); // Create the message
+                let mut mensaje = Message::create_message_as_client(trimmed_input.to_string()); // Create the message
                 stream.write_all(&mensaje.to_bytes())?;
                 stream.write_all(b"\n")?;
                 stream.flush()?;

@@ -142,16 +142,17 @@ fn handle_connection_server(node: Arc<RwLock<Node>>, stream: TcpStream) {
                 let mut query = Query::new(message.message, message.original_sender_ip);
 
                 let tabla = node.process_query(& mut query);
+                println!("tabla: {}", tabla);
 
                 // Aviso que llego el mensaje --- No necesito concetarme de nuevo, se usa el mismo Stream.
-                buf.write_all(
+                buf.write(
                     format!("RECEIVED:{}:{}\n", query.sender_node_ip, line).as_bytes(),
                 )
                 .expect("[ERROR] no se pudo mandar RECEIVED");
                 buf.flush().expect("flush no funciono");
 
                 // Mando la tabla resultado
-                buf.write_all(format!("RESULT:{}:{}\n", node.server_ip, tabla).as_bytes())
+                buf.write(format!("RESULT:{}:{}\n", node.server_ip, tabla).as_bytes())
                     .expect("[ERROR] no se pudo mandar tabla");
                 buf.flush().expect("flush no funciono");
             }
@@ -205,7 +206,14 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) {
     let mut line = String::new();
 
     while buf.read_line(&mut line).is_ok() {
-        let message = Message::from_bytes(line.as_bytes());
+        let message = match Message::from_bytes(line.as_bytes()) {
+            Ok(message) => message,
+            Err(_) => {
+                println!("Error al parsear el mensaje");
+                continue;
+            }
+        };
+
         println!("Mensaje de cliente: {:?}\n", message);
 
         
@@ -223,10 +231,10 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) {
 
         //consistency level / read-repair
 
-        let message = Message::new(res.to_string()); // Create the message
+        let mut message = Message::create_message_as_server(res, node.server_ip.clone()); // Create the message
         println!("{:?}", message);
 
-        let _ = buf.write_all(&res.clone().into_bytes());
+        let _ = buf.write_all(&message.to_bytes());
         let _ = buf.write_all(b"\n");
         let _ = buf.flush();
 
@@ -282,6 +290,19 @@ pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: & mut Query)
                 "El nodo: {}, nos respondio: {}\n",
                 neighbor.server_ip, response
             );
+
+            
+            
+            
+            // if message.message_type == MessageType::Result {
+            //     all_response.push(response);
+            //     // mandar a cliente
+            // } else {
+
+            // }
+
+
+
             all_response.push(response);
         } //else {
           // println!("Error conectando a {}", neighbor.server_ip);
