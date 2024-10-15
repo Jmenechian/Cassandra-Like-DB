@@ -1,21 +1,30 @@
-use std::{error::Error};
 use crate::cql::utils::*;
-use std::{fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write};
+use std::error::Error;
+use std::io::BufRead;
 
-use crate::cql::where_clause::WhereClause;
 use crate::cql::filter::Filter;
-
+use crate::cql::where_clause::WhereClause;
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct Select{
+pub struct Select {
     pub columns: Vec<String>,
     pub table: String,
     pub whereclause: WhereClause,
 }
 
+impl Default for Select {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Select {
-    pub fn new() -> Select{
-        Select { columns: Vec::new(), table: "".to_string(), whereclause: WhereClause::True}
+    pub fn new() -> Select {
+        Select {
+            columns: Vec::new(),
+            table: "".to_string(),
+            whereclause: WhereClause::True,
+        }
     }
 
     pub fn parse_select(&mut self, query: &str) -> Result<(), Box<dyn Error>> {
@@ -77,7 +86,6 @@ impl Select {
     // sets WHERE condition
     // returns error if condition query is not valid
     fn parse_where_condition(&mut self, parts: &mut [&str]) -> Result<(), Box<dyn Error>> {
-        
         // let parts_string: Vec<String> = parts.into_iter().map(|s| s.to_string()).collect();
         if let Some(where_index) = parts.iter().position(|&x| x == "WHERE") {
             let (_, right) = parts.split_at(where_index);
@@ -85,16 +93,14 @@ impl Select {
             let where_clause = WhereClause::new(condition_query)?;
             self.whereclause = where_clause;
         }
-        
+
         Ok(())
     }
 
-    pub fn execute_command(&mut self, path: &str) -> Result<String, Box<dyn Error>> {
+    pub fn execute_command(&mut self, _path: &str) -> Result<String, Box<dyn Error>> {
         println!("self table: {}", self.table);
-        let mut rdr =
-            get_reader("src/tablas", &self.table)?;
+        let mut rdr = get_reader("src/tablas", &self.table)?;
 
-        
         let mut tabla: String = String::new();
 
         let mut line = String::new();
@@ -110,45 +116,41 @@ impl Select {
         }
         Ok(tabla)
     }
-        // let headers = get_file_headers(&mut rdr)?;
-        
-        
-        
-        
-        // let expression = self.get_where_expression()?;
-        // let mut rdr =
-        //     get_reader(path, &self.table)?;
-        // let headers = get_file_headers(&mut rdr)?;
+    // let headers = get_file_headers(&mut rdr)?;
 
-        // if self.columns[0] != "*" {
-        //     self.check_columns_are_valid(&headers)?;
-        // }
+    // let expression = self.get_where_expression()?;
+    // let mut rdr =
+    //     get_reader(path, &self.table)?;
+    // let headers = get_file_headers(&mut rdr)?;
 
-        // let temporary_file =
-        //     create_temporary_file(path, &self.table)?;
+    // if self.columns[0] != "*" {
+    //     self.check_columns_are_valid(&headers)?;
+    // }
 
-        // // get rows that fulfill WHERE condition
-        // let mut records: Vec<Vec<String>> = Vec::new();
-        // let lines = rdr.lines();
-        // for line in lines {
-        //     let line = line?;
-        //     let row_array: Vec<String> = line.trim().split(",").map(|s| s.to_string()).collect();
+    // let temporary_file =
+    //     create_temporary_file(path, &self.table)?;
 
-        //     if fulfill_condition(&headers, &row_array, &expression)? {
-        //         if !self.has_orderby() {
-        //             append_row(path, &temporary_file, &row_array)
-        //         }
-        //         records.push(row_array);
-        //     }
-        // }
+    // // get rows that fulfill WHERE condition
+    // let mut records: Vec<Vec<String>> = Vec::new();
+    // let lines = rdr.lines();
+    // for line in lines {
+    //     let line = line?;
+    //     let row_array: Vec<String> = line.trim().split(",").map(|s| s.to_string()).collect();
 
-        // if self.has_orderby() {
-        //     self.order_rows_by_orderby(&headers, &mut records)?;
-        //     write_rows(path, &temporary_file, &records)
-        // }
+    //     if fulfill_condition(&headers, &row_array, &expression)? {
+    //         if !self.has_orderby() {
+    //             append_row(path, &temporary_file, &row_array)
+    //         }
+    //         records.push(row_array);
+    //     }
+    // }
 
-        // self.print_rows(&temporary_file, path, headers)?;
-        // delete_file(&temporary_file, path)?;
-        // Ok(())
-    
+    // if self.has_orderby() {
+    //     self.order_rows_by_orderby(&headers, &mut records)?;
+    //     write_rows(path, &temporary_file, &records)
+    // }
+
+    // self.print_rows(&temporary_file, path, headers)?;
+    // delete_file(&temporary_file, path)?;
+    // Ok(())
 }

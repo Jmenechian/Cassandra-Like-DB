@@ -24,20 +24,18 @@ pub enum Relation {
 }
 
 impl Relation {
-    
-    fn col(& self) -> String {
+    fn col(&self) -> String {
         match self {
-            Relation::Equal(col, _) 
+            Relation::Equal(col, _)
             | Relation::NotEqual(col, _)
-            | Relation::GreaterThan(col, _) 
+            | Relation::GreaterThan(col, _)
             | Relation::GreaterOrEqualThan(col, _)
-            | Relation::LessThan(col, _) 
-            | Relation::LessOrEqualThan(col, _)
-            => col.to_string(),
+            | Relation::LessThan(col, _)
+            | Relation::LessOrEqualThan(col, _) => col.to_string(),
         }
     }
 
-    pub fn relate(& self, cols: &Vec<String>, vals: &Vec<String>) -> bool {
+    pub fn relate(&self, cols: &[String], vals: &[String]) -> bool {
         if let Some(index) = cols.iter().position(|c| *c == self.col()) {
             if let Some(v) = vals.get(index) {
                 match self {
@@ -47,12 +45,12 @@ impl Relation {
                     Self::LessOrEqualThan(_, val) => {
                         let comp = Self::relate_numbers(v, val);
                         comp == LESS_THAN || comp == EQUAL
-                    },
+                    }
                     Self::GreaterThan(_, val) => Self::relate_numbers(v, val) == GREATER_THAN,
                     Self::GreaterOrEqualThan(_, val) => {
                         let comp = Self::relate_numbers(v, val);
                         comp == GREATER_THAN || comp == EQUAL
-                    },
+                    }
                 }
             } else {
                 false
@@ -73,7 +71,7 @@ impl Relation {
                     LESS_THAN
                 }
             }
-            _ => NOT_NUMBER
+            _ => NOT_NUMBER,
         }
     }
 }

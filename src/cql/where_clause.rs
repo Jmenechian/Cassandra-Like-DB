@@ -1,7 +1,7 @@
-use std::error::Error;
-use crate::cql::relation::Relation;
 use crate::cql::lexer::*;
 use crate::cql::parser::*;
+use crate::cql::relation::Relation;
+use std::error::Error;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum WhereClause {
@@ -19,8 +19,8 @@ impl WhereClause {
         let mut pos = Pos::new();
         parser.parse_whereclause(&mut pos, Token::EOF)
     }
-    
-    pub fn relate(& self, cols: &Vec<String>, vals: &Vec<String>) -> bool {
+
+    pub fn relate(&self, cols: &Vec<String>, vals: &Vec<String>) -> bool {
         match self {
             Self::True => true,
             Self::Relation(comp) => comp.relate(cols, vals),

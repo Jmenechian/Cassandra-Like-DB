@@ -1,7 +1,7 @@
 use crate::messagestuff::message::Message;
-use std::io::{self, BufRead, BufReader, Write};
-use std::net::TcpStream;
 use bufstream::BufStream;
+use std::io::{self, BufRead, Write};
+use std::net::TcpStream;
 use std::thread;
 
 #[derive(Debug)]
@@ -32,7 +32,7 @@ impl Client {
 
         // Spawn a thread to listen for incoming messages from the stream
         let stream_clone = stream.try_clone()?; // Clone the stream for the listener thread
-        let reader = BufStream::new(stream_clone); 
+        let reader = BufStream::new(stream_clone);
 
         thread::spawn(move || {
             for line in reader.lines() {

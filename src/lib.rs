@@ -5,17 +5,17 @@ pub mod nodo;
 pub mod server_message;
 pub mod cql {
     pub mod delete;
+    pub mod filter;
     pub mod insert;
+    pub mod lexer;
+    pub mod my_errors;
+    pub mod parser;
     pub mod query;
+    pub mod relation;
     pub mod select;
     pub mod update;
     pub mod utils;
-    pub mod parser;
-    pub mod lexer;
-    pub mod relation;
     pub mod where_clause;
-    pub mod my_errors;
-    pub mod filter;
 }
 pub mod clientstuff {
     pub mod client_cql;

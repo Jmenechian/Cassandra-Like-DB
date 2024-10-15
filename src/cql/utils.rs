@@ -44,6 +44,7 @@ pub fn get_file_path(path: &str, file_name: &str) -> String {
 // Open file in given path, returns an iterable reader
 pub fn get_reader(path: &str, table_name: &str) -> Result<BufReader<File>, Box<dyn Error>> {
     let file_path = get_file_path(path, table_name);
+    println!("{}", file_path);
     // let file_path = format!("{}/{}.csv", path, table_name);
     // println!("file path: {}", file_path);
     let file = File::open(file_path)?;

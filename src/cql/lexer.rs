@@ -1,9 +1,7 @@
 use std::error::Error;
-use crate::cql::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
-
     Where,
     And,
     Or,
@@ -32,23 +30,25 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(input: &str) -> Self {
-        Lexer { input: input.to_string() }
+        Lexer {
+            input: input.to_string(),
+        }
     }
 
     fn next_word(&mut self) -> Option<String> {
         self.input = self.input.trim_start().to_string();
-        let delimiters = &[' ','"','\'', '=', '>', '<', '(', ')', ',', '!'];
+        let delimiters = &[' ', '"', '\'', '=', '>', '<', '(', ')', ',', '!'];
         if self.input.starts_with('\'') {
             if let Some(end) = self.input[1..].find('\'') {
                 let word = self.input[1..=end].to_string();
-                self.input = self.input[(end+2)..].to_string();
+                self.input = self.input[(end + 2)..].to_string();
                 return Some(word);
             }
         }
         if self.input.starts_with('"') {
             if let Some(end) = self.input[1..].find('"') {
                 let word = self.input[1..=end].to_string();
-                self.input = self.input[(end+2)..].to_string();
+                self.input = self.input[(end + 2)..].to_string();
                 return Some(word);
             }
         }
@@ -79,12 +79,12 @@ impl Lexer {
             match word.as_str() {
                 "" => {
                     tokens.push(Token::EOF);
-                    return Ok(tokens)
+                    return Ok(tokens);
                 }
                 " " => continue,
 
                 "WHERE" => tokens.push(Token::Where),
-                
+
                 "AND" => tokens.push(Token::And),
                 "OR" => tokens.push(Token::Or),
                 "NOT" => tokens.push(Token::Not),
@@ -100,7 +100,7 @@ impl Lexer {
                     }
                 }
                 "=" => tokens.push(Token::EqualTo),
-                ">" => { 
+                ">" => {
                     if let Some(word) = self.next_word() {
                         match word.as_str() {
                             "=" => tokens.push(Token::GreaterOrEqualThan),
@@ -110,7 +110,7 @@ impl Lexer {
                             }
                         }
                     }
-                },
+                }
                 "<" => {
                     if let Some(word) = self.next_word() {
                         match word.as_str() {

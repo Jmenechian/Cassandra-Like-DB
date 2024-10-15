@@ -1,6 +1,6 @@
+use std::error::Error;
 use std::fmt;
 use std::io;
-use std::error::Error;
 
 #[derive(Debug)]
 pub enum MyError<'b> {
@@ -12,7 +12,7 @@ pub enum MyError<'b> {
 }
 
 impl<'b> fmt::Display for MyError<'b> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {   
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             MyError::Error(ref msg) => write!(f, "[ERROR]: [{}]", msg),
             MyError::InvalidTable(ref msg) => write!(f, "[INVALID_TABLE]: [{}]", msg),
