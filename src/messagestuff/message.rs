@@ -1,80 +1,126 @@
-use std::io::Cursor;
-use std::io::Read;
+use std::io::{self, Write};
+use std::net::TcpStream;
+use std::io::{Cursor, Read};
 
+const REQUEST: u8 = 0x03;
+const QUORUM: u8 = 0x0004;
+const QUERY: u8 = 0x07;
+
+const RESPONSE: u8 = 0x83;
+const RESULT: u8 = 0x08;
+// const RESPONSE: u8 = 0x83;
+    
 #[derive(Debug)]
-pub struct Message {
-    // No se como agregar un campo sin tener que rearmar el serialize
-    // pub version: u8,
-    // pub stream_id: u32, //no se si entra para nosotros
-    // pub opcode: u8, //puede ser util
-    // lenght: u32,
-    // consistency_level: u8, // -> notations tiene todo esto o solo usamos este?
+pub struct Message { 
+    pub version: u8, 
+    pub opcode: u8,
+    pub length: u32, 
+    pub consistency_level: u8,
     pub message: String,
-    pub ip: String, //esta hardcodeado 1000 porque igual no lo usamos por ahora
-} //faltan mas
+    pub ip: String 
+} 
 
 impl Message {
-    pub fn new(message: String) -> Self {
+    pub fn new(message: String, ip: String, version: u8, opcode: u8, length: u32, consistency_level: u8) -> Self {
         Self {
+            version,
+            opcode,
+            length,
+            consistency_level,
             message,
-            ip: "127.0.0.1:45450".to_string(),
+            ip,
         }
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut combined = Vec::new();
+        combined.push(self.version);
+        combined.push(self.opcode);
+        combined.extend(&self.length.to_be_bytes());
+        combined.push(self.consistency_level);
 
-        combined.extend(self.serialize_field(&self.message));
-        combined.extend(self.serialize_field(&self.ip));
-
+        combined.extend(Self::serialize_string(&self.ip));
+        combined.extend(Self::serialize_string(&self.message));
         combined
-    }
-
-    fn serialize_field(&self, field: &str) -> Vec<u8> {
-        let length = field.len() as u32;
-        let mut field_bytes = Vec::new();
-
-        field_bytes.extend(&length.to_be_bytes());
-        field_bytes.extend(field.as_bytes());
-
-        field_bytes
-    }
-
-    fn deserialize_field<R: Read>(reader: &mut R) -> String {
-        let mut length_bytes = [0u8; 4];
-        reader
-            .read_exact(&mut length_bytes)
-            .expect("Failed to read length");
-
-        let length = u32::from_be_bytes(length_bytes) as usize;
-        println!("Reading field of length: {}", length); // Debug log
-
-        if length > 10_000 {
-            panic!("Field length too large: {}", length);
-        }
-
-        let mut field_bytes = vec![0u8; length];
-        reader
-            .read_exact(&mut field_bytes)
-            .expect("Failed to read field");
-
-        match String::from_utf8(field_bytes) {
-            Ok(field) => field,
-            Err(e) => {
-                eprintln!("Invalid UTF-8 sequence: {}", e);
-                "<Invalid UTF-8>".to_string()
-            }
-        }
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let mut cursor = Cursor::new(bytes);
-        let message = Self::deserialize_field(&mut cursor);
-        let ip = Self::deserialize_field(&mut cursor);
+        let version = read_u8(&mut cursor);
+        let opcode = read_u8(&mut cursor);
+        let length = read_u32(&mut cursor);
+        let consistency_level = read_u8(&mut cursor);
+        
+        let ip = Self::deserialize_string(&mut cursor);
+        let message = Self::deserialize_string(&mut cursor);
 
-        Self { message, ip }
+        Self {
+            version,
+            opcode,
+            length,
+            consistency_level,
+            message,
+            ip,
+        }
     }
+
+    fn serialize_string(field: &str) -> Vec<u8> {
+        let mut field_bytes = Vec::new();
+        let length = field.len() as u32;
+
+        field_bytes.extend(&length.to_be_bytes()); // Write length prefix
+        field_bytes.extend(field.as_bytes());      // Write string content
+
+        field_bytes
+    }
+
+    fn deserialize_string<R: Read>(reader: &mut R) -> String {
+        let length = read_u32(reader) as usize;
+        let mut buf = vec![0u8; length];
+        reader.read_exact(&mut buf).expect("Failed to read string");
+        String::from_utf8(buf).expect("Invalid UTF-8 sequence")
+    }
+
+    pub fn create_message_as_client(input: String) -> Message {
+        let ip = "127.0.0.1:45450".to_string();
+        let lenght = (ip.len() + input.len()) as u32;
+        Message::new(
+            input, 
+            ip,
+            REQUEST,
+            QUERY,
+            lenght,
+            QUORUM,
+        )
+    }
+
+    pub fn create_message_as_server(input: String, ip: String) -> Message {
+        let lenght = (ip.len() + input.len()) as u32;
+//saca el ip.len() fijo
+        Message::new(
+            input, 
+            ip,
+            RESPONSE,
+            RESULT,
+            lenght,
+            QUORUM,
+        )
+    }
+
 }
+
+fn read_u32<R: Read>(reader: &mut R) -> u32 {
+    let mut buf = [0u8; 4]; // 4 bytes
+    reader.read_exact(&mut buf).expect("Failed to read u32");
+    u32::from_be_bytes(buf)
+}
+
+fn read_u8<R: Read>(reader: &mut R) -> u8 {
+    let mut buf = [0u8; 1];
+    reader.read_exact(&mut buf).expect("Failed to read u8");
+    buf[0]
+}
+
 
 // OPCODE
 // 0x00    ERROR
