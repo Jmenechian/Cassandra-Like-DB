@@ -2,11 +2,14 @@ use crate::cql::utils::*;
 use std::error::Error;
 use std::io::BufRead;
 
+use crate::cql::filter::Filter;
+use crate::cql::where_clause::WhereClause;
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct Select {
     pub columns: Vec<String>,
     pub table: String,
-    pub condition_tokens: String,
+    pub whereclause: WhereClause,
 }
 
 impl Default for Select {
@@ -20,13 +23,12 @@ impl Select {
         Select {
             columns: Vec::new(),
             table: "".to_string(),
-            condition_tokens: "".to_string(),
+            whereclause: WhereClause::True,
         }
     }
 
     pub fn parse_select(&mut self, query: &str) -> Result<(), Box<dyn Error>> {
         let mut parts: Vec<&str> = query.split_whitespace().collect();
-
         if parts.len() < 4 || parts[0] != "SELECT" || parts[1] == "FROM" {
             return Err(Box::from("Select query not valid"));
         }
@@ -83,21 +85,34 @@ impl Select {
 
     // sets WHERE condition
     // returns error if condition query is not valid
-    fn parse_where_condition(&mut self, _parts: &mut [&str]) -> Result<(), Box<dyn Error>> {
+    fn parse_where_condition(&mut self, parts: &mut [&str]) -> Result<(), Box<dyn Error>> {
+        // let parts_string: Vec<String> = parts.into_iter().map(|s| s.to_string()).collect();
+        if let Some(where_index) = parts.iter().position(|&x| x == "WHERE") {
+            let (_, right) = parts.split_at(where_index);
+            let condition_query = right[1..].join(" ");
+            let where_clause = WhereClause::new(condition_query)?;
+            self.whereclause = where_clause;
+        }
+
         Ok(())
     }
 
     pub fn execute_command(&mut self, _path: &str) -> Result<String, Box<dyn Error>> {
         println!("self table: {}", self.table);
-        let rdr = get_reader(
-            "/home/loli/Documents/Taller/Grupal/aerolineas_rusticas/src/tablas",
-            &self.table,
-        )?;
+        let mut rdr = get_reader("src/tablas", &self.table)?;
 
         let mut tabla: String = String::new();
+
+        let mut line = String::new();
+        let _ = rdr.read_line(&mut line);
+        let col_names: Vec<String> = line.trim_end().split(',').map(|s| s.to_string()).collect();
+        let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
         for line in rdr.lines() {
             let line = line?;
-            tabla.push_str(&line);
+            let split_line = line.split(",").collect::<Vec<&str>>();
+            if filter.filter(split_line.into_iter().map(|s| s.to_string()).collect()) {
+                tabla.push_str(&line);
+            }
         }
         Ok(tabla)
     }

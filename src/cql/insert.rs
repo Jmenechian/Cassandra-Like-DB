@@ -121,7 +121,9 @@ impl Insert {
         Ok(())
     }
 
-    pub fn execute_command(&self, path: &str) -> Result<String, Box<dyn Error>> {
+    pub fn execute_command(&self, _path: &str) -> Result<String, Box<dyn Error>> {
+        println!("En execute_command de INSERT");
+        let path = "src/tablas";
         let mut rdr = get_reader(path, &self.table)?;
         let headers = get_file_headers(&mut rdr)?;
 

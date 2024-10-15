@@ -31,6 +31,7 @@ impl Query {
     }
 
     pub fn execute(&mut self, table: &str) -> String {
+        println!("En execute Query");
         self.get_type();
         let _ = self.parse_query();
         match self.execute_command(table) {
@@ -82,6 +83,7 @@ impl Query {
 
     // Delegates the command execution
     pub fn execute_command(&mut self, path: &str) -> Result<String, Box<dyn Error>> {
+        println!("En execute_command GRAL: {:?}", self.qtype);
         match &mut self.qtype {
             QType::None => Err(Box::from("No query to execute".to_string())),
             QType::Select(select) => select.execute_command(path),
@@ -94,6 +96,7 @@ impl Query {
 
     // Debe devolver de la query los valores de los campos de las columnas que pertenecen a la partición de esa tabla.
     pub fn get_key_representing_partition(&self) -> String {
+        //devolveme el nombre del aeropuerto
         self.query.clone()
     }
 }

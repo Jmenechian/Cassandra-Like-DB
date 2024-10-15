@@ -2,14 +2,13 @@ use bufstream::BufStream;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::thread;
 use threadpool::ThreadPool;
 
 use crate::config::{N_WORKERS, PORTS_FILE};
 
 use crate::config::RF;
-use crate::config::STRONG_CONSISTENCY;
 use crate::cql::query::Query;
 use crate::messagestuff::message::Message;
 use crate::server_message::MessageType;
@@ -44,7 +43,7 @@ impl Node {
             file_path: "".to_string(),
             nodes_path: "nodes.txt".to_string(),
             neighbors: vec![], // todos los nodos que estan en el ring
-            table: format!("tablas/tabla{}.csv", { port }).to_string(),
+            table: format!("src/tablas/tabla{}.csv", { port }).to_string(),
         }
     }
 
@@ -61,14 +60,8 @@ impl Node {
     }
 
     // Proceso la query y devuelve la tabla en formato String
-    pub fn process_query(&self, query: &Query) -> String {
-        ////////////////////////////////////////
-        // HACER LA QUERY Y DEVOLVER LA TABLA //
-        ////////////////////////////////////////
-
-        println!("Procesando tabla para query {}....", query.query);
-
-        "tabla csv en formato String".to_string()
+    pub fn process_query(&self, query: &mut Query) -> String {
+        query.execute(&self.table.clone())
         // "".to_string() // no se para que sirve lo de arriba, puse esto para handlear Received, se puede borrar
     }
 }
@@ -123,10 +116,10 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
 
 // Recibe un mensaje y lo procesa
 // Mensajes del tipo ServerMessage
-fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
+fn handle_connection_server(node: Arc<RwLock<Node>>, stream: TcpStream) {
     let mut buf = BufStream::new(stream);
     println!("Antes de pedir el lock en handle connection server");
-    let node = node.lock().unwrap();
+    let node = node.read().unwrap();
     let mut line = String::new();
     println!("Despues de pedir el lock en handle connection server");
     println!("este es mi ip: {}", node.server_ip);
@@ -145,42 +138,20 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
                 );
 
                 // Proceso la query
-                let query = Query::new(message.message, message.original_sender_ip);
+                let mut query = Query::new(message.message, message.original_sender_ip);
 
-                let tabla = node.process_query(&query);
+                let tabla = node.process_query(&mut query);
+                println!("tabla: {}", tabla);
 
                 // Aviso que llego el mensaje --- No necesito concetarme de nuevo, se usa el mismo Stream.
-                buf.write_all(
-                    format!("RECEIVED: {} : {}\n", query.sender_node_ip, line).as_bytes(),
-                )
-                .expect("[ERROR] no se pudo mandar RECEIVED");
+                buf.write_all(format!("RECEIVED:{}:{}\n", query.sender_node_ip, line).as_bytes())
+                    .expect("[ERROR] no se pudo mandar RECEIVED");
                 buf.flush().expect("flush no funciono");
 
                 // Mando la tabla resultado
-                buf.write_all(format!("RESULT: {} : {}\n", node.server_ip, tabla).as_bytes())
+                buf.write_all(format!("RESULT:{}:{}\n", node.server_ip, tabla).as_bytes())
                     .expect("[ERROR] no se pudo mandar tabla");
                 buf.flush().expect("flush no funciono");
-            }
-            MessageType::Result => {
-                println!(
-                    "Llego resultado: {}, de nodo: {}",
-                    message.message, message.original_sender_ip
-                );
-                let mut respuestas: Vec<String> = Vec::new();
-                respuestas.push(message.message);
-                if respuestas.len() == STRONG_CONSISTENCY {
-                    println!("Cumple con Quorum");
-                    // mandarle respuesta al cliente
-                    // A que IP se manda?????????????????????????????????????
-                    //let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
-                    // habria que chequear que las respuestas son todas iguales
-                    buf.write_all(format!("{}\n", respuestas[0]).as_bytes())
-                        .expect("[ERROR] no se pudo mandar tabla a cliente");
-                } else {
-                    // estos IPs creo que estan mal!!!!!!!!!!!!!!!
-                    //let mut socket = TcpStream::connect(&message.original_sender_ip).unwrap();
-                    let _ = buf.write("HUBO UN ERROR\n".as_bytes());
-                }
             }
             MessageType::Gossip => {
                 //hace gossip
@@ -188,70 +159,57 @@ fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
                 // FALTA CAMBIAR EL ESTADO DE NODO VECINO A CONECTADO
                 // todo!();
             }
-            MessageType::Received => {
-                // Todo
-                println!("El mensaje fue recibido: {}", message.message);
-            }
             MessageType::Test => {
                 //// usar para debuggear
                 println!("testeo: {:?}", message.message);
             }
+            _ => println!("{:?}", message.message_type),
         }
         line = String::new();
     }
 }
 
-// Le deberia mandar la query a los nodos correspondientes!
-pub fn handle_query(_query: Query) {
-    // TO DO
-    // println!("Llego la query: {}", query.query);
-}
-
 //🤝
 // Recibe el mismo stream dos veces (clones), hay que ver de arreglarlo --> Ya no, hago el clone adentro de la funcion.
-pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
+pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) {
     // Usamos BufStream para evitar clonar el stream y usarlo en BufReader:
     let mut buf = BufStream::new(&stream);
-    let mut node = node.lock().unwrap();
+    let node = node.read().unwrap();
     let mut line = String::new();
 
     while buf.read_line(&mut line).is_ok() {
-        let message = Message::from_bytes(line.as_bytes());
+        if line.is_empty() {
+            line = String::new();
+            continue;
+        }
+        let message = match Message::from_bytes(line.as_bytes()) {
+            Ok(message) => message,
+            Err(_) => {
+                println!("Error al parsear el mensaje");
+                continue;
+            }
+        };
+
         println!("Mensaje de cliente: {:?}\n", message);
 
         // en un futuro pasarlo a "otro nodo"
         let consulta = message.message;
+
         let mut query = Query::new(consulta, node.client_ip.clone());
-        let tabla = query.execute(&node.table.clone());
-        println!("Tabla: {}", tabla);
-
-        let ans_msg = Message::new(tabla);
-        let _ = buf.write(&ans_msg.to_bytes());
-        let _ = buf.write_all(b"\n"); //sino no se manda hasta que cierra
-        let _ = buf.flush();
-
-        // let ans_msg = Message::new("Processing...".to_string());
-        // let _ = buf.write(&ans_msg.to_bytes());
-        // buf.write_all(b"\n"); //sino no se manda hasta que cierra
-        // let _ = buf.flush();
-
-        /////////////////////////////////////////
-        // LO QUE SIGUE ABAJO DEBE ROMPER TODO //
-        /////////////////////////////////////////
-
-        ///////////////////
-        // PARSEAR QUERY //
-        ///////////////////
-
-        // handle_query(query); // deberia devolver la query parseada
 
         // Mando query a los nodos correspondientes
-        let all_results = send_query_to_nodes(&mut node, query);
+        let all_results = send_query_to_nodes(&node, &mut query);
 
         // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
         // Luego se tiene que implementar Read-repear.
-        let res = all_results.join(" - ") + "\n";
-        let _ = buf.write_all(res.as_bytes());
+        let res = all_results.join(" - ");
+
+        //consistency level / read-repair
+
+        let message: Message = Message::create_message_as_server(res, node.client_ip.clone()); // Create the message
+        println!("{:?}", message);
+
+        let _ = buf.write_all(message.message.as_bytes());
         let _ = buf.flush();
 
         line = String::new();
@@ -260,13 +218,10 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
 
 // Envia la query a los nodos correspondientes
 // HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
-pub fn send_query_to_nodes(node: &mut MutexGuard<'_, Node>, query: Query) -> Vec<String> {
+pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: &mut Query) -> Vec<String> {
     let mut all_response = vec![];
     let mut hash = ConsistentHash::new(RF);
-    let server_ip = node.server_ip.clone();
-    node.add_neighbor(NeighborNode::new(
-        &server_ip.chars().last().unwrap().to_string(),
-    ));
+
     hash.add_nodes(node.neighbors.to_vec());
     let key = query.get_key_representing_partition();
     let nodes_with_result = hash.get_nodes(&key);
@@ -283,11 +238,7 @@ pub fn send_query_to_nodes(node: &mut MutexGuard<'_, Node>, query: Query) -> Vec
                 "- Buscando el resultado en el nodo original: {}",
                 neighbor.server_ip
             );
-            let _ = node.process_query(&query);
-            let response = format!(
-                "RECEIVED:{}:REQUEST:{}:{}",
-                node.server_ip, neighbor.server_ip, key
-            );
+            let response = node.process_query(query);
             all_response.push(response);
             continue;
         }
@@ -308,12 +259,39 @@ pub fn send_query_to_nodes(node: &mut MutexGuard<'_, Node>, query: Query) -> Vec
 
             // - Escucho respuesta:
             let mut response = String::new();
-            let _ = buf.read_line(&mut response);
-            println!(
-                "El nodo: {}, nos respondio: {}\n",
-                neighbor.server_ip, response
-            );
-            all_response.push(response);
+            while buf.read_line(&mut response).is_ok() {
+                if response.trim().is_empty() {
+                    response = String::new();
+                    continue;
+                }
+                let message: ServerMessage = match ServerMessage::new(response.clone()) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        println!("Error: {}", e);
+                        return vec![];
+                    }
+                };
+                match message.message_type {
+                    MessageType::Result => {
+                        println!(
+                            "Llego resultado: {}, de nodo: {}",
+                            message.message, message.original_sender_ip
+                        );
+                        all_response.push(response);
+                        break;
+                    }
+                    MessageType::Received => {
+                        println!("El mensaje fue recibido: {}", message.message);
+                        response = String::new();
+                    }
+                    _ => println!("Error: {}", response),
+                }
+            }
+
+            //if cons_level == 1
+            // return all_response
+            // else
+            // el más actualizado
         } //else {
           // println!("Error conectando a {}", neighbor.server_ip);
           //}
@@ -332,8 +310,13 @@ pub fn initialize(port: String) {
 
     let neighbor_nodes: Vec<NeighborNode> = connect_to_ports(ports, &port);
     current_node.add_neighbors(neighbor_nodes);
+    let server_ip = current_node.server_ip.clone();
+    current_node.add_neighbor(NeighborNode::new(
+        &server_ip.chars().last().unwrap().to_string(),
+    ));
 
-    let current_node = Arc::new(Mutex::new(current_node)); //node para MAIN THREAD
+    //let current_node = Arc::new(Mutex::new(current_node)); --> Usamos RwLock en vex de Mutex
+    let current_node = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
 
     ////////////////////////////
     // FALTA HACER GOSSIP ACA //
@@ -347,7 +330,7 @@ pub fn initialize(port: String) {
     let pool_client = ThreadPool::new(N_WORKERS);
 
     let thread_cliente = thread::spawn(move || {
-        let client_listener = TcpListener::bind(&current_node_client.lock().unwrap().client_ip)
+        let client_listener = TcpListener::bind(&current_node_client.read().unwrap().client_ip)
             .expect("Error al conectarse al puerto client_ip");
 
         for stream in client_listener.incoming() {
@@ -368,28 +351,18 @@ pub fn initialize(port: String) {
     // Single thread servidor-servidor
     // Escucha mensajes de otros nodos
     let thread_servidor = thread::spawn(move || {
-        let server_listener = TcpListener::bind(&current_node_server.lock().unwrap().server_ip)
+        let server_listener = TcpListener::bind(&current_node_server.read().unwrap().server_ip)
             .expect("Error al conectarse al puerto server_ip");
 
         for stream in server_listener.incoming() {
-            let mut stream: TcpStream = stream.unwrap();
+            let stream: TcpStream = stream.unwrap();
 
             let node_thread = Arc::clone(&current_node_server);
             pool_server.execute(move || {
-                handle_connection_server(node_thread.clone(), &mut stream);
+                handle_connection_server(node_thread, stream);
             });
         }
     });
-
-    // let thread_servidor = thread::spawn(move || {
-    //     let server_listener = TcpListener::bind(&current_node_server.lock().unwrap().server_ip).expect("Error al conectarse al puerto server_ip");
-
-    //     for stream in server_listener.incoming() {
-    //         let mut stream: TcpStream = stream.unwrap();
-    //         println!("estoy acaa!!!!!!!!!!!!!");
-    //         handle_connection_server(current_node_server.clone(), &mut stream);
-    //     }
-    // });
 
     thread_cliente.join().unwrap();
     thread_servidor.join().unwrap();
