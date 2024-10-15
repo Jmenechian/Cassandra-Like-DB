@@ -1,5 +1,5 @@
 use crate::messagestuff::message::Message;
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, Result, Write};
 use std::net::TcpStream;
 use std::thread;
 
@@ -17,13 +17,13 @@ impl Client {
         }
     }
 
-    pub fn handle_input(&mut self) -> io::Result<()> {
+    pub fn handle_input(&mut self) -> Result<()> {
         let mut _stream = TcpStream::connect(&self.server_ip)?;
 
         Ok(())
     }
 
-    pub fn handle_connection(&self) -> io::Result<()> {
+    pub fn handle_connection(&self) -> Result<()> {
         let mut stream = TcpStream::connect(&self.server_ip)?;
 
         let stdin = io::stdin();

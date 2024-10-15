@@ -1,5 +1,6 @@
 pub mod config;
 pub mod consistent_hashing;
+pub mod my_errors;
 pub mod neighbor_node;
 pub mod nodo;
 pub mod server_message;
