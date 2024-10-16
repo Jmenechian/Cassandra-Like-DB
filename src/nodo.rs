@@ -199,11 +199,9 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) {
 
         // Mando query a los nodos correspondientes
         let all_results = send_query_to_nodes(&node, &mut query);
-
         // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
         // Luego se tiene que implementar Read-repear.
-        let res = all_results.join(" - ");
-
+        let res = process_results(all_results); //devuelve solo una respuesta, para testear sacar esto porque no anda todavia
         //consistency level / read-repair
 
         let message: Message = Message::create_message_as_server(res, node.client_ip.clone()); // Create the message
@@ -216,6 +214,42 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) {
     }
 }
 
+fn process_results(results: Vec<String>) -> String {
+    println!("{:?}", results);
+    match results.len() {
+        1 => return results[0].clone(), //esto depende de consistency? si quorum entonces no se manda nada?
+        2 => {
+            if results[0] == results[1] {
+                return results[0].clone();
+            } else {
+                return "No match".to_string(); //mentira
+                //check_last_updated -> return esto
+                //read repair el otro
+            }
+            }
+        3 => {
+            let (a, b, c) = (&results[0], &results[1], &results[2]);
+            if a == b && b == c {
+                return a.clone() //no hay que hacer nada mas creo
+            } else if a == b || a == c {
+                return a.clone()  //2 iguales uno distinto -> read repair
+                //ver el que no es igual
+                //read repair
+            } else if b == c {
+                return b.clone()  //a es diferente
+                //read repair a
+            } else {
+                return "No match".to_string()  //todos diferentes, mas nuevo aca?
+                //agarras mas nuevo
+                //read repair a los otros 2?
+            } 
+        }
+        _ => return "error".to_string(), //rompio todo
+    }
+
+
+    results[0].clone()
+}
 // Envia la query a los nodos correspondientes
 // HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
 pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: &mut Query) -> Vec<String> {

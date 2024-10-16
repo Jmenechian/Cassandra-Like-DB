@@ -112,9 +112,14 @@ impl Select {
             let split_line = line.split(",").collect::<Vec<&str>>();
             if filter.filter(split_line.into_iter().map(|s| s.to_string()).collect()) {
                 tabla.push_str(&line);
+                tabla.push_str("     "); //asi podes splitear y printear? no se que hacer para mejorar
             }
         }
         Ok(tabla)
+    }
+
+    pub fn get_key(&self) -> String {
+        self.table.clone()
     }
     // let headers = get_file_headers(&mut rdr)?;
 

@@ -1,7 +1,7 @@
 use crate::cql::utils::*;
 use std::collections::HashMap;
 use std::error::Error;
-
+use chrono::{DateTime, Utc};
 #[derive(Debug, Eq, PartialEq)]
 pub struct Insert {
     pub table: String,
@@ -46,7 +46,8 @@ impl Insert {
             self.table = parts[2].to_string();
         }
 
-        let headers: Vec<String> = self.extract_values(&parts, skip_index);
+        let mut headers: Vec<String> = self.extract_values(&parts, skip_index);
+        // headers.push("timestamp".to_string());
 
         skip_index += headers
             .iter()
@@ -121,12 +122,12 @@ impl Insert {
         Ok(())
     }
 
-    pub fn execute_command(&self, _path: &str) -> Result<String, Box<dyn Error>> {
+    pub fn execute_command(& mut self, _path: &str) -> Result<String, Box<dyn Error>> {
         println!("En execute_command de INSERT");
         let path = "src/tablas";
         let mut rdr = get_reader(path, &self.table)?;
-        let headers = get_file_headers(&mut rdr)?;
-
+        let mut headers = get_file_headers(&mut rdr)?;
+        // self.values.push(Utc::now().to_string());
         // INSERT INTO VALUES (val1, val2)
         // values are inserted in the same order as the file headers
         if self.columns.is_empty() {
@@ -149,6 +150,8 @@ impl Insert {
                 new_record.push(String::new());
             }
         }
+        new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
+        new_record.push(Utc::now().to_string()); // metes lo mas nuevo
         append_row(path, &self.table, &new_record)?;
         Ok("linea fue agregada".to_string())
     }

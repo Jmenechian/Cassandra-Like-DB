@@ -98,5 +98,18 @@ impl Query {
     pub fn get_key_representing_partition(&self) -> String {
         //devolveme el nombre del aeropuerto
         self.query.clone()
+        // match &mut self.qtype {
+        //     QType::None => Err(Box::from("No query to execute".to_string())), //nose este 
+        //     QType::Select(select) => select.get_key(),
+        //     // QType::Insert(insert) => insert.get_key(),
+        //     _ => Ok("nada".to_string()),
+        // }
     }
 }
+//INSERT: Suponiendo que no se puede insertar filas incompletas:
+//te traers self.values[0] y self.values[1]
+
+//SELECT: aeropuerto = ...
+// date = ...
+//pueden estar por separado
+//pueden no estar ninguno en el where?
