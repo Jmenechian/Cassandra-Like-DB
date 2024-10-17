@@ -1,7 +1,7 @@
 use crate::cql::lexer::*;
 use crate::cql::parser::*;
 use crate::cql::relation::Relation;
-use std::error::Error;
+use crate::my_errors::MyError;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum WhereClause {
@@ -12,9 +12,9 @@ pub enum WhereClause {
 }
 
 impl WhereClause {
-    pub fn new(input: String) -> Result<Self, Box<dyn Error>> {
+    pub fn new(input: String) -> Result<Self, MyError> {
         let mut lexer: Lexer = Lexer::new(&input);
-        let tokens: Vec<Token> = lexer.tokenize()?;
+        let tokens: Vec<Token> = lexer.tokenize();
         let parser: Parser = Parser::new(tokens);
         let mut pos = Pos::new();
         parser.parse_whereclause(&mut pos, Token::EOF)

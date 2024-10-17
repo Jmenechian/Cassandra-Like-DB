@@ -99,10 +99,10 @@ impl Message {
     //         .map_err(|_| MyError::Error("error en dezerialize"))?;
     //     String::from_utf8(buf_msg).map_err(|_| MyError::Error("error en dezerialize"))
 
-        // let length = read_u32(reader)? as usize;
-        // let mut buf = vec![0u8; length];
-        // reader.read_exact(&mut buf).map_err(|_| MyError::Error("error en deserlize"))?;
-        // String::from_utf8(buf).map_err(|_| MyError::Error("error en deserlize"))
+    // let length = read_u32(reader)? as usize;
+    // let mut buf = vec![0u8; length];
+    // reader.read_exact(&mut buf).map_err(|_| MyError::Error("error en deserlize"))?;
+    // String::from_utf8(buf).map_err(|_| MyError::Error("error en deserlize"))
     //}
 
     pub fn create_message_as_client(input: String) -> Message {

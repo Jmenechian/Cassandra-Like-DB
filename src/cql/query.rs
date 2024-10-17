@@ -2,7 +2,7 @@ use crate::cql::delete::Delete;
 use crate::cql::insert::Insert;
 use crate::cql::select::Select;
 use crate::cql::update::Update;
-use std::error::Error;
+use crate::my_errors::MyError;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum QType {
@@ -30,14 +30,14 @@ impl Query {
         }
     }
 
-    pub fn execute(&mut self, table: &str) -> String {
+    pub fn execute(&mut self) -> Result<String, MyError> {
         println!("En execute Query");
         self.get_type();
-        let _ = self.parse_query();
-        match self.execute_command(table) {
-            Ok(result) => result,
-            Err(e) => e.to_string(),
+        match self.parse_query() {
+            Ok(_) => (),
+            Err(e) => return Err(e),
         }
+        self.execute_command()
     }
 
     fn get_type(&mut self) {
@@ -70,9 +70,9 @@ impl Query {
     }
 
     // Delegates the parsing
-    pub fn parse_query(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn parse_query(&mut self) -> Result<(), MyError> {
         match &mut self.qtype {
-            QType::None => Err(Box::from("No query to parse".to_string())),
+            QType::None => Err(MyError::Error("No query to parse".to_string())),
             QType::Select(select) => select.parse_select(&self.query),
             // QType::Update(update) => update.parse_update(query)?,
             QType::Insert(insert) => insert.parse_insert(&self.query),
@@ -82,13 +82,13 @@ impl Query {
     }
 
     // Delegates the command execution
-    pub fn execute_command(&mut self, path: &str) -> Result<String, Box<dyn Error>> {
+    pub fn execute_command(&mut self) -> Result<String, MyError> {
         println!("En execute_command GRAL: {:?}", self.qtype);
         match &mut self.qtype {
-            QType::None => Err(Box::from("No query to execute".to_string())),
-            QType::Select(select) => select.execute_command(path),
+            QType::None => Err(MyError::Error("No query to execute".to_string())),
+            QType::Select(select) => select.execute_command(),
             // QType::Update(update) => update.execute_command(path)?,
-            QType::Insert(insert) => insert.execute_command(path),
+            QType::Insert(insert) => insert.execute_command(),
             // QType::Delete(delete) => delete.execute_command(path)?,
             _ => Ok("nada".to_string()),
         }

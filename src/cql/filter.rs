@@ -1,5 +1,5 @@
 use crate::cql::where_clause::WhereClause;
-use std::error::Error;
+use crate::my_errors::MyError;
 
 pub struct Filter {
     pub columns: Vec<String>,
@@ -7,7 +7,7 @@ pub struct Filter {
 }
 
 impl Filter {
-    pub fn new(cols: Vec<String>, expr: WhereClause) -> Result<Self, Box<dyn Error>> {
+    pub fn new(cols: Vec<String>, expr: WhereClause) -> Result<Self, MyError> {
         Ok(Filter {
             columns: cols,
             expr,

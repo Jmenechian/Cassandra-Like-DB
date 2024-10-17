@@ -1,5 +1,3 @@
-use std::error::Error;
-
 #[derive(Debug, PartialEq)]
 pub enum Token {
     Where,
@@ -73,18 +71,16 @@ impl Lexer {
         }
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, Box<dyn Error>> {
+    pub fn tokenize(&mut self) -> Vec<Token> {
         let mut tokens: Vec<Token> = Vec::new();
         while let Some(word) = self.next_word() {
             match word.as_str() {
                 "" => {
                     tokens.push(Token::EOF);
-                    return Ok(tokens);
+                    return tokens;
                 }
                 " " => continue,
-
                 "WHERE" => tokens.push(Token::Where),
-
                 "AND" => tokens.push(Token::And),
                 "OR" => tokens.push(Token::Or),
                 "NOT" => tokens.push(Token::Not),
@@ -130,6 +126,6 @@ impl Lexer {
                 _ => tokens.push(Token::Identifier(word)),
             }
         }
-        Ok(tokens)
+        tokens
     }
 }
