@@ -1,4 +1,5 @@
 use crate::messagestuff::message::Message;
+use crate::messagestuff::message::print_message;
 use bufstream::BufStream;
 use std::io::{self, BufRead, Write};
 use std::net::TcpStream;
@@ -39,7 +40,11 @@ impl Client {
                 match line {
                     Ok(line) => {
                         let message = Message::from_bytes(line.as_bytes());
-                        println!("Received: {:?}", message);
+                        println!("Received: {:?}", message); //sacar despues
+                        if message.is_ok() {
+                            let msg = message.unwrap(); 
+                            print_message(msg.message);
+                        }
                     }
                     Err(e) => {
                         eprintln!("Failed to read from stream: {}", e);

@@ -119,7 +119,19 @@ impl Select {
     }
 
     pub fn get_key(&self) -> String {
-        self.table.clone()
+        println!("Where = {:?}", self.whereclause);
+        let aeropuerto = if let Some(aeropuerto) = self.whereclause.find_value_for_key("aeropuerto") {
+            aeropuerto
+        } else {
+            "".to_string() // algun error
+        };
+        let date = if let Some(date) = self.whereclause.find_value_for_key("date") {
+            date
+        } else {
+            "".to_string()
+        };
+        let res = format!("{}{}", aeropuerto, date);
+        res
     }
     // let headers = get_file_headers(&mut rdr)?;
 

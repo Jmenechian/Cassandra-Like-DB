@@ -196,18 +196,19 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) {
         let consulta = message.message;
 
         let mut query = Query::new(consulta, node.client_ip.clone());
+        // println!("Query: {:?}", query);
 
         // Mando query a los nodos correspondientes
         let all_results = send_query_to_nodes(&node, &mut query);
         // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
-        // Luego se tiene que implementar Read-repear.
-        let res = process_results(all_results); //devuelve solo una respuesta, para testear sacar esto porque no anda todavia
+        // let res = process_results(all_results); //devuelve solo una respuesta, para testear sacar esto porque no anda todavia
         //consistency level / read-repair
 
-        let message: Message = Message::create_message_as_server(res, node.client_ip.clone()); // Create the message
+        let message: Message = Message::create_message_as_server(all_results[0].clone(), node.client_ip.clone()); // Create the message
         println!("{:?}", message);
 
         let _ = buf.write_all(message.message.as_bytes());
+        buf.write_all(b"\n");
         let _ = buf.flush();
 
         line = String::new();
@@ -258,6 +259,8 @@ pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: &mut Query) 
 
     hash.add_nodes(node.neighbors.to_vec());
     let key = query.get_key_representing_partition();
+    println!("La key es: {}", key);
+    println!("La query es: {:?}", query);
     let nodes_with_result = hash.get_nodes(&key);
 
     println!(
@@ -286,7 +289,7 @@ pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: &mut Query) 
             // - Mando mensaje:
             let mut buf = BufStream::new(socket);
             println!("- Enviando mensaje a {}", neighbor.server_ip);
-            buf.write_all(format!("REQUEST:{}:{}\n", neighbor.server_ip, key).as_bytes())
+            buf.write_all(format!("REQUEST:{}:{}\n", neighbor.server_ip, query.query).as_bytes())
                 .unwrap();
             let _ = buf.flush();
             println!("se envio? el mensaje a {}", neighbor.server_ip);

@@ -155,4 +155,10 @@ impl Insert {
         append_row(path, &self.table, &new_record)?;
         Ok("linea fue agregada".to_string())
     }
+
+    pub fn get_key(&self) -> String { //suponiendo que siempre se manda bien
+        println!("values = {:?}", self.values);
+        let res = format!("{}{}", self.values[0], self.values[1]);
+        res
+    }
 }

@@ -118,6 +118,13 @@ impl Message {
     }
 }
 
+pub fn print_message(mensaje: String) {
+    let parts: Vec<&str> = mensaje.split("     ").collect();
+    for part in parts {
+        println!("{}", part);
+    }
+}
+
 // fn read_u32<R: Read>(reader: &mut R) -> Result<u32, MyError> {
 //     let mut buf = [0u8; 4]; // 4 bytes
 //     match reader.read_exact(&mut buf) {
