@@ -107,6 +107,34 @@ mod tests {
     use super::*;
 
     #[test]
+    pub fn view_nodes_by_key() {
+        let key = "MDZ,01-12-24".to_string();
+
+        let rf = 3;
+
+        let node_1 = NeighborNode::new("1");
+        let node_2 = NeighborNode::new("2");
+        let node_3 = NeighborNode::new("3");
+        let node_4 = NeighborNode::new("4");
+        let node_5 = NeighborNode::new("5");
+        let node_6 = NeighborNode::new("6");
+        let node_7 = NeighborNode::new("7");
+        let node_8 = NeighborNode::new("8");
+
+        let nodes: Vec<NeighborNode> = vec![
+            node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8,
+        ];
+
+        let mut hashing = ConsistentHash::new(rf);
+        hashing.add_nodes(nodes);
+
+        let nodes_result = hashing.get_nodes(&key);
+
+        println!("\n \t - Key: {} - Nodes: {:?}", key, nodes_result);
+    }
+
+
+    #[test]
     pub fn test_return_nodes_from_key_with_consistent_hash() {
         let key = "CABA,12-12-24".to_string();
 
