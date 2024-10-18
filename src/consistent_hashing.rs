@@ -108,7 +108,8 @@ mod tests {
 
     #[test]
     pub fn view_nodes_by_key() {
-        let key = "MDZ,01-12-24".to_string();
+        // Función para obtener los nodos en los que se debería guardar a mano un vuelo a partir de su key (valores de las particiones).
+        let key = "CABA,13-12-24".to_string();
 
         let rf = 3;
 

@@ -1,1 +1,6 @@
-ZRH,12-12-24
+Airport,Date,Flight,Status
+ZRH,12-12-24,704,scheduled
+EZE,12-12-24,100,scheduled
+EZE,12-12-24,200,scheduled
+COR,01-12-24,676,scheduled
+COR,01-12-24,898,scheduled

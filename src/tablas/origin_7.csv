@@ -1,1 +1,6 @@
-MDZ,01-12-24
+Airport,Date,Flight,Status
+MDZ,01-12-24,709,scheduled
+COR,12-12-24,353,scheduled
+COR,12-12-24,509,scheduled
+CABA,02-12-24,123,scheduled
+CABA,13-12-24,432,scheduled

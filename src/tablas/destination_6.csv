@@ -1,2 +1,4 @@
-CABA,12-12-24
-MDZ,01-12-24
+Airport,Date,Flight,Status
+CABA,12-12-24,509,scheduled
+MDZ,01-12-24,676,scheduled
+MDZ,01-12-24,123,scheduled
