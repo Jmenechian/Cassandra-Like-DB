@@ -11,6 +11,7 @@ use crate::config::{N_WORKERS, PORTS_FILE};
 use crate::config::STRONG_CONSISTENCY;
 use crate::messagestuff::message::Message;
 use crate::cql::query::Query;
+use crate::messagestuff::message2::Envelope;
 use crate::server_message::ServerMessage;
 use crate::server_message::MessageType;
 
@@ -206,6 +207,20 @@ pub fn handle_query(_query: Query) {
     // println!("Llego la query: {}", query.query);
 }
 
+pub fn handle_connection_client_2 (node: Arc<Mutex<Node>>, stream: & mut TcpStream) {
+    loop {
+        match Envelope::from_stream(stream) {
+            Ok(env) => {
+                println!("El env recibido es: {:?}", env);
+            }
+            Err(e) => {
+                println!("Error al leer el env: {:?}", e);
+                break;
+            }
+        }
+    }
+}
+
 //🤝
 // Recibe el mismo stream dos veces (clones), hay que ver de arreglarlo --> Ya no, hago el clone adentro de la funcion.
 pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
@@ -321,12 +336,12 @@ pub fn initialize(port: String) {
         let client_listener = TcpListener::bind(&current_node_client.lock().unwrap().client_ip).expect("Error al conectarse al puerto client_ip");
 
         for stream in client_listener.incoming() {
-            let stream = stream.unwrap();
+            let mut stream = stream.unwrap();
 
             let node_thread = Arc::clone(&current_node_client);
             pool_client.execute(move|| {
                 // bufreader queda con el ownership de stream --> usamos BufStream para solucionarlo
-                handle_connection_client(node_thread, stream);
+                handle_connection_client_2(node_thread, &mut stream);
             });
         }
     });

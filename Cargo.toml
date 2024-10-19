@@ -8,3 +8,12 @@ chrono = "0.4"
 rand = "0.8.5"
 threadpool = "1.8.1"
 bufstream = "0.1.4"
+
+
+[target.x86_64-apple-darwin]
+linker = "clang"
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-apple-darwin]
+linker = "clang"
+rustflags = ["-C", "target-feature=+crt-static"]

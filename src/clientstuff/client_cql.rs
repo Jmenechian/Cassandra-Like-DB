@@ -1,4 +1,7 @@
+use crate::config;
 use crate::messagestuff::message::Message;
+use crate::messagestuff::message2::IntoEnvelope;
+use crate::messagestuff::querymessage::QueryMessage;
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::TcpStream;
 use bufstream::BufStream;
@@ -26,6 +29,37 @@ impl Client {
         
 
 
+        Ok(())
+    }
+
+    pub fn handle_connection_2(&self) -> io::Result<()> {
+        let mut stream = TcpStream::connect(&self.server_ip)?;
+        let stdin = io::stdin();
+        let handle = stdin.lock();
+        
+        // Spawn a thread to listen for incoming messages from the stream
+        let mut stream_clone = stream.try_clone()?; // Clone the stream for the listener thread
+        let reader = BufReader::new(stream_clone); // Wrap the cloned stream in a BufReader
+        for line in handle.lines() {
+            let msg: QueryMessage;
+            match line {
+                Ok(line) => { 
+                    msg = QueryMessage{query: line, consistency: config::ONE};
+                }
+                Err(e) => {
+                    msg = QueryMessage{query: e.to_string(), consistency: config::ONE};
+                }
+            }
+            let env = msg.into_envelope(0);
+            if let Err(e) = stream.write_all(&env.to_bytes()) {
+                println!("Error al escribir en el stream: {:?}", e);
+                break;
+            }
+            if let Err(e) = stream.flush() {
+                println!("Error al vecial es stream: {:?}", e);
+                break;
+            }
+        }
         Ok(())
     }
 

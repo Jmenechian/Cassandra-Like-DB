@@ -13,8 +13,9 @@ fn main() -> std::io::Result<()> {
 
     println!("Cliente: {:?}", client);
 
-    client.handle_connection(); //solo manda no escucha
-
+    if let Err(_) = client.handle_connection_2() { //solo manda no escucha
+        println!("Error");
+    }
     Ok(())
 }
 

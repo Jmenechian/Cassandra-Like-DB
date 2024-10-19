@@ -80,7 +80,7 @@ impl Select {
     pub fn execute_command(&mut self, path: &str) -> Result<String, Box<dyn Error>> {
         println!("self table: {}", self.table);
         let mut rdr =
-            get_reader("/home/loli/Documents/Taller/Grupal/aerolineas_rusticas/src/tablas", &self.table)?;
+            get_reader("/Users/agustinbenito/Library/Mobile Documents/com~apple~CloudDocs/Desktop/ingenieria/Taller/tpGrupal/24C2-Ferris/src/tablas", &self.table)?;
 
         
         let mut tabla: String = String::new();

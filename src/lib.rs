@@ -14,6 +14,10 @@ pub mod clientstuff {
 }
 pub mod messagestuff {
     pub mod message;
+    pub mod message2;
+    pub mod querymessage;
+    pub mod errormessage;
+    pub mod resultmessage;
 }
 
 
