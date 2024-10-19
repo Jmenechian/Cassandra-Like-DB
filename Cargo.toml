@@ -2,6 +2,12 @@
 name = "aerolineas_rusticas"
 version = "0.1.0"
 edition = "2021"
+include = ["LICENSE-APACHE", "LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+rust-version = "1.76"
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 [dependencies]
 chrono = "0.4"
@@ -9,3 +15,7 @@ rand = "0.8.5"
 threadpool = "1.8.1"
 bufstream = "0.1.4"
 fasthash = "0.4.0"
+
+eframe = "0.29"
+egui = "0.29"
+image = "0.24" # Para manejar imágenes

@@ -25,7 +25,11 @@ pub mod messagestuff {
     pub mod message;
 }
 
-// pub use node::Node;
+pub mod gui {
+    pub mod app;
+}
+pub use gui::app::MapApp;
+
 pub use consistent_hashing::ConsistentHash;
 pub use neighbor_node::NeighborNode;
 pub use nodo::Node;
