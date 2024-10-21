@@ -130,7 +130,7 @@ impl Select {
         } else {
             "".to_string()
         };
-        let res = format!("{}{}", aeropuerto, date);
+        let res = format!("{},{}", aeropuerto, date);
         res
     }
     // let headers = get_file_headers(&mut rdr)?;

@@ -1,7 +1,7 @@
 use crate::cql::utils::*;
 use std::collections::HashMap;
 use std::error::Error;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 #[derive(Debug, Eq, PartialEq)]
 pub struct Insert {
     pub table: String,
@@ -46,7 +46,7 @@ impl Insert {
             self.table = parts[2].to_string();
         }
 
-        let mut headers: Vec<String> = self.extract_values(&parts, skip_index);
+        let headers: Vec<String> = self.extract_values(&parts, skip_index);
         // headers.push("timestamp".to_string());
 
         skip_index += headers
@@ -126,7 +126,7 @@ impl Insert {
         println!("En execute_command de INSERT");
         let path = "src/tablas";
         let mut rdr = get_reader(path, &self.table)?;
-        let mut headers = get_file_headers(&mut rdr)?;
+        let headers = get_file_headers(&mut rdr)?;
         // self.values.push(Utc::now().to_string());
         // INSERT INTO VALUES (val1, val2)
         // values are inserted in the same order as the file headers
@@ -158,7 +158,12 @@ impl Insert {
 
     pub fn get_key(&self) -> String { //suponiendo que siempre se manda bien
         println!("values = {:?}", self.values);
-        let res = format!("{}{}", self.values[0], self.values[1]);
+        let res = format!("{},{}", self.values[0], self.values[1]);
         res
+    }
+
+    pub fn get_values(& mut self) -> String {
+        self.values.push(Utc::now().to_string());
+        self.values.join(",")
     }
 }

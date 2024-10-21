@@ -64,6 +64,7 @@ impl Node {
         query.execute(&self.table.clone())
         // "".to_string() // no se para que sirve lo de arriba, puse esto para handlear Received, se puede borrar
     }
+
 }
 
 // Lee los puertos del archivo
@@ -196,10 +197,15 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) {
         let consulta = message.message;
 
         let mut query = Query::new(consulta, node.client_ip.clone());
+
+        let values = query.get_values(); //values lo guarda 1 sola vez
+        //si es insert -> creas las lineas aca y las devolves
+        //otros nodos agarran y appendean esas lineas en sus archivos
+
         // println!("Query: {:?}", query);
 
         // Mando query a los nodos correspondientes
-        let all_results = send_query_to_nodes(&node, &mut query);
+        let all_results = send_query_to_nodes(&node, &mut query, values);
         // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
         // let res = process_results(all_results); //devuelve solo una respuesta, para testear sacar esto porque no anda todavia
         //consistency level / read-repair
@@ -207,53 +213,60 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) {
         let message: Message = Message::create_message_as_server(all_results[0].clone(), node.client_ip.clone()); // Create the message
         println!("{:?}", message);
 
-        let _ = buf.write_all(message.message.as_bytes());
-        buf.write_all(b"\n");
+        let _ = buf.write_all(message.message.as_bytes()); //todo esto en una macro?
+        let _ = buf.write_all(b"\n");
         let _ = buf.flush();
 
         line = String::new();
     }
 }
 
-fn process_results(results: Vec<String>) -> String {
-    println!("{:?}", results);
-    match results.len() {
-        1 => return results[0].clone(), //esto depende de consistency? si quorum entonces no se manda nada?
-        2 => {
-            if results[0] == results[1] {
-                return results[0].clone();
-            } else {
-                return "No match".to_string(); //mentira
-                //check_last_updated -> return esto
-                //read repair el otro
+//mapa
+//hago click en AEP con fecha
+//aviones volando -> threads
+//hago click en NY 
+
+// fn process_results(results: &Vec<String>) -> String {
+//     println!("pr ===> {:?}", results);
+    
+//     match results.len() {
+//         1 => return results[0].clone(),
+//         2 => {
+//             let (a, b) = (&results[0], &results[1]);
+//             if a == b {
+//                 return a.clone() //no hay que hacer nada mas creo
+//             } else {
+//                 // let newer = look_newer(results);
+//                 // read_repair(newer, ) //update a todos los nodos
+//                 // return newer
+//             }
+//             }
+//         3 => {
+//             let (a, b, c) = (&results[0], &results[1], &results[2]);
+//             // return look_newer(vec![a.clone(), b.clone(), c.clone()]);
+//         }
+//         _ => return "error".to_string(), //rompio todo
+//     }
+//     results[0].clone()
+// }
+
+pub fn look_newer(results: &[String]) -> (&str, usize) { //falta testear en process results
+    let mut newer = "";
+    let mut index = 0;
+    for (i, result) in results.iter().enumerate() {
+        let filas: Vec<&str> = result.split("     ").collect::<Vec<&str>>();
+        for timestamp in filas.iter().filter(|p| p.contains("UTC")) {
+            if timestamp > &newer {
+                newer = timestamp;
+                index = i;
             }
-            }
-        3 => {
-            let (a, b, c) = (&results[0], &results[1], &results[2]);
-            if a == b && b == c {
-                return a.clone() //no hay que hacer nada mas creo
-            } else if a == b || a == c {
-                return a.clone()  //2 iguales uno distinto -> read repair
-                //ver el que no es igual
-                //read repair
-            } else if b == c {
-                return b.clone()  //a es diferente
-                //read repair a
-            } else {
-                return "No match".to_string()  //todos diferentes, mas nuevo aca?
-                //agarras mas nuevo
-                //read repair a los otros 2?
-            } 
         }
-        _ => return "error".to_string(), //rompio todo
     }
-
-
-    results[0].clone()
+    (newer, index)
 }
 // Envia la query a los nodos correspondientes
 // HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
-pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: &mut Query) -> Vec<String> {
+pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: &mut Query, value: String) -> Vec<String> { //cambiar cuando este cl a String
     let mut all_response = vec![];
     let mut hash = ConsistentHash::new(RF);
 
@@ -261,6 +274,7 @@ pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: &mut Query) 
     let key = query.get_key_representing_partition();
     println!("La key es: {}", key);
     println!("La query es: {:?}", query);
+    println!("El valor es: {}", value); // sacar -> esto va en process query???
     let nodes_with_result = hash.get_nodes(&key);
 
     println!(
@@ -275,10 +289,12 @@ pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: &mut Query) 
                 "- Buscando el resultado en el nodo original: {}",
                 neighbor.server_ip
             );
-            let response = node.process_query(query);
+            let response = node.process_query(query); //pasas la fila a llenar como parametro extra?
             all_response.push(response);
             continue;
         }
+
+        //query::new te tira la fila a llenar
 
         if neighbor.status == Status::Disconnected {
             println!("- Nodo desconectado: {}", neighbor.server_ip);
@@ -323,12 +339,17 @@ pub fn send_query_to_nodes(node: &RwLockReadGuard<'_, Node>, query: &mut Query) 
                     }
                     _ => println!("Error: {}", response),
                 }
-            }
+                // if consistency_level == ONE && all_response.len() == 1 {
+                //     process_results(all_response)
+                // }
+                
 
-            //if cons_level == 1
-            // return all_response
-            // else
-            // el más actualizado
+            }
+            // if consistency_level == QUORUM && all_response.len() >= 2 {
+            //     process_results(all_response)
+            // } else {
+            //     return "Error".to_string()
+            // }
         } //else {
           // println!("Error conectando a {}", neighbor.server_ip);
           //}

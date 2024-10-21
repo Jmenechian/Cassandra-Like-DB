@@ -55,6 +55,21 @@ impl Query {
         }
     }
 
+    pub fn get_values(&mut self) -> String {
+        self.get_type();
+
+        match &mut self.qtype {
+            QType::Select(select) => { //nada
+                select.get_key(); //sacar -> esta para clippy
+                "SELECT".to_string()
+            }
+            QType::Insert(insert) => {
+                insert.get_values()
+            }
+            _ => "Error".to_string(),
+        }
+    }
+
     pub fn set_select(&mut self) {
         self.qtype = QType::Select(Select::new());
     }
@@ -101,7 +116,6 @@ impl Query {
         //devolveme el nombre del aeropuerto
         // self.query.clone()
         self.get_type();
-        // return "AAAAAAAAAAAAAAAA".to_string();
         println!("type: {:?}", self.qtype);
         match &mut self.qtype {
             QType::Select(select) => {
