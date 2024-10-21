@@ -1,18 +1,19 @@
 // Representa las consultas del tipo SELECT
 // Aca se parsea la consulta y se ejecuta
 
-use crate::my_errors::MyError;
-use crate::utils::*;
-use std::io::BufRead;
 use crate::config::TABLE_PATH;
 use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
+use crate::my_errors::MyError;
+use crate::utils::*;
+use std::io::BufRead;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Select {
     pub columns: Vec<String>,
     pub table: String,
     pub whereclause: WhereClause,
+    pub num_node: String,
 }
 
 impl Default for Select {
@@ -27,11 +28,13 @@ impl Select {
             columns: Vec::new(),
             table: "".to_string(),
             whereclause: WhereClause::True,
+            num_node: "0".to_string(),
         }
     }
 
-    // Parsea la consulta para luego ejecutarla
-    pub fn parse_select(&mut self, query: &str) -> Result<(), MyError> {
+    pub fn parse_select(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
+        self.num_node = address_node.chars().last().unwrap().to_string();
+
         let mut parts: Vec<&str> = query.split_whitespace().collect();
         if parts.len() < 4 || parts[0] != "SELECT" || parts[1] == "FROM" {
             return Err(MyError::InvalidSyntax("Select query not valid".to_string()));
@@ -55,6 +58,7 @@ impl Select {
     }
 
     // Setea lista de columnas
+    // Columnas entre comillas, quedan entre comillas
     fn parse_columns(&mut self, parts: &[&str]) {
         let joined_parts = parts.join(" ");
         let comma_separated: Vec<&str> = joined_parts.split(",").collect();
@@ -76,14 +80,16 @@ impl Select {
         self.columns = columns
     }
 
-    // Setea el nombre de la tabla
+    // Setea el nombre de la tabla con el numero de nodo
     // Si el nombre de la tabla tiene comillas, se las saca
     fn parse_table(&mut self, parts: &[&str], index: usize) {
         if parts[index].contains("'") {
             self.table = get_full_quote(parts, index);
         } else {
-            self.table = parts[index].to_string()
+            self.table = parts[index].to_string();
         }
+        self.table = format!("{}_{}", self.table, self.num_node);
+        println!("SELECT en tabla: {}", self.table);
     }
 
     // Setea condicion WHERE
@@ -115,4 +121,109 @@ impl Select {
         }
         Ok(tabla)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::my_errors::MyError;
+    use std::fs::File;
+    use std::io::Write;
+
+    #[test]
+    fn test_parse_select_valid_query() {
+        let mut select = Select::new();
+        let query = "SELECT id, name FROM 'users' WHERE age > 30";
+        let result = select.parse_select(query, "node_1");
+
+        assert!(result.is_ok());
+        assert_eq!(select.columns, vec!["id".to_string(), "name".to_string()]);
+        assert_eq!(select.table, "users_1".to_string());
+        assert_eq!(select.num_node, "1".to_string());
+    }
+
+    #[test]
+    fn test_parse_select_invalid_query() {
+        let mut s1 = Select::new();
+        let q1 = "SELECT FROM 'users' WHERE age > 30";
+        let r1 = s1.parse_select(q1, "node_1");
+        assert!(matches!(r1, Err(MyError::InvalidSyntax(_))));
+
+        let mut s2 = Select::new();
+        let q2 = "SELECT id, name WHERE age > 30";
+        let r2 = s2.parse_select(q2, "node_1");
+
+        assert!(matches!(r2, Err(MyError::InvalidSyntax(_))));
+    }
+
+    #[test]
+    fn test_parse_table() {
+        let mut select = Select::new();
+        let query = "SELECT id, name FROM 'users'";
+        let parts = query.split_whitespace().collect::<Vec<&str>>();
+        select.parse_table(&parts, 4);
+        assert_eq!(select.num_node, "0".to_string());
+        assert_eq!(select.table, "users_0".to_string());
+    }
+
+    #[test]
+    fn test_parse_columns() {
+        let mut select = Select::new();
+        let parts = vec!["'columna", "1',", "'columna2',", "'columna", "3'"];
+        select.parse_columns(&parts);
+        assert_eq!(
+            select.columns,
+            vec![
+                "'columna 1'".to_string(),
+                "'columna2'".to_string(),
+                "'columna 3'".to_string()
+            ]
+        );
+    }
+
+    // #[test]
+    // fn test_execute_command() {
+    //     // Create a mock CSV file
+    //     let file_path = format!("{}/test_table_1.csv", TABLE_PATH);
+    //     let mut file = File::create(&file_path).unwrap();
+    //     writeln!(file, "id,name,age").unwrap();
+    //     writeln!(file, "1,Alice,31").unwrap();
+    //     writeln!(file, "2,Bob,29").unwrap();
+
+    //     // Create and parse a valid query
+    //     let mut select = Select::new();
+    //     select
+    //         .parse_select("SELECT id, name FROM 'test_table' WHERE age > 30", "node_1")
+    //         .unwrap();
+
+    //     // Execute the command and verify the output
+    //     let result = select.execute_command().unwrap();
+    //     assert_eq!(result, "1,Alice,31");
+
+    //     // Clean up
+    //     std::fs::remove_file(file_path).unwrap();
+    // }
+
+    // #[test]
+    // fn test_execute_command_no_matching_rows() {
+    //     // Create a mock CSV file
+    //     let file_path = format!("{}/test_table_1.csv", TABLE_PATH);
+    //     let mut file = File::create(&file_path).unwrap();
+    //     writeln!(file, "id,name,age").unwrap();
+    //     writeln!(file, "1,Alice,31").unwrap();
+    //     writeln!(file, "2,Bob,29").unwrap();
+
+    //     // Create and parse a query with no matching rows
+    //     let mut select = Select::new();
+    //     select
+    //         .parse_select("SELECT id, name FROM 'test_table' WHERE age > 40", "node_1")
+    //         .unwrap();
+
+    //     // Execute the command and verify the output
+    //     let result = select.execute_command().unwrap();
+    //     assert_eq!(result, ""); // No rows should match
+
+    //     // Clean up
+    //     std::fs::remove_file(file_path).unwrap();
+    // }
 }

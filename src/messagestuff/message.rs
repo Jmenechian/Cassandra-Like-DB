@@ -5,8 +5,8 @@
 //
 // Cada mensaje se serializa y deserializa a bytes para poder ser enviado por la red
 
+use crate::config::{QUERY, QUORUM, REQUEST, RESPONSE, RESULT};
 use crate::my_errors::MyError;
-use crate::config::{QUERY, RESULT, REQUEST, RESPONSE, QUORUM};
 
 #[derive(Debug)]
 pub struct Message {
@@ -89,10 +89,10 @@ mod tests {
     fn test_message_new() {
         let msg = Message::new(
             "Hola".to_string(),
-            1,             // versión
-            2,              // opcode
-            4,             // longitud del mensaje
-            3,   // nivel de consistencia
+            1, // versión
+            2, // opcode
+            4, // longitud del mensaje
+            3, // nivel de consistencia
         );
 
         assert_eq!(msg.version, 1);
@@ -106,19 +106,19 @@ mod tests {
     fn test_message_to_bytes() {
         let mut msg = Message::new(
             "Hola".to_string(),
-            1,                 // versión
-            2,                  // opcode
-            4,                 // longitud del mensaje
-            3,       // nivel de consistencia
+            1, // versión
+            2, // opcode
+            4, // longitud del mensaje
+            3, // nivel de consistencia
         );
         let bytes = msg.to_bytes();
 
         let expected_bytes = vec![
-            2,                          // opcode
-            1,                          // versión
-            3,                          // nivel de consistencia
-            0, 0, 0, 4,                 // longitud del mensaje (4 bytes)
-            b'H', b'o', b'l', b'a'      // mensaje
+            2, // opcode
+            1, // versión
+            3, // nivel de consistencia
+            0, 0, 0, 4, // longitud del mensaje (4 bytes)
+            b'H', b'o', b'l', b'a', // mensaje
         ];
 
         assert_eq!(bytes, expected_bytes);
@@ -127,11 +127,11 @@ mod tests {
     #[test]
     fn test_message_from_bytes() {
         let bytes = vec![
-            2,                          // opcode
-            1,                          // versión
-            3,                          // nivel de consistencia
-            0, 0, 0, 4,                 // longitud del mensaje (4 bytes)
-            b'H', b'o', b'l', b'a'      // mensaje
+            2, // opcode
+            1, // versión
+            3, // nivel de consistencia
+            0, 0, 0, 4, // longitud del mensaje (4 bytes)
+            b'H', b'o', b'l', b'a', // mensaje
         ];
 
         let msg = Message::from_bytes(&bytes).unwrap();
@@ -154,7 +154,6 @@ mod tests {
         assert_eq!(msg.message, input);
     }
 
-
     #[test]
     fn test_create_message_as_server() {
         let input = "resultado".to_string();
@@ -166,10 +165,8 @@ mod tests {
         assert_eq!(msg.consistency_level, QUORUM);
         assert_eq!(msg.len_msg, (input.len() + ip.len()) as u32);
         assert_eq!(msg.message, input);
+    }
 }
-
-}
-
 
 // OPCODE
 // 0x00    ERROR

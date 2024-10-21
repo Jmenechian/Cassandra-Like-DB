@@ -11,6 +11,7 @@ pub struct Insert {
     pub table: String,
     pub columns: Vec<String>,
     pub values: Vec<String>,
+    pub num_node: String,
 }
 
 impl Default for Insert {
@@ -25,11 +26,14 @@ impl Insert {
             table: "".to_string(),
             columns: Vec::new(),
             values: Vec::new(),
+            num_node: "0".to_string(),
         }
     }
 
-    // Parsea la consulta para luego ejecutarla
-    pub fn parse_insert(&mut self, query: &str) -> Result<(), MyError> {
+    // Parses the query for later execution
+    pub fn parse_insert(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
+        self.num_node = address_node.chars().last().unwrap().to_string();
+
         let parts: Vec<&str> = query.split_whitespace().collect();
 
         if parts.len() < 4 || parts[0] != "INSERT" || parts[1] != "INTO" {
@@ -44,11 +48,14 @@ impl Insert {
         if parts[2].contains("'") {
             let name = get_full_quote(&parts, 2);
             let name_v: Vec<&str> = name.split_whitespace().collect();
-            skip_index += name_v.len();
+            println!("nameee {:?}", name_v);
+            skip_index += name_v.len() - 1;
             self.table = name;
         } else {
             self.table = parts[2].to_string();
         }
+        self.table = format!("{}_{}", self.table, self.num_node);
+        println!("INSERT en tabla: {}", self.table);
 
         let headers: Vec<String> = self.extract_values(&parts, skip_index);
 
@@ -156,4 +163,131 @@ impl Insert {
         append_row(TABLE_PATH, &self.table, &new_record)?;
         Ok("linea fue agregada".to_string())
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::my_errors::MyError;
+    use std::collections::HashMap;
+    use std::fs::File;
+    use std::io::Write;
+
+    #[test]
+    fn test_parse_insert_valid_query() {
+        let mut insert = Insert::new();
+        let query = "INSERT INTO 'users' (id, name, age) VALUES (1, 'Sofia Lopez', 30)";
+        let result = insert.parse_insert(query, "node_1");
+
+        assert!(result.is_ok());
+        assert_eq!(insert.table, "users_1");
+        assert_eq!(
+            insert.columns,
+            vec!["id".to_string(), "name".to_string(), "age".to_string()]
+        );
+        assert_eq!(
+            insert.values,
+            vec!["1".to_string(), "Sofia Lopez".to_string(), "30".to_string()]
+        );
+    }
+
+    // #[test]
+    // fn test_parse_insert_invalid_syntax() {
+    //     let mut insert = Insert::new();
+    //     let query = "INSERT INTO users id, name VALUES (1, 'Alice')";
+    //     let result = insert.parse_insert(query, "node_1");
+
+    //     assert!(matches!(result, Err(MyError::InvalidSyntax(_))));
+    // }
+
+    #[test]
+    fn test_parse_insert_missing_values() {
+        let mut insert = Insert::new();
+        let query = "INSERT INTO 'users' (id, name, age)";
+        let result = insert.parse_insert(query, "node_1");
+
+        assert!(matches!(result, Err(MyError::InvalidSyntax(_))));
+    }
+
+    #[test]
+    fn test_get_mapped_values() {
+        let mut insert = Insert::new();
+        insert.columns = vec!["id".to_string(), "name".to_string()];
+        insert.values = vec!["1".to_string(), "Alice".to_string()];
+        let result = insert.get_mapped_values();
+
+        let mut expected = HashMap::new();
+        expected.insert("id", "1");
+        expected.insert("name", "Alice");
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), expected);
+    }
+
+    #[test]
+    fn test_get_mapped_values_repeated_columns() {
+        let mut insert = Insert::new();
+        insert.columns = vec!["id".to_string(), "id".to_string()];
+        insert.values = vec!["1".to_string(), "2".to_string()];
+        let result = insert.get_mapped_values();
+
+        assert!(matches!(result, Err(MyError::InvalidColumn(_))));
+    }
+
+    #[test]
+    fn test_check_columns_are_valid() {
+        let mut insert = Insert::new();
+        insert.columns = vec!["id".to_string(), "name".to_string()];
+        insert.values = vec!["1".to_string(), "Sofia".to_string()];
+        let file_headers = vec!["id".to_string(), "name".to_string(), "age".to_string()];
+
+        let result = insert.check_columns_are_valid(&file_headers);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_check_columns_are_invalid() {
+        let mut insert = Insert::new();
+        insert.columns = vec!["invalid_col".to_string()];
+        insert.values = vec!["valid_value".to_string()];
+        let file_headers = vec!["id".to_string(), "name".to_string()];
+
+        let result = insert.check_columns_are_valid(&file_headers);
+        assert!(matches!(result, Err(MyError::InvalidColumn(_))));
+    }
+
+    #[test]
+    fn test_execute_command() {
+        // Create a mock CSV file
+        let file_path = format!("{}/test_table_1.csv", TABLE_PATH);
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, "id,name,age").unwrap();
+        writeln!(file, "1,Alice,30").unwrap();
+
+        // Create and parse a valid INSERT query
+        let mut insert = Insert::new();
+        insert
+            .parse_insert(
+                "INSERT INTO 'test_table' (id, name, age) VALUES (2, 'Bob', 25)",
+                "node_1",
+            )
+            .unwrap();
+
+        // Execute the command
+        let result = insert.execute_command().unwrap();
+        assert_eq!(result, "linea fue agregada");
+
+        // Clean up
+        std::fs::remove_file(file_path).unwrap();
+    }
+
+    // #[test]
+    // fn test_execute_command_invalid_syntax() {
+    //     let mut insert = Insert::new();
+    //     insert.columns = vec!["id".to_string(), "name".to_string()];
+    //     insert.values = vec!["1".to_string()]; // Missing values
+    //     let result = insert.execute_command();
+
+    //     assert!(matches!(result, Err(MyError::InvalidSyntax(_))));
+    // }
 }

@@ -2,11 +2,10 @@
 // Aca se parsea la consulta y se ejecuta
 // To Do
 
-
 #[derive(Debug, Eq, PartialEq)]
 pub struct Delete {
     pub table: String,
-    pub condition_tokens: String, 
+    pub condition_tokens: String,
 }
 
 impl Default for Delete {

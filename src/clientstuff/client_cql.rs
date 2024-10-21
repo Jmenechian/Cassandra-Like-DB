@@ -34,7 +34,7 @@ impl Client {
         let stdin = io::stdin();
         let handle = stdin.lock();
 
-        let stream_clone = stream.try_clone()?; 
+        let stream_clone = stream.try_clone()?;
         let reader = BufStream::new(stream_clone);
 
         // Thread que recibe la Tabla o el mensaje de "Recibido"
@@ -60,7 +60,7 @@ impl Client {
         // Cliente solo se comunica con un Nodo del server
         for line in handle.lines() {
             let input = line?;
-            let trimmed_input: &str = input.trim(); 
+            let trimmed_input: &str = input.trim();
 
             if !trimmed_input.is_empty() {
                 let mut mensaje = Message::create_message_as_client(trimmed_input.to_string()); // Create the message

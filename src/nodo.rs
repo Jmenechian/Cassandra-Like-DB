@@ -31,7 +31,6 @@ pub struct Node {
     pub file_path: String,
     pub nodes_path: String,
     pub neighbors: Vec<NeighborNode>, // todos los otros nodos
-    pub table: String,                // tabla del nodo
 }
 
 impl Node {
@@ -43,8 +42,7 @@ impl Node {
             //gossip_ip: puertos 900X,
             file_path: "".to_string(),
             nodes_path: "nodes.txt".to_string(),
-            neighbors: vec![], 
-            table: format!("src/tablas/tabla{}.csv", { port }).to_string(),
+            neighbors: vec![], // todos los nodos que estan en el ring
         }
     }
 
@@ -122,17 +120,13 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
 // Mensajes del tipo ServerMessage
 fn handle_connection_server(node: Arc<RwLock<Node>>, stream: TcpStream) -> Result<(), MyError> {
     let mut buf = BufStream::new(stream);
-    println!("Antes de pedir el lock en handle connection server");
     let node = node.read().unwrap();
     let mut line = String::new();
-    println!("Despues de pedir el lock en handle connection server");
-    println!("este es mi ip: {}", node.server_ip);
 
     while buf.read_line(&mut line).is_ok() {
         if line.is_empty() {
             continue;
         }
-        println!("leyendo la puta linea: {}", line);
 
         let message = match node.desarialize(&line) {
             Ok(message) => message,
@@ -235,7 +229,7 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
         let message: Message = Message::create_message_as_server(res, node.client_ip.clone()); // Create the message
         println!("{:?}", message);
 
-        let _ = buf.write_all(format!("{:?}\n",message.message).as_bytes());
+        let _ = buf.write_all(format!("{:?}\n", message.message).as_bytes());
         let _ = buf.flush();
 
         line = String::new();
@@ -286,9 +280,9 @@ pub fn send_query_to_nodes(
             continue;
         }
         if let Ok(socket) = TcpStream::connect(&neighbor.server_ip) {
-            // Mando mensaje y el IP del nodo que se conecto con el cliente 
+            // Mando mensaje y el IP del nodo que se conecto con el cliente
             // En el mismo stream leo la respuesta que me envia como resultado de la consulta.
-            
+
             // - Mando mensaje:
             let mut buf = BufStream::new(socket);
             println!("- Enviando mensaje a {}", neighbor.server_ip);
@@ -329,7 +323,7 @@ pub fn send_query_to_nodes(
                     _ => println!("Error: {}", response),
                 }
             }
-        } 
+        }
     }
     Ok(all_response)
 }
