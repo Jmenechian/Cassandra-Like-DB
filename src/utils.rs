@@ -37,6 +37,7 @@ where
 // Gets the complete file path, returns it as String
 pub fn get_file_path(path: &str, file_name: &str) -> String {
     let file_path = format!("{}/{}.csv", path, file_name);
+    println!("Se abrirá el archivo en FILE PATH: {}", file_path);
     file_path
 }
 

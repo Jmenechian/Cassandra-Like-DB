@@ -31,7 +31,6 @@ pub struct Node {
     pub file_path: String,
     pub nodes_path: String,
     pub neighbors: Vec<NeighborNode>, // todos los otros nodos
-    pub table: String,                // tabla del nodo
 }
 
 impl Node {
@@ -44,7 +43,6 @@ impl Node {
             file_path: "".to_string(),
             nodes_path: "nodes.txt".to_string(),
             neighbors: vec![], // todos los nodos que estan en el ring
-            table: format!("src/tablas/tabla{}.csv", { port }).to_string(),
         }
     }
 
@@ -121,17 +119,13 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
 // Mensajes del tipo ServerMessage
 fn handle_connection_server(node: Arc<RwLock<Node>>, stream: TcpStream) -> Result<(), MyError> {
     let mut buf = BufStream::new(stream);
-    println!("Antes de pedir el lock en handle connection server");
     let node = node.read().unwrap();
     let mut line = String::new();
-    println!("Despues de pedir el lock en handle connection server");
-    println!("este es mi ip: {}", node.server_ip);
 
     while buf.read_line(&mut line).is_ok() {
         if line.is_empty() {
             continue;
         }
-        println!("leyendo la puta linea: {}", line);
 
         let message = match node.desarialize(&line) {
             Ok(message) => message,
