@@ -11,6 +11,7 @@ pub struct Select {
     pub columns: Vec<String>,
     pub table: String,
     pub whereclause: WhereClause,
+    pub num_node: String,
 }
 
 impl Default for Select {
@@ -25,10 +26,13 @@ impl Select {
             columns: Vec::new(),
             table: "".to_string(),
             whereclause: WhereClause::True,
+            num_node: "0".to_string(),
         }
     }
 
-    pub fn parse_select(&mut self, query: &str) -> Result<(), MyError> {
+    pub fn parse_select(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
+        self.num_node = address_node.chars().last().unwrap().to_string();
+
         let mut parts: Vec<&str> = query.split_whitespace().collect();
         if parts.len() < 4 || parts[0] != "SELECT" || parts[1] == "FROM" {
             return Err(MyError::InvalidSyntax("Select query not valid".to_string()));
@@ -80,8 +84,10 @@ impl Select {
         if parts[index].contains("'") {
             self.table = get_full_quote(parts, index);
         } else {
-            self.table = parts[index].to_string()
+            self.table = parts[index].to_string();
         }
+        self.table = format!("{}_{}", self.table, self.num_node);
+        println!("SELECT en tabla: {}", self.table);
     }
 
     // sets WHERE condition

@@ -109,7 +109,7 @@ mod tests {
     #[test]
     pub fn view_nodes_by_key() {
         // Función para obtener los nodos en los que se debería guardar a mano un vuelo a partir de su key (valores de las particiones).
-        let key = "CABA,13-12-24".to_string();
+        let key = "AEP,12-12-24".to_string();
 
         let rf = 3;
 
@@ -134,10 +134,9 @@ mod tests {
         println!("\n \t - Key: {} - Nodes: {:?}", key, nodes_result);
     }
 
-
     #[test]
     pub fn test_return_nodes_from_key_with_consistent_hash() {
-        let key = "CABA,12-12-24".to_string();
+        let key = "AEP,12-12-24".to_string();
 
         let rf = 3;
 
@@ -159,9 +158,9 @@ mod tests {
 
         let nodes_result = hashing.get_nodes(&key);
 
-        let first = NeighborNode::new("3");
-        let second = NeighborNode::new("5");
-        let third = NeighborNode::new("6");
+        let first = NeighborNode::new("2");
+        let second = NeighborNode::new("1");
+        let third = NeighborNode::new("4");
 
         assert_eq!(nodes_result[0].server_ip, first.server_ip);
         assert_eq!(nodes_result[1].server_ip, second.server_ip);

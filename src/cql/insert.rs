@@ -8,6 +8,7 @@ pub struct Insert {
     pub table: String,
     pub columns: Vec<String>,
     pub values: Vec<String>,
+    pub num_node: String,
 }
 
 impl Default for Insert {
@@ -22,11 +23,14 @@ impl Insert {
             table: "".to_string(),
             columns: Vec::new(),
             values: Vec::new(),
+            num_node: "0".to_string(),
         }
     }
 
     // Parses the query for later execution
-    pub fn parse_insert(&mut self, query: &str) -> Result<(), MyError> {
+    pub fn parse_insert(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
+        self.num_node = address_node.chars().last().unwrap().to_string();
+
         let parts: Vec<&str> = query.split_whitespace().collect();
 
         if parts.len() < 4 || parts[0] != "INSERT" || parts[1] != "INTO" {
@@ -46,6 +50,8 @@ impl Insert {
         } else {
             self.table = parts[2].to_string();
         }
+        self.table = format!("{}_{}", self.table, self.num_node);
+        println!("INSERT en tabla: {}", self.table);
 
         let headers: Vec<String> = self.extract_values(&parts, skip_index);
 

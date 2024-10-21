@@ -73,9 +73,9 @@ impl Query {
     pub fn parse_query(&mut self) -> Result<(), MyError> {
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to parse".to_string())),
-            QType::Select(select) => select.parse_select(&self.query),
+            QType::Select(select) => select.parse_select(&self.query, &self.sender_node_ip),
             // QType::Update(update) => update.parse_update(query)?,
-            QType::Insert(insert) => insert.parse_insert(&self.query),
+            QType::Insert(insert) => insert.parse_insert(&self.query, &self.sender_node_ip),
             // QType::Delete(delete) => delete.parse_delete(query)?,
             _ => Ok(()),
         }
