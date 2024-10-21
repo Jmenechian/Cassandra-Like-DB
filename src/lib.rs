@@ -25,12 +25,22 @@ pub mod messagestuff {
     pub mod message;
 }
 
-pub mod gui {
-    pub mod app;
-}
-pub use gui::app::MapApp;
-
 pub use consistent_hashing::ConsistentHash;
 pub use neighbor_node::NeighborNode;
 pub use nodo::Node;
 pub use server_message::ServerMessage;
+
+//GUI
+pub mod gui {
+    pub mod app;
+    pub mod windows;
+    pub mod plugins;
+    pub mod places;
+    pub mod local_tiles;
+    pub mod painted {
+        pub mod airport_coordinates;
+        pub mod airport;
+    }
+}
+//pub use gui::app::MapApp; 
+
