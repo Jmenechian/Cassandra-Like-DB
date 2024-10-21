@@ -1,10 +1,11 @@
-use std::{error::Error, io::Read, net::TcpStream};
+use std::error::Error;
+use crate::messagestuff::message::*;
+use crate::messagestuff::message_cql::cqlenvelope::*;
 
-use crate::messagestuff::message2::Serialize;
 
-use super::message2::*;
 
-#[derive(Debug)]
+
+#[derive(Debug, PartialEq)]
 pub struct QueryMessage {
     pub query: String,
     pub consistency: u16,
@@ -26,15 +27,28 @@ impl Serialize for QueryMessage {
 }
 
 impl IntoEnvelope for QueryMessage {
-    fn into_envelope(self, stream: u16) -> Envelope {
+    fn into_envelope(self) -> Envelope {
         let _body = self.to_bytes();
         Envelope {
             version: 0x05 as u8,
             flags: 0 as u8,
-            stream,
-            opcode: Opcode::QueryMessage,
+            stream: 0 as u16,
+            opcode: CqlOpcode::QueryMessage,
             length: _body.len() as i32,
-            body: _body
+            body: CqlMessage::Query(self),
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use crate::config;
+    use super::*;
+
+    #[test]
+    fn test_query_message() -> Result<(), Box<dyn Error>> {
+        let expected_query: QueryMessage = QueryMessage{query: "Hola".to_string(), consistency: config::ONE};
+        let bytes: Vec<u8> = expected_query.to_bytes();
+        let (_query, _) = QueryMessage::from_bytes(bytes)?;
+        Ok(assert_eq!(_query, expected_query))
     }
 }

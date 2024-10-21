@@ -14,10 +14,20 @@ pub mod clientstuff {
 }
 pub mod messagestuff {
     pub mod message;
-    pub mod message2;
-    pub mod querymessage;
-    pub mod errormessage;
-    pub mod resultmessage;
+    pub mod message_cql {
+        pub mod cqlenvelope;
+        pub mod querymessage;
+        pub mod errormessage;
+        pub mod resultmessage;
+        pub mod resultrowsmessage;
+        pub mod resultvoidmessage;
+    }
+    pub mod message_server {
+        pub mod serverpacket;
+        pub mod gossipmessage;
+        pub mod errorservermessage;
+    }
+    
 }
 
 
@@ -27,4 +37,4 @@ pub use cql::query::Query;
 pub use nodo::Node;
 pub use nodo::NeighborNode;
 pub use clientstuff::client_cql;
-pub use messagestuff::message::Message;
+pub use messagestuff::message_cql::cqlenvelope::CqlMessage;

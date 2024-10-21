@@ -1,7 +1,6 @@
 use crate::config;
-use crate::messagestuff::message::Message;
-use crate::messagestuff::message2::IntoEnvelope;
-use crate::messagestuff::querymessage::QueryMessage;
+use crate::messagestuff::message_cql::cqlenvelope::*;
+use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::TcpStream;
 use bufstream::BufStream;
@@ -33,36 +32,54 @@ impl Client {
     }
 
     pub fn handle_connection_2(&self) -> io::Result<()> {
-        let mut stream = TcpStream::connect(&self.server_ip)?;
-        let stdin = io::stdin();
-        let handle = stdin.lock();
+        let mut stream = match TcpStream::connect(&self.server_ip) {
+            Ok(s) => s,
+            Err(e) => {
+                println!("Error al conectarme al TcpStream: {:?}", e);
+                return Err(e);
+            }
+        };
+        let mut stream_clone = match stream.try_clone() {
+            Ok(clone) => clone,
+            Err(e) => {
+                println!("Error al clonar el TcpStream: {:?}", e);
+                return Err(e);
+            }
+        };
+        thread::spawn(move || {
+            let stdin = io::stdin();
+            loop {
+                let mut input = String::new();
+                if stdin.lock().read_line(& mut input).is_ok() {
+                    if !input.is_empty() {
+                        let msg: QueryMessage = QueryMessage{query: input, consistency: config::ONE};
+                        let env = msg.into_envelope();
+                        if let Err(e) = stream_clone.write_all(&env.to_bytes()) {
+                            println!("Error al escribir en el stream: {:?}", e);
+                        }
+                        if let Err(e) = stream_clone.flush() {
+                            println!("Error al vecial es stream: {:?}", e);
+                            break;
+                        }
+                    }
+                }
+            }
+        });
         
-        // Spawn a thread to listen for incoming messages from the stream
-        let mut stream_clone = stream.try_clone()?; // Clone the stream for the listener thread
-        let reader = BufReader::new(stream_clone); // Wrap the cloned stream in a BufReader
-        for line in handle.lines() {
-            let msg: QueryMessage;
-            match line {
-                Ok(line) => { 
-                    msg = QueryMessage{query: line, consistency: config::ONE};
+        loop {
+            match Envelope::from_stream(&mut stream) {
+                Ok(env) => {
+                    println!("El env recibido es: {:?}", env);
                 }
                 Err(e) => {
-                    msg = QueryMessage{query: e.to_string(), consistency: config::ONE};
+                    println!("Error al leer el env: {:?}", e);
+                    break;
                 }
-            }
-            let env = msg.into_envelope(0);
-            if let Err(e) = stream.write_all(&env.to_bytes()) {
-                println!("Error al escribir en el stream: {:?}", e);
-                break;
-            }
-            if let Err(e) = stream.flush() {
-                println!("Error al vecial es stream: {:?}", e);
-                break;
             }
         }
         Ok(())
     }
-
+/*
     pub fn handle_connection(&self) -> io::Result<()> {
         let mut stream = TcpStream::connect(&self.server_ip)?;
     
@@ -78,7 +95,7 @@ impl Client {
             for line in reader.lines() {
                 match line {
                     Ok(line) => {
-                        let message = Message::from_bytes(line.as_bytes());
+                        let message = CqlMessage::from_bytes(line.as_bytes());
                         println!("Received: {:?}", message);
                     }
                     Err(e) => {
@@ -95,7 +112,7 @@ impl Client {
             let trimmed_input = input.trim(); // Trim whitespace from input
             
             if !trimmed_input.is_empty() {
-                let mensaje = Message::new(trimmed_input.to_string()); // Create the message
+                let mensaje = CqlMessage::new(trimmed_input.to_string()); // Create the message
                 stream.write_all(&mensaje.to_bytes())?; 
                 stream.write_all(b"\n")?; 
                 stream.flush()?; 
@@ -108,6 +125,6 @@ impl Client {
     
         Ok(())
     }
-
+*/
 }
 

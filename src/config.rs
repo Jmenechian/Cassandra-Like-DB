@@ -15,6 +15,8 @@ pub const QUERY: u8 = 0x07;
 pub const ERROR: u8 = 0x00;
 pub const RESULT: u8 = 0x08;
 
+pub const GOSSIP: u8 = 0x11;
+
 // [consistency]
 pub const ONE: u16 = 0x0001;
 pub const QUORUM: u16 = 0x0004;
@@ -22,6 +24,7 @@ pub const QUORUM: u16 = 0x0004;
 // Result Kind
 pub const VOID: i32 = 0x0001;
 pub const ROWS: i32 = 0x0002;
+
 
 // OPCODE
 // 0x00    ERROR
@@ -41,6 +44,8 @@ pub const ROWS: i32 = 0x0002;
 // 0x0F    AUTH_RESPONSE
 // 0x10    AUTH_SUCCESS
 
+// [consistency]  A consistency level specification. This is a [short]
+// representing a consistency level with the following
 // correspondance:
 //   0x0000    ANY
 //   0x0001    ONE

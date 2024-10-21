@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use std::io::{BufRead, BufReader,Write};
+use std::io::{self, BufRead, BufReader,Write};
 use std::fs::File;
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
@@ -7,11 +7,22 @@ use std::thread;
 use threadpool::ThreadPool;
 use bufstream::BufStream;
 
-use crate::config::{N_WORKERS, PORTS_FILE};
+use crate::config::{self, N_WORKERS, PORTS_FILE};
 use crate::config::STRONG_CONSISTENCY;
-use crate::messagestuff::message::Message;
+use crate::messagestuff::{
+    message::*,
+    message_cql::{
+        cqlenvelope::*,
+        querymessage::*,
+        errormessage::*,
+        resultmessage::*,
+        resultrowsmessage::*,
+        resultvoidmessage::*,
+    },
+    message_server::*,
+};
 use crate::cql::query::Query;
-use crate::messagestuff::message2::Envelope;
+
 use crate::server_message::ServerMessage;
 use crate::server_message::MessageType;
 
@@ -131,6 +142,23 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
     known_nodes
 }
 
+fn handle_connection_server_2(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
+    let node = match node.lock() {
+        Ok(n) => n,
+        Err(e) => {
+            println!("Error al tratar de usar el nodo: {:?}", e);
+            return;
+        }
+    };
+    let mut stream_clone = match stream.try_clone() {
+        Ok(clone) => clone,
+        Err(e) => {
+            println!("Error al clonar el TcpStream: {:?}", e);
+            return;
+        }
+    };
+}
+
 // Recibe un mensaje y lo procesa
 // Mensajes del tipo ServerMessage
 fn handle_connection_server(node: Arc<Mutex<Node>>, stream: &mut TcpStream) {
@@ -208,10 +236,61 @@ pub fn handle_query(_query: Query) {
 }
 
 pub fn handle_connection_client_2 (node: Arc<Mutex<Node>>, stream: & mut TcpStream) {
+    let node = match node.lock() {
+        Ok(n) => n,
+        Err(e) => {
+            println!("Error al tratar de usar el nodo: {:?}", e);
+            return;
+        }
+    };
+    let mut stream_clone = match stream.try_clone() {
+        Ok(clone) => clone,
+        Err(e) => {
+            println!("Error al clonar el TcpStream: {:?}", e);
+            return;
+        }
+    };
+    thread::spawn(move || {
+        let stdin = io::stdin();
+        loop {
+            let mut input = String::new();
+            if stdin.lock().read_line(& mut input).is_ok() {
+                if !input.is_empty() {
+                    let msg: QueryMessage = QueryMessage{query: input, consistency: config::ONE};
+                    let env = msg.into_envelope();
+                    if let Err(e) = stream_clone.write_all(&env.to_bytes()) {
+                        println!("Error al escribir en el stream: {:?}", e);
+                    }
+                    if let Err(e) = stream_clone.flush() {
+                        println!("Error al vecial es stream: {:?}", e);
+                        break;
+                    }
+                }
+            }
+        }
+    });
+    
     loop {
         match Envelope::from_stream(stream) {
             Ok(env) => {
                 println!("El env recibido es: {:?}", env);
+                match env.body {
+                    CqlMessage::Query(querymessage) => {
+                        let mut query = Query::new(querymessage.query, node.client_ip.clone());
+                        let tabla = query.execute(&node.table.clone());
+                        let rows_msg = ResultRowsMessage{rows_count: 1 as i32, rows_content: vec![tabla]};
+                        if let Err(e) = rows_msg.send_through(stream) {
+                            println!("Error: {:?}", e);
+                        }
+                    }
+                    _ => {
+                        let _error = "Error: Solo me puede llegar un QueryMessage".to_string();
+                        let msg = ErrorMessage{error: _error, code: 0 as i32};
+                        if let Err(e) = msg.send_through(stream) {
+                            println!("Error an enviarle un ErrorMessage al cliente: {:?}", e);
+                        }
+                    }
+                }
             }
             Err(e) => {
                 println!("Error al leer el env: {:?}", e);
@@ -220,7 +299,7 @@ pub fn handle_connection_client_2 (node: Arc<Mutex<Node>>, stream: & mut TcpStre
         }
     }
 }
-
+/*
 //🤝
 // Recibe el mismo stream dos veces (clones), hay que ver de arreglarlo --> Ya no, hago el clone adentro de la funcion.
 pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
@@ -243,7 +322,7 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
 
         let ans_msg = Message::new(tabla);
         let _ = buf.write(&ans_msg.to_bytes());
-        buf.write_all(b"\n"); //sino no se manda hasta que cierra
+        //buf.write_all(b"\n"); //sino no se manda hasta que cierra
         let _ = buf.flush();
 
 
@@ -274,7 +353,7 @@ pub fn handle_connection_client(node: Arc<Mutex<Node>>, stream: TcpStream) {
 
         line = String::new();
     }
-}
+}*/
 
 // Envia la query a los nodos correspondientes
 // HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
@@ -360,7 +439,7 @@ pub fn initialize(port: String) {
 
             let node_thread = Arc::clone(&current_node_server);
             pool_server.execute(move|| {
-                handle_connection_server(node_thread.clone(), &mut stream);
+                handle_connection_server_2(node_thread.clone(), &mut stream);
             });
         }
     });

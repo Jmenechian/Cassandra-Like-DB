@@ -1,13 +1,12 @@
-use std::{error::Error, io::Read, net::TcpStream};
+use std::error::Error;
+use crate::messagestuff::message::*;
+use crate::messagestuff::message_cql::cqlenvelope::*;
 
-use crate::messagestuff::message2::Serialize;
 
-use super::message2::*;
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ErrorMessage {
-    error: String,
-    code: i32,
+    pub error: String,
+    pub code: i32,
 }
 
 impl Serialize for ErrorMessage {
@@ -27,15 +26,28 @@ impl Serialize for ErrorMessage {
 }
 
 impl IntoEnvelope for ErrorMessage {
-    fn into_envelope(self, stream: u16) -> Envelope {
+    fn into_envelope(self) -> Envelope {
         let _body = self.to_bytes();
         Envelope {
             version: 0x85 as u8,
             flags: 0 as u8,
-            stream,
-            opcode: Opcode::ErrorMessage,
+            stream: 0 as u16,
+            opcode: CqlOpcode::ErrorMessage,
             length: _body.len() as i32,
-            body: _body
+            body: CqlMessage::Error(self)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_message() -> Result<(), Box<dyn Error>> {
+        let expected_error: ErrorMessage = ErrorMessage{error: "Hola".to_string(), code: 0 as i32};
+        let bytes: Vec<u8> = expected_error.to_bytes();
+        let (_error, _) = ErrorMessage::from_bytes(bytes)?;
+        Ok(assert_eq!(_error, expected_error))
     }
 }
