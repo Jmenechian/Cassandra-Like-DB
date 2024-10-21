@@ -1,10 +1,10 @@
 use super::airport::Airport;
 use std::fs::read_to_string;
-use crate::config::FILE_AIRPORT;
+use crate::config::AIRPORTS_PATH;
 
 pub fn get_airport_coordinates() -> Vec<Airport> {
     let mut airports: Vec<Airport> = vec![];
-    for (index, line) in read_to_string(FILE_AIRPORT).unwrap().lines().enumerate() {
+    for (index, line) in read_to_string(AIRPORTS_PATH).unwrap().lines().enumerate() {
         if index == 0 {
             continue;
         }

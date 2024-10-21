@@ -14,4 +14,6 @@ pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Ha
 
 pub static TABLE_PATH: &str = "src/tables";
 
-pub static FILE_AIRPORT: &str = "/Users/martinalarosa/Desktop/Taller1/24C2-Ferris/src/tables/airports.csv";
+pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";
+
+pub static MAP_PATH: &str = "src/gui/assets/map.png";
