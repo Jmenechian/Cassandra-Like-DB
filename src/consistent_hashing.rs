@@ -1,3 +1,8 @@
+// El hashing consistente permite la distribución de datos en un clúster,
+// minimizando la reorganización cuando se añaden o eliminan nodos.
+//
+// El hashing consistente particiona los datos basándose en la clave de partición.
+
 use fasthash::murmur;
 use std::collections::BTreeMap;
 

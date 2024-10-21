@@ -1,5 +1,5 @@
 // Aca se hacen las comparaciones de las condiciones WHERE de la consulta
-// 'Relation': Representa la operacion en su nivel mas atomico, ie: 'val1 op val2'
+// 'Relation': Representa la operacion en su nivel atomico, ie: 'val1 op val2'
 
 use crate::config::{EQUAL, GREATER_THAN, LESS_THAN, NOT_NUMBER};
 

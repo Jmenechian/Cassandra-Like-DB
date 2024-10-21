@@ -1,3 +1,7 @@
+// Modulo que modela al Cliente en nuestro modelo Cliente-Servidor
+// El cliente se comunica con un solo nodo del servidor
+// El cliente envia consultas CQL al servidor y recibe la respuesta
+
 use crate::messagestuff::message::Message;
 use bufstream::BufStream;
 use std::io::{self, BufRead, Result, Write};
@@ -30,10 +34,11 @@ impl Client {
         let stdin = io::stdin();
         let handle = stdin.lock();
 
-        // Spawn a thread to listen for incoming messages from the stream
-        let stream_clone = stream.try_clone()?; // Clone the stream for the listener thread
+        let stream_clone = stream.try_clone()?; 
         let reader = BufStream::new(stream_clone);
 
+        // Thread que recibe la Tabla o el mensaje de "Recibido"
+        // Solo un nodo del server se comunica con el cliente
         thread::spawn(move || {
             for line in reader.lines() {
                 match line {
@@ -41,6 +46,8 @@ impl Client {
                         let message = Message::from_bytes(line.as_bytes());
                         println!("Received: {:?}", message);
                     }
+                    // Si falla la lectura del stream se imprime el error
+                    // Se deja de escuchar al nodo
                     Err(e) => {
                         eprintln!("Failed to read from stream: {}", e);
                         break;
@@ -49,10 +56,11 @@ impl Client {
             }
         });
 
-        // Main loop for sending messages
+        // Loop que envia consultas CQL al server
+        // Cliente solo se comunica con un Nodo del server
         for line in handle.lines() {
             let input = line?;
-            let trimmed_input = input.trim(); // Trim whitespace from input
+            let trimmed_input: &str = input.trim(); 
 
             if !trimmed_input.is_empty() {
                 let mut mensaje = Message::create_message_as_client(trimmed_input.to_string()); // Create the message
@@ -61,6 +69,7 @@ impl Client {
                 stream.flush()?;
             }
 
+            // Si el cliente escribe "exit" se cierra la conexión
             if trimmed_input == "exit" {
                 break;
             }

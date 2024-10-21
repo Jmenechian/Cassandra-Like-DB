@@ -1,7 +1,12 @@
+// Representa las consultas del tipo DELETE
+// Aca se parsea la consulta y se ejecuta
+// To Do
+
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct Delete {
     pub table: String,
-    pub condition_tokens: String, // to create Delete without initializing Tok.
+    pub condition_tokens: String, 
 }
 
 impl Default for Delete {

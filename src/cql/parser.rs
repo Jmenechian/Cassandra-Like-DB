@@ -1,3 +1,6 @@
+// Logica detras del parseo de las condiciones WHERE
+// en las consultas del tipo CQL
+
 use crate::cql::lexer::*;
 use crate::cql::relation::Relation;
 use crate::cql::where_clause::WhereClause;
