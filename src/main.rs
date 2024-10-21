@@ -12,18 +12,10 @@ fn main() -> Result<(), eframe::Error> {
             ),
         ..Default::default() 
     };
+
     eframe::run_native(
-        "MyApp",
+        "Mapa de Aeropuertos",
         options,
-        Box::new(|cc| Ok(Box::new(MapApp::new(cc.egui_ctx.clone())))),
+        Box::new(|_cc| Ok(Box::new(MapApp::default()))),
     )
 }
-
-// fn main() -> Result<(), eframe::Error> {
-
-//     eframe::run_native(
-//         "Mapa de Aeropuertos",
-//         options,
-//         Box::new(|cc| Ok(Box::new(MapApp::new(cc)))),
-//     )
-// }

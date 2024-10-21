@@ -33,6 +33,10 @@ pub use server_message::ServerMessage;
 //GUI
 pub mod gui {
     pub mod app;
+    pub mod painted {
+        pub mod airport;
+        pub mod airport_coordinates;
+    }
 }
 //pub use gui::app::MapApp; 
 
