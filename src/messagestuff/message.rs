@@ -71,7 +71,7 @@ pub trait Sendable: std::fmt::Debug + IntoEnvelope {
 impl<T: IntoEnvelope> Sendable for T {}
 
 pub trait ServerSendable: std::fmt::Debug + IntoPacket {
-    fn send_through(self, stream: & mut TcpStream) -> Result<(), Box<dyn Error>>
+    fn send_server_through(self, stream: & mut TcpStream) -> Result<(), Box<dyn Error>>
     where
         Self: Sized,
     {
@@ -94,7 +94,7 @@ pub trait ServerSendable: std::fmt::Debug + IntoPacket {
             Ok(s) => s,
             Err(_) => return Err(Box::from("Error al conectarse con servidor")),
         };
-        self.send_through(&mut stream)
+        self.send_server_through(&mut stream)
     }
 }
 

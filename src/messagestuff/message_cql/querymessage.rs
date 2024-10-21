@@ -41,17 +41,6 @@ impl IntoEnvelope for QueryMessage {
     }
 }
 
-impl IntoPacket for QueryMessage {
-    fn into_packet(self) -> Packet {
-        let _body = self.to_bytes();
-        Packet {
-            opcode: ServerOpcode::QueryMessage,
-            length: _body.len() as i32,
-            body: ServerMessage::Query(self),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::config;

@@ -33,7 +33,11 @@ pub mod messagestuff {
     pub mod message_server {
         pub mod serverpacket;
         pub mod gossipmessage;
+        pub mod queryservermessage;
         pub mod errorservermessage;
+        pub mod resultservermessage;
+        pub mod resultrowsevermsg;
+        pub mod resultvoidservermsg;
     }
     
 }

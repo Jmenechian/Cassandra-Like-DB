@@ -83,17 +83,6 @@ pub trait IntoResultMessage: std::fmt::Debug {
     fn into_result_message(self) -> ResultMessage;
 }
 
-impl IntoPacket for ResultMessage {
-    fn into_packet(self) -> Packet {
-        let _body = self.to_bytes();
-        Packet {
-            opcode: ServerOpcode::ResultMessage,
-            length: _body.len() as i32,
-            body: ServerMessage::Result(self),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

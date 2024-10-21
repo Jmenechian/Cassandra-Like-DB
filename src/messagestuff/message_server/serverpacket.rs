@@ -1,31 +1,31 @@
 use std::{error::Error, io::Read, net::TcpStream};
-use crate::config;
+use crate::{config, Query};
 use crate::messagestuff::{
     message::*,
-    message_cql::querymessage::QueryMessage,
-    message_cql::resultmessage::ResultMessage,
     message_cql::resultrowsmessage::ResultRowsMessage,
     message_cql::resultvoidmessage::ResultVoidMessage,
     message_server::gossipmessage::GossipMessage,
     message_server::errorservermessage::ErrorServerMessage,
+    message_server::queryservermessage::QueryServerMessage,
+    message_server::resultservermessage::ResultServerMessage,
 };
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
 pub enum ServerOpcode {
     GossipMessage = config::GOSSIP,
-    QueryMessage = config::QUERY,
+    QueryServerMessage = config::QUERY,
     ErrorServerMessage = config::ERROR,
-    ResultMessage = config::RESULT,
+    ResultServerMessage = config::RESULT,
 }
 
 impl ServerOpcode {
     pub fn from_u8(value: u8) -> Result<Self, Box<dyn Error>> {
         match value {
             config::GOSSIP => Ok(ServerOpcode::GossipMessage),
-            config::QUERY => Ok(ServerOpcode::QueryMessage),
+            config::QUERY => Ok(ServerOpcode::QueryServerMessage),
             config::ERROR => Ok(ServerOpcode::ErrorServerMessage),
-            config::RESULT => Ok(ServerOpcode::ResultMessage),
+            config::RESULT => Ok(ServerOpcode::ResultServerMessage),
             _ => Err(Box::from("Invalid Opcode")),
         }
     }
@@ -34,17 +34,22 @@ impl ServerOpcode {
 #[derive(Debug)]
 pub enum ServerMessage {
     Gossip(GossipMessage),
-    Query(QueryMessage),
-    Result(ResultMessage),
+    Query(QueryServerMessage),
+    Result(ResultServerMessage),
     ErrorServer(ErrorServerMessage),
 }
-
+/*
 impl IntoPacket for ServerMessage {
     fn into_packet(self) -> Packet {
-        self.into_packet()
+        match self {
+            ServerMessage::Gossip(g) => g.into_packet(),
+            ServerMessage::Query(q) => q.into_packet(),
+            ServerMessage::Result(r) => r.into_packet(),
+            ServerMessage::ErrorServer(e) => e.into_packet(),
+        }
     }
 }
-
+*/
 #[derive(Debug)]
 pub struct Packet {
     pub opcode: ServerOpcode,
@@ -68,9 +73,10 @@ impl Packet {
     }
 
     pub fn from_stream(stream: &mut TcpStream) -> Result<Self, Box<dyn Error>> {
+        let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 5];
         if let Err(_) = stream.read_exact(&mut header_buffer) {
-            return Err(Box::from("Error al leerl el <header> del packet desde Stream"));
+            return Err(Box::from("Error al leer el <header> del packet desde Stream"));
         };
         let _opcode = ServerOpcode::from_u8(header_buffer[0])?;
         let _length = i32::from_be_bytes([header_buffer[1],header_buffer[2],header_buffer[3],header_buffer[4]]);
@@ -88,12 +94,12 @@ impl Packet {
                 let (errorserver, _) = ErrorServerMessage::from_bytes(body_buffer)?;
                 ServerMessage::ErrorServer(errorserver)
             }
-            ServerOpcode::QueryMessage => {
-                let (query, _) = QueryMessage::from_bytes(body_buffer)?;
+            ServerOpcode::QueryServerMessage => {
+                let (query, _) = QueryServerMessage::from_bytes(body_buffer)?;
                 ServerMessage::Query(query)
             }
-            ServerOpcode::ResultMessage => {
-                let (result, _) = ResultMessage::from_bytes(body_buffer)?;
+            ServerOpcode::ResultServerMessage => {
+                let (result, _) = ResultServerMessage::from_bytes(body_buffer)?;
                 ServerMessage::Result(result)
             }
         };
