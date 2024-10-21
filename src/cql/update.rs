@@ -1,3 +1,7 @@
+// Representa las consultas del tipo UPDATE
+// Aca se parsea la consulta y se ejecuta
+// To Do
+
 use std::collections::HashMap;
 
 #[derive(Debug, Eq, PartialEq)]

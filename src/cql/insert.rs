@@ -1,3 +1,6 @@
+// Representa a las consultas del tipo INSERT
+// Aca se parsea la consulta y se ejecuta
+
 use crate::config::TABLE_PATH;
 use crate::my_errors::MyError;
 use crate::utils::*;
@@ -25,7 +28,7 @@ impl Insert {
         }
     }
 
-    // Parses the query for later execution
+    // Parsea la consulta para luego ejecutarla
     pub fn parse_insert(&mut self, query: &str) -> Result<(), MyError> {
         let parts: Vec<&str> = query.split_whitespace().collect();
 
@@ -62,7 +65,7 @@ impl Insert {
         Ok(())
     }
 
-    // Extracts columns names and values to insert
+    // Extrae los nombres de las columns y los valores a setear
     fn extract_values(&self, parts: &[&str], skip_index: usize) -> Vec<String> {
         let mut values: Vec<String> = Vec::new();
         let mut parts_iter = parts.iter().skip(skip_index).peekable();
@@ -91,7 +94,7 @@ impl Insert {
         values
     }
 
-    // Returns columns and values mapped into a HashMap
+    // Devuelve un HashMap de las columnas y sus valores
     fn get_mapped_values(&self) -> Result<HashMap<&str, &str>, MyError> {
         let mut map: HashMap<&str, &str> = HashMap::new();
         for (key, value) in self.columns.iter().zip(self.values.iter()) {
@@ -103,7 +106,7 @@ impl Insert {
         Ok(map)
     }
 
-    // No se si es necesaria
+    // Chequea que las columnas sean validas
     fn check_columns_are_valid(&self, file_headers: &[String]) -> Result<(), MyError> {
         for header in &self.columns {
             if !file_headers.contains(header) {
@@ -122,6 +125,7 @@ impl Insert {
         Ok(())
     }
 
+    // Ejecuta la consulta INSERT
     pub fn execute_command(&self) -> Result<String, MyError> {
         println!("En execute_command de INSERT");
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;

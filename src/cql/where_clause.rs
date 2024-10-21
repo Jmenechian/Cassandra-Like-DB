@@ -1,3 +1,6 @@
+// Representa en su totalidad a la condicion WHERE de la consulta
+// 'WhereClause': Utiliza recursion para representar la condicion WHERE
+
 use crate::cql::lexer::*;
 use crate::cql::parser::*;
 use crate::cql::relation::Relation;

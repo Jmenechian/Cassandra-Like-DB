@@ -1,7 +1,7 @@
 // Nodos se comunican entre si usando ServerMessage
 // Los mensajes comienzan con REQUEST, RESULT o GOSSIP dependiendo del tipo de mensaje
 //
-// REQUEST: lo manda el nodo que habla con el cliente a los nodos correspondientes
+// REQUEST: lo manda el nodo que habla con el cliente a los nodos correspondientes con la consulta
 // RESULT: lo manda el nodo que devuelve la tabla al nodo que hablo con el cliente
 // RECEIVED: para cumplir con TCP
 // GOSSIP: para informar sobre nuevos nodos y nodos caidos
@@ -84,3 +84,36 @@ impl ServerMessage {
         Ok((original_ip, cleaned_message))
     }
 }
+
+// Nodo 127.0.0.1:7001 recibe una consulta del cliente
+// Este le manda la consulta a los nodos correspondientes
+#[test]
+fn test_request_server_message(){
+    let message = "REQUEST:127.0.0.1:7001:SELECT * FROM table".to_string();
+    let server_message = ServerMessage::new(message).unwrap();
+    assert_eq!(server_message.message_type, MessageType::Request);
+    assert_eq!(server_message.message, "SELECT * FROM table".to_string());
+    assert_eq!(server_message.original_sender_ip, "127.0.0.1:7001".to_string());
+}
+
+// Nodo recibe confirmacion de nodo 127.0.0.1:7002 que su mensaje fue recibido
+#[test]
+fn test_receive_server_message(){
+    let message = "RECEIVED:127.0.0.1:7002:SELECT * FROM table".to_string();
+    let server_message = ServerMessage::new(message).unwrap();
+    assert_eq!(server_message.message_type, MessageType::Received);
+    assert_eq!(server_message.message, "SELECT * FROM table".to_string());
+    assert_eq!(server_message.original_sender_ip, "127.0.0.1:7002".to_string());
+}
+
+// Nodo 127.0.0.1:7002 recibe una consulta de algun nodo
+// Este le manda el resultado de la consulta al nodo que le hablo
+#[test]
+fn test_result_server_message(){
+    let message = "RESULT:127.0.0.1:7002:<resultados tabla>".to_string();
+    let server_message = ServerMessage::new(message).unwrap();
+    assert_eq!(server_message.message_type, MessageType::Result);
+    assert_eq!(server_message.message, "<resultados tabla>".to_string());
+    assert_eq!(server_message.original_sender_ip, "127.0.0.1:7002".to_string());
+}
+

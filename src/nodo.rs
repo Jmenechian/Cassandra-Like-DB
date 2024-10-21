@@ -43,7 +43,7 @@ impl Node {
             //gossip_ip: puertos 900X,
             file_path: "".to_string(),
             nodes_path: "nodes.txt".to_string(),
-            neighbors: vec![], // todos los nodos que estan en el ring
+            neighbors: vec![], 
             table: format!("src/tablas/tabla{}.csv", { port }).to_string(),
         }
     }
@@ -117,7 +117,8 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
     known_nodes
 }
 
-// Recibe un mensaje y lo procesa
+// Recibe el nodo actual y su coneccion al server
+// Se encarga de manejar las conexiones entrantes
 // Mensajes del tipo ServerMessage
 fn handle_connection_server(node: Arc<RwLock<Node>>, stream: TcpStream) -> Result<(), MyError> {
     let mut buf = BufStream::new(stream);
@@ -173,14 +174,13 @@ fn handle_connection_server(node: Arc<RwLock<Node>>, stream: TcpStream) -> Resul
                 buf.flush().expect("flush no funciono");
             }
             MessageType::Gossip => {
-                //hace gossip
+                // For gossip
                 println!("Llego un mensaje de gossip: {}", line);
-                // FALTA CAMBIAR EL ESTADO DE NODO VECINO A CONECTADO
                 // todo!();
             }
             MessageType::Test => {
-                //// usar para debuggear
-                println!("testeo: {:?}", message.message);
+                // For debugging
+                println!("Testeo: {:?}", message.message);
             }
             _ => println!("{:?}", message.message_type),
         }
@@ -189,6 +189,9 @@ fn handle_connection_server(node: Arc<RwLock<Node>>, stream: TcpStream) -> Resul
     Ok(())
 }
 
+// Recibe el nodo actual y su coneccion al cliente
+// Lee los mensajes del cliente y los procesa
+// Usa mensajes del tipo Message
 pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> Result<(), MyError> {
     // Usamos BufStream para evitar clonar el stream y usarlo en BufReader:
     let mut buf = BufStream::new(&stream);
@@ -225,7 +228,6 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
         };
 
         // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
-        // Luego se tiene que implementar Read-repear.
         let res = all_results.join(" - ");
 
         //consistency level / read-repair
@@ -233,7 +235,7 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
         let message: Message = Message::create_message_as_server(res, node.client_ip.clone()); // Create the message
         println!("{:?}", message);
 
-        let _ = buf.write_all(message.message.as_bytes());
+        let _ = buf.write_all(format!("{:?}\n",message.message).as_bytes());
         let _ = buf.flush();
 
         line = String::new();
@@ -242,7 +244,8 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
 }
 
 // Envia la query a los nodos correspondientes
-// HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
+// Utiliza ConsistentHash para determinar los nodos
+// Utiliza mensajes del tipo ServerMessage
 pub fn send_query_to_nodes(
     node: &RwLockReadGuard<'_, Node>,
     query: &mut Query,
@@ -283,7 +286,9 @@ pub fn send_query_to_nodes(
             continue;
         }
         if let Ok(socket) = TcpStream::connect(&neighbor.server_ip) {
-            // Mando mensaje y el IP del nodo que se conecto con el cliente y en ese mismo stream leo la respuesta que me envia como resultado de la consulta.
+            // Mando mensaje y el IP del nodo que se conecto con el cliente 
+            // En el mismo stream leo la respuesta que me envia como resultado de la consulta.
+            
             // - Mando mensaje:
             let mut buf = BufStream::new(socket);
             println!("- Enviando mensaje a {}", neighbor.server_ip);
@@ -308,6 +313,7 @@ pub fn send_query_to_nodes(
                 };
                 match message.message_type {
                     MessageType::Result => {
+                        // El nodo mando el resultado
                         println!(
                             "Llego resultado: {}, de nodo: {}",
                             message.message, message.original_sender_ip
@@ -316,26 +322,20 @@ pub fn send_query_to_nodes(
                         break;
                     }
                     MessageType::Received => {
+                        // El nodo recibio el mensaje
                         println!("El mensaje fue recibido: {}", message.message);
                         response = String::new();
                     }
                     _ => println!("Error: {}", response),
                 }
             }
-
-            //if cons_level == 1
-            // return all_response
-            // else
-            // el más actualizado
-        } //else {
-          // println!("Error conectando a {}", neighbor.server_ip);
-          //}
+        } 
     }
     Ok(all_response)
 }
 
 // Inicializa el nodo
-// Lo conecta al cliente y lo conecta al server-server
+// Lo conecta al cliente y lo conecta al server
 // Punto de entrada para toda la logica
 pub fn initialize(port: String) -> Result<(), MyError> {
     let mut current_node: Node = Node::new(&port);
@@ -352,7 +352,6 @@ pub fn initialize(port: String) -> Result<(), MyError> {
         &server_ip.chars().last().unwrap().to_string(),
     ));
 
-    //let current_node = Arc::new(Mutex::new(current_node)); --> Usamos RwLock en vex de Mutex
     let current_node = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
 
     ////////////////////////////

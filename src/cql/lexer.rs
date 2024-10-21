@@ -1,3 +1,6 @@
+// Aca se crean a los Tokens que representan las palabras claves de la condicion WHERE
+// 'Token': Representa las palabras claves de la condicion WHERE
+
 #[derive(Debug, PartialEq)]
 pub enum Token {
     Where,

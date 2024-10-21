@@ -1,7 +1,9 @@
+// Representa las consultas del tipo SELECT
+// Aca se parsea la consulta y se ejecuta
+
 use crate::my_errors::MyError;
 use crate::utils::*;
 use std::io::BufRead;
-
 use crate::config::TABLE_PATH;
 use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
@@ -28,6 +30,7 @@ impl Select {
         }
     }
 
+    // Parsea la consulta para luego ejecutarla
     pub fn parse_select(&mut self, query: &str) -> Result<(), MyError> {
         let mut parts: Vec<&str> = query.split_whitespace().collect();
         if parts.len() < 4 || parts[0] != "SELECT" || parts[1] == "FROM" {
@@ -51,8 +54,7 @@ impl Select {
         Ok(())
     }
 
-    // sets list of columns
-    // columns between quotes stay between quotes for the Tokenizer
+    // Setea lista de columnas
     fn parse_columns(&mut self, parts: &[&str]) {
         let joined_parts = parts.join(" ");
         let comma_separated: Vec<&str> = joined_parts.split(",").collect();
@@ -74,8 +76,8 @@ impl Select {
         self.columns = columns
     }
 
-    // sets table name
-    // if table name between quotes, removes quotes
+    // Setea el nombre de la tabla
+    // Si el nombre de la tabla tiene comillas, se las saca
     fn parse_table(&mut self, parts: &[&str], index: usize) {
         if parts[index].contains("'") {
             self.table = get_full_quote(parts, index);
@@ -84,8 +86,8 @@ impl Select {
         }
     }
 
-    // sets WHERE condition
-    // returns error if condition query is not valid
+    // Setea condicion WHERE
+    // Devuelve error si la condicion no es valida
     fn parse_where_condition(&mut self, parts: &mut [&str]) -> Result<(), MyError> {
         if let Some(where_index) = parts.iter().position(|&x| x == "WHERE") {
             let (_, right) = parts.split_at(where_index);
@@ -96,6 +98,7 @@ impl Select {
         Ok(())
     }
 
+    // Ejecuta la consulta
     pub fn execute_command(&mut self) -> Result<String, MyError> {
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let col_names = get_file_headers(&mut rdr)?;

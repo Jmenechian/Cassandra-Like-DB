@@ -129,11 +129,7 @@ impl Parser {
                         ))
                     }
                     Token::EOF => Ok(WhereClause::Relation(rela)),
-                    _last => Ok(WhereClause::Relation(rela)), // _ => {
-                                                              //     Err(Box::new(MyError::InvalidSyntax(
-                                                              //         "Invalid Sysntax: <where_clause> 1",
-                                                              //     )))
-                                                              // }
+                    _last => Ok(WhereClause::Relation(rela)),
                 }
             }
             _ => Err(MyError::InvalidSyntax(
