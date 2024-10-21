@@ -16,9 +16,25 @@
 // 0x0F    AUTH_RESPONSE
 // 0x10    AUTH_SUCCESS
 
+// [consistency]  A consistency level specification. This is a [short]
+// representing a consistency level with the following
+// correspondance:
+//   0x0000    ANY
+//   0x0001    ONE
+//   0x0002    TWO
+//   0x0003    THREE
+//   0x0004    QUORUM
+//   0x0005    ALL
+//   0x0006    LOCAL_QUORUM
+//   0x0007    EACH_QUORUM
+//   0x0008    SERIAL
+//   0x0009    LOCAL_SERIAL
+//   0x000A    LOCAL_ONE
+
 use crate::config;
 use std::{error::Error, io::{Read, Write}, net::TcpStream};
 use crate::messagestuff::message_cql::cqlenvelope::IntoEnvelope;
+use crate::messagestuff::message_server::serverpacket::IntoPacket;
 pub trait Serialize: std::fmt::Debug {
     fn to_bytes(&self) -> Vec<u8>;
     fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> where Self: Sized;
@@ -53,6 +69,36 @@ pub trait Sendable: std::fmt::Debug + IntoEnvelope {
 }
 
 impl<T: IntoEnvelope> Sendable for T {}
+
+pub trait ServerSendable: std::fmt::Debug + IntoPacket {
+    fn send_through(self, stream: & mut TcpStream) -> Result<(), Box<dyn Error>>
+    where
+        Self: Sized,
+    {
+        let packet = self.into_packet();
+        let bytes = packet.to_bytes();
+        if let Err(_) = stream.write_all(&bytes) {
+            return Err(Box::from("Error al escribir en el stream"));
+        };
+        if let Err(_) = stream.flush() {
+            return Err(Box::from("Error al vecial es stream"));
+        }
+        Ok(())
+    }
+
+    fn sent_to(self, addres: String) -> Result<(), Box<dyn Error>>
+    where
+        Self: Sized,
+    {
+        let mut stream = match TcpStream::connect(addres) {
+            Ok(s) => s,
+            Err(_) => return Err(Box::from("Error al conectarse con servidor")),
+        };
+        self.send_through(&mut stream)
+    }
+}
+
+impl<T: IntoPacket> ServerSendable for T {}
 
 //Las funciones to_bytes() y from_bytes() de los diferentes tipos de datos
 //[byte]: 1 byte unsigned integer

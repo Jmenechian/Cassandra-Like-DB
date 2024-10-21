@@ -6,6 +6,7 @@ use crate::messagestuff::message_cql::{
     resultrowsmessage::ResultRowsMessage, 
     resultvoidmessage::ResultVoidMessage,
 };
+use crate::messagestuff::message_server::serverpacket::*;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]
@@ -80,6 +81,17 @@ impl IntoEnvelope for ResultMessage {
 
 pub trait IntoResultMessage: std::fmt::Debug {
     fn into_result_message(self) -> ResultMessage;
+}
+
+impl IntoPacket for ResultMessage {
+    fn into_packet(self) -> Packet {
+        let _body = self.to_bytes();
+        Packet {
+            opcode: ServerOpcode::ResultMessage,
+            length: _body.len() as i32,
+            body: ServerMessage::Result(self),
+        }
+    }
 }
 
 #[cfg(test)]

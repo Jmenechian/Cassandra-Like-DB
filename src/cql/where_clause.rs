@@ -1,27 +1,29 @@
-use std::error::Error;
+use crate::cql::lexer::*;
+use crate::cql::parser::*;
+use crate::cql::relation::Relation;
 use crate::my_errors::MyError;
-use crate::relation::Relation;
 
-#[derive(Debug, PartialEq)]
-pub enum WhereClause<'a> {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum WhereClause {
     True,
-    Relation(Relation<'a>),
-    And(Box<WhereClause<'a>>, Box<WhereClause<'a>>),
-    Or(Box<BoolExpr<'a>>, Box<BoolExpr<'a>>),
+    Relation(Relation),
+    And(Box<WhereClause>, Box<WhereClause>),
+    Or(Box<WhereClause>, Box<WhereClause>),
 }
 
-impl<'a> WhereClause<'a> {
-    pub fn new(input: &str) -> Result<Self, Box<dyn Error>> {
-        let mut lexer: Lexer = Lexer::new(input);
-        let tokens: Vec<Token> = lexer.tokenize()?;
-        let parser: Parser::new(&tokens);
-        parser.parse_whereclause()?;
+impl WhereClause {
+    pub fn new(input: String) -> Result<Self, MyError> {
+        let mut lexer: Lexer = Lexer::new(&input);
+        let tokens: Vec<Token> = lexer.tokenize();
+        let parser: Parser = Parser::new(tokens);
+        let mut pos = Pos::new();
+        parser.parse_whereclause(&mut pos, Token::EOF)
     }
-    
-    pub fn relate(& self, cols: &Vec<str>, vals: &Vec<str>) -> bool {
+
+    pub fn relate(&self, cols: &Vec<String>, vals: &Vec<String>) -> bool {
         match self {
             Self::True => true,
-            Self::Comparison(comp) => comp.relate(cols, vals),
+            Self::Relation(comp) => comp.relate(cols, vals),
             Self::And(expr1, expr2) => expr1.relate(cols, vals) && expr2.relate(cols, vals),
             Self::Or(expr1, expr2) => expr1.relate(cols, vals) || expr2.relate(cols, vals),
         }

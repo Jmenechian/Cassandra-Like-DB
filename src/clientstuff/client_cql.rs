@@ -1,13 +1,11 @@
 use crate::config;
 use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, Write, Result};
 use std::net::TcpStream;
 use bufstream::BufStream;
-use std::thread;
-const REQUEST: u8 = 0x03;
-const RESPONSE: u8 = 0x83;
 
+use std::thread;
 
 #[derive(Debug)]
 pub struct Client {
@@ -19,14 +17,12 @@ impl Client {
     pub fn initialize(port: String) -> Self {
         Self {
             server_ip: format!("127.0.0.1:800{}", port),
-            ip: format!("127.0.0.1:45450"), //randint?
+            ip: "127.0.0.1:45450".to_string(), //randint?
         }
     }
 
-    pub fn handle_input(&mut self) -> io::Result<()> {
-        let mut stream = TcpStream::connect(&self.server_ip)?;
-        
-
+    pub fn handle_input(&mut self) -> Result<()> {
+        let mut _stream = TcpStream::connect(&self.server_ip)?;
 
         Ok(())
     }
@@ -82,16 +78,15 @@ impl Client {
 /*
     pub fn handle_connection(&self) -> io::Result<()> {
         let mut stream = TcpStream::connect(&self.server_ip)?;
-    
+
         let stdin = io::stdin();
         let handle = stdin.lock();
-        
+
         // Spawn a thread to listen for incoming messages from the stream
-        let mut stream_clone = stream.try_clone()?; // Clone the stream for the listener thread
-        let reader = BufReader::new(stream_clone); // Wrap the cloned stream in a BufReader
-    
+        let stream_clone = stream.try_clone()?; // Clone the stream for the listener thread
+        let reader = BufStream::new(stream_clone);
+
         thread::spawn(move || {
-            let mut buffer = String::new();
             for line in reader.lines() {
                 match line {
                     Ok(line) => {
@@ -105,26 +100,25 @@ impl Client {
                 }
             }
         });
-    
+
         // Main loop for sending messages
         for line in handle.lines() {
             let input = line?;
             let trimmed_input = input.trim(); // Trim whitespace from input
-            
+
             if !trimmed_input.is_empty() {
                 let mensaje = CqlMessage::new(trimmed_input.to_string()); // Create the message
                 stream.write_all(&mensaje.to_bytes())?; 
                 stream.write_all(b"\n")?; 
                 stream.flush()?; 
             }
-    
+
             if trimmed_input == "exit" {
                 break;
             }
         }
-    
+
         Ok(())
     }
 */
 }
-

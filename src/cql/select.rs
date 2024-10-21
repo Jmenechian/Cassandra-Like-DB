@@ -1,30 +1,47 @@
-use std::{error::Error};
-use crate::cql::utils::*;
-use std::{fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write};
+use crate::my_errors::MyError;
+use crate::utils::*;
+use std::io::BufRead;
+
+use crate::config::TABLE_PATH;
+use crate::cql::filter::Filter;
+use crate::cql::where_clause::WhereClause;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Select {
     pub columns: Vec<String>,
     pub table: String,
-    pub condition_tokens: String,
+    pub whereclause: WhereClause,
+    pub num_node: String,
+}
+
+impl Default for Select {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Select {
     pub fn new() -> Select {
-        Select { columns: Vec::new(), table: "".to_string(), condition_tokens: "".to_string() }
+        Select {
+            columns: Vec::new(),
+            table: "".to_string(),
+            whereclause: WhereClause::True,
+            num_node: "0".to_string(),
+        }
     }
 
-    pub fn parse_select(&mut self, query: &str) -> Result<(), Box<dyn Error>> {
-        let mut parts: Vec<&str> = query.split_whitespace().collect();
+    pub fn parse_select(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
+        self.num_node = address_node.chars().last().unwrap().to_string();
 
+        let mut parts: Vec<&str> = query.split_whitespace().collect();
         if parts.len() < 4 || parts[0] != "SELECT" || parts[1] == "FROM" {
-            return Err(Box::from("Select query not valid"));
+            return Err(MyError::InvalidSyntax("Select query not valid".to_string()));
         }
 
         if let Some(from_index) = parts.iter().position(|&x| x == "FROM") {
             self.parse_columns(&parts[1..from_index]);
         } else {
-            return Err(Box::from("Select query not valid"));
+            return Err(MyError::InvalidSyntax("Select query not valid".to_string()));
         }
 
         let x = self.columns.join(" ");
@@ -67,68 +84,38 @@ impl Select {
         if parts[index].contains("'") {
             self.table = get_full_quote(parts, index);
         } else {
-            self.table = parts[index].to_string()
+            self.table = parts[index].to_string();
         }
+        self.table = format!("{}_{}", self.table, self.num_node);
+        println!("SELECT en tabla: {}", self.table);
     }
 
     // sets WHERE condition
     // returns error if condition query is not valid
-    fn parse_where_condition(&mut self, parts: &mut [&str]) -> Result<(), Box<dyn Error>> {
+    fn parse_where_condition(&mut self, parts: &mut [&str]) -> Result<(), MyError> {
+        if let Some(where_index) = parts.iter().position(|&x| x == "WHERE") {
+            let (_, right) = parts.split_at(where_index);
+            let condition_query = right[1..].join(" ");
+            let where_clause = WhereClause::new(condition_query)?;
+            self.whereclause = where_clause;
+        }
         Ok(())
     }
 
-    pub fn execute_command(&mut self, path: &str) -> Result<String, Box<dyn Error>> {
-        println!("self table: {}", self.table);
-        let mut rdr =
-            get_reader("/Users/agustinbenito/Library/Mobile Documents/com~apple~CloudDocs/Desktop/ingenieria/Taller/tpGrupal/24C2-Ferris/src/tablas", &self.table)?;
+    pub fn execute_command(&mut self) -> Result<String, MyError> {
+        let mut rdr = get_reader(TABLE_PATH, &self.table)?;
+        let col_names = get_file_headers(&mut rdr)?;
 
-        
         let mut tabla: String = String::new();
+        let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
+
         for line in rdr.lines() {
-            let line = line?;
-            tabla.push_str(&line);
+            let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
+            let split_line = line.split(",").collect::<Vec<&str>>();
+            if filter.filter(split_line.into_iter().map(|s| s.to_string()).collect()) {
+                tabla.push_str(&line);
+            }
         }
         Ok(tabla)
     }
-        // let headers = get_file_headers(&mut rdr)?;
-        
-        
-        
-        
-        // let expression = self.get_where_expression()?;
-        // let mut rdr =
-        //     get_reader(path, &self.table)?;
-        // let headers = get_file_headers(&mut rdr)?;
-
-        // if self.columns[0] != "*" {
-        //     self.check_columns_are_valid(&headers)?;
-        // }
-
-        // let temporary_file =
-        //     create_temporary_file(path, &self.table)?;
-
-        // // get rows that fulfill WHERE condition
-        // let mut records: Vec<Vec<String>> = Vec::new();
-        // let lines = rdr.lines();
-        // for line in lines {
-        //     let line = line?;
-        //     let row_array: Vec<String> = line.trim().split(",").map(|s| s.to_string()).collect();
-
-        //     if fulfill_condition(&headers, &row_array, &expression)? {
-        //         if !self.has_orderby() {
-        //             append_row(path, &temporary_file, &row_array)
-        //         }
-        //         records.push(row_array);
-        //     }
-        // }
-
-        // if self.has_orderby() {
-        //     self.order_rows_by_orderby(&headers, &mut records)?;
-        //     write_rows(path, &temporary_file, &records)
-        // }
-
-        // self.print_rows(&temporary_file, path, headers)?;
-        // delete_file(&temporary_file, path)?;
-        // Ok(())
-    
 }

@@ -2,6 +2,10 @@ use std::{error::Error, io::Read, net::TcpStream};
 use crate::config;
 use crate::messagestuff::{
     message::*,
+    message_cql::querymessage::QueryMessage,
+    message_cql::resultmessage::ResultMessage,
+    message_cql::resultrowsmessage::ResultRowsMessage,
+    message_cql::resultvoidmessage::ResultVoidMessage,
     message_server::gossipmessage::GossipMessage,
     message_server::errorservermessage::ErrorServerMessage,
 };
@@ -10,18 +14,18 @@ use crate::messagestuff::{
 #[repr(u8)]
 pub enum ServerOpcode {
     GossipMessage = config::GOSSIP,
-    //QueryMessage = config::QUERY,
+    QueryMessage = config::QUERY,
     ErrorServerMessage = config::ERROR,
-    //ResultMessage = config::RESULT,
+    ResultMessage = config::RESULT,
 }
 
 impl ServerOpcode {
     pub fn from_u8(value: u8) -> Result<Self, Box<dyn Error>> {
         match value {
             config::GOSSIP => Ok(ServerOpcode::GossipMessage),
-            //config::QUERY => Ok(ServerOpcode::QueryMessage),
-            //config::ERROR => Ok(ServerOpcode::ErrorMessage),
-            //config::RESULT => Ok(ServerOpcode::ResultMessage),
+            config::QUERY => Ok(ServerOpcode::QueryMessage),
+            config::ERROR => Ok(ServerOpcode::ErrorServerMessage),
+            config::RESULT => Ok(ServerOpcode::ResultMessage),
             _ => Err(Box::from("Invalid Opcode")),
         }
     }
@@ -30,9 +34,15 @@ impl ServerOpcode {
 #[derive(Debug)]
 pub enum ServerMessage {
     Gossip(GossipMessage),
-    //Query(QueryMessage),
-    //Result(ResultMessage),
+    Query(QueryMessage),
+    Result(ResultMessage),
     ErrorServer(ErrorServerMessage),
+}
+
+impl IntoPacket for ServerMessage {
+    fn into_packet(self) -> Packet {
+        self.into_packet()
+    }
 }
 
 #[derive(Debug)]
@@ -51,6 +61,8 @@ impl Packet {
         match &self.body {
             ServerMessage::Gossip(msg) => bytes.extend_from_slice(& msg.to_bytes()),
             ServerMessage::ErrorServer(msg) => bytes.extend_from_slice(& msg.to_bytes()),
+            ServerMessage::Query(msg) => bytes.extend_from_slice(& msg.to_bytes()),
+            ServerMessage::Result(msg) => bytes.extend_from_slice(& msg.to_bytes()),
         }
         bytes
     }
@@ -75,6 +87,14 @@ impl Packet {
             ServerOpcode::ErrorServerMessage => {
                 let (errorserver, _) = ErrorServerMessage::from_bytes(body_buffer)?;
                 ServerMessage::ErrorServer(errorserver)
+            }
+            ServerOpcode::QueryMessage => {
+                let (query, _) = QueryMessage::from_bytes(body_buffer)?;
+                ServerMessage::Query(query)
+            }
+            ServerOpcode::ResultMessage => {
+                let (result, _) = ResultMessage::from_bytes(body_buffer)?;
+                ServerMessage::Result(result)
             }
         };
         Ok(Packet{opcode: _opcode, length: _length, body: _body})

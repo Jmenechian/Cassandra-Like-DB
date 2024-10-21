@@ -7,6 +7,9 @@ pub static STRONG_CONSISTENCY: usize = 1; //en realidad deberia ser 2 //si RF es
 pub static SERVER_PORT: &str = "7000";
 
 pub static CLIENT_PORT: &str = "9042";
+pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Hashing.
+
+pub static TABLE_PATH: &str = "src/tables";
 
 pub static N_WORKERS: usize = 10; //Nos dijeron que usemos 10.
 
