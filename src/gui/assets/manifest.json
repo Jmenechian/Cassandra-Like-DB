@@ -3,7 +3,7 @@
   "short_name": "egui-template-pwa",
   "icons": [
     {
-      "src": "./avion.png",
+      "src": "./plane.png",
       "sizes": "256x256",
       "type": "image/png"
     }
@@ -12,6 +12,6 @@
   "id": "/index.html",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "white",
-  "theme_color": "white"
+  "background_color": "black",
+  "theme_color": "black"
 }

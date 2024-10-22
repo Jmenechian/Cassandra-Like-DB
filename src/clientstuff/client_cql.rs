@@ -1,3 +1,4 @@
+use crate::my_errors::MyError;
 use crate::messagestuff::message::Message;
 use bufstream::BufStream;
 use std::io::{self, BufRead, Result, Write};
@@ -22,6 +23,14 @@ impl Client {
         let mut _stream = TcpStream::connect(&self.server_ip)?;
 
         Ok(())
+    }
+
+    pub fn connect(&mut self) -> Result<TcpStream>  {
+        if let Ok(stream) = TcpStream::connect(&self.server_ip) {
+            Ok(stream)
+        } else {
+            Err(MyError::TcpStreamError("Error connecting  c client to server".to_string()).into())
+        }
     }
 
     pub fn handle_connection(&self) -> Result<()> {
@@ -67,5 +76,34 @@ impl Client {
         }
 
         Ok(())
+    }
+
+    pub fn send_message(mut stream: &TcpStream, message: String) -> Result<()> {
+        let trimmed_input = message.trim(); // Trim whitespace from input
+        if !trimmed_input.is_empty() {
+            let mut message = Message::create_message_as_client(trimmed_input.to_string()); // Create the message
+            stream.write_all(&message.to_bytes())?;
+            stream.write_all(b"\n")?;
+            stream.flush()?;
+        }
+        Ok(())
+    }
+
+    pub fn read_response(stream: &TcpStream) -> Result<Message> {
+        let reader = BufStream::new(stream);
+
+        for line in reader.lines() {
+            match line {
+                Ok(line) => {
+                    let message = Message::from_bytes(line.as_bytes())?;
+                    return Ok(message);
+                }
+                Err(_e) => {
+                    break;
+                }
+            }
+        }
+        let error = format!("Failed to read from stream");
+        Err(MyError::TcpListenerError(error).into())
     }
 }

@@ -1,22 +1,50 @@
+use std::net::TcpStream;
 use eframe::egui;
 use egui::{Color32, FontId, Id};
 use image::GenericImageView;
 
-use crate::config::MAP_PATH;
-
-use super::painted::{airport::Airport, airport_coordinates::get_airport_coordinates};
+use crate::{clientstuff::client_cql::Client, config::MAP_PATH, cql::my_errors::MyError, gui::painted::{airport::Airport, 
+        airport_coordinates::{get_airport_coordinates, get_origin_airport_of, get_return_airport_of}, 
+        draw_flights::{draw_incoming_flights, draw_outgoing_flights}, 
+        draw_lines::draw_lines_between_airports}};
 
 pub struct MapApp {
     airports: Vec<Airport>,
     map_texture: Option<egui::TextureHandle>,
+    client: Client,
+    stream_client: Option<TcpStream>,
 }
 
-impl Default for MapApp {
-    fn default() -> Self {
+impl MapApp {
+    pub fn new(port: String) -> Self {
+        let airports = get_airport_coordinates();
+        let map_texture = None;
+        let client = Client::initialize(port);
+        let stream_client = None;
         Self {
-            airports: get_airport_coordinates(),
-            map_texture: None,
+            airports,
+            map_texture,
+            client,
+            stream_client,
         }
+    }
+
+    pub fn set_connection(&mut self) {
+        if let Ok(stream) = self.client.connect() {
+            self.stream_client = Some(stream);
+        } else {
+            //Cambiar de nodo?
+            self.stream_client = None;
+        }
+    }
+
+    pub fn load_map_texture(&mut self, ctx: &egui::Context) {
+        // Cargar la imagen del mapa desde un archivo
+        let map_image = image::open(MAP_PATH).expect("Failed to load map image");
+        let (width, height) = map_image.dimensions();
+        let image_rgba = map_image.to_rgba8();
+        let texture = ctx.load_texture("map", egui::ColorImage::from_rgba_unmultiplied([width.try_into().unwrap(), height.try_into().unwrap()], &image_rgba), Default::default());
+        self.map_texture = Some(texture)
     }
 }
 
@@ -26,7 +54,7 @@ impl eframe::App for MapApp {
             ui.label("Mapa de Aeropuertos");
 
             if self.map_texture.is_none() {
-                self.map_texture = Some(load_map_texture(ctx));
+                self.load_map_texture(ctx);
             }
 
             if let Some(texture) = &self.map_texture {
@@ -57,21 +85,32 @@ impl eframe::App for MapApp {
                         egui::vec2(radius_click * 2.0, radius_click * 2.0)
                     );
 
+                    let date_selected = "".to_string();
                     // Crear un botón en la posición del aeropuerto
                     if ui.interact(button_rect, Id::new(&airport.name), egui::Sense::click()).clicked() {
                         println!("¡Aeropuerto {} presionado!", airport.name);
+
+                        if let Ok(origin_flights) = airport.get_origin_flights_from(&self.stream_client, &date_selected) {
+                            println!("origin_flights: {:?}", origin_flights);
+
+                            let return_airports = get_return_airport_of(&origin_flights);
+
+                            if let Ok(return_flights) = airport.get_flights_that_return_to(&self.stream_client, &date_selected) {
+
+                                let origin_airports = get_origin_airport_of(&return_flights);
+                                draw_lines_between_airports(&airport, &origin_airports);
+                                draw_lines_between_airports(&airport, &return_airports);
+
+                                draw_outgoing_flights(&origin_flights,&airport, &return_airports);
+                                draw_incoming_flights(&return_flights, &origin_airports, &airport);
+
+                            }
+                        } else if let Err(origin_flights) = airport.get_origin_flights_from(&self.stream_client, &date_selected) {
+                            println!("Error: {}", origin_flights);
+                        }
                     }
                 }
             }
         });
     }
-}
-
-fn load_map_texture(ctx: &egui::Context) -> egui::TextureHandle {
-    // Cargar la imagen del mapa desde un archivo
-    let map_image = image::open(MAP_PATH).expect("Failed to load map image");
-    let (width, height) = map_image.dimensions();
-    let image_rgba = map_image.to_rgba8();
-    let texture = ctx.load_texture("map", egui::ColorImage::from_rgba_unmultiplied([width.try_into().unwrap(), height.try_into().unwrap()], &image_rgba), Default::default());
-    texture
 }

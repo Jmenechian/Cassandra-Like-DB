@@ -36,6 +36,9 @@ pub mod gui {
     pub mod painted {
         pub mod airport;
         pub mod airport_coordinates;
+        pub mod flight;
+        pub mod draw_flights;
+        pub mod draw_lines;
     }
 }
 //pub use gui::app::MapApp; 

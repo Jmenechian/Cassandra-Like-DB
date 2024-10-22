@@ -1,6 +1,15 @@
 use aerolineas_rusticas::gui::app::MapApp;
+use std::env;
+use std::process::exit;
 
 fn main() -> Result<(), eframe::Error> {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Last digit parameter of the port is missing.");
+        exit(1);
+    }
+    let port = args[1].to_string();
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([2000.0, 1000.0])
@@ -16,6 +25,6 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "Mapa de Aeropuertos",
         options,
-        Box::new(|_cc| Ok(Box::new(MapApp::default()))),
+        Box::new(|_cc| Ok(Box::new(MapApp::new(port)))),
     )
 }
