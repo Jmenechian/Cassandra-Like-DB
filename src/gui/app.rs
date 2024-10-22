@@ -109,6 +109,7 @@ impl eframe::App for MapApp {
                             println!("Error: {}", origin_flights);
                         }
                     }
+                    
                 }
             }
         });
