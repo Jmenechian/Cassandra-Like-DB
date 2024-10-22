@@ -57,6 +57,10 @@ impl eframe::App for MapApp {
                 self.load_map_texture(ctx);
             }
 
+            if self.stream_client.is_none() {
+                self.set_connection();
+            }
+
             if let Some(texture) = &self.map_texture {
                 // Mostrar el mapa
                 ui.image(texture);
@@ -109,7 +113,7 @@ impl eframe::App for MapApp {
                             println!("Error: {}", origin_flights);
                         }
                     }
-                    
+
                 }
             }
         });
