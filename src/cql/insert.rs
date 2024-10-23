@@ -1,4 +1,6 @@
-use crate::cql::utils::*;
+use crate::config::TABLE_PATH;
+use crate::my_errors::MyError;
+use crate::utils::*;
 use std::collections::HashMap;
 use std::error::Error;
 use chrono::Utc;
@@ -7,6 +9,7 @@ pub struct Insert {
     pub table: String,
     pub columns: Vec<String>,
     pub values: Vec<String>,
+    pub num_node: String,
 }
 
 impl Default for Insert {
@@ -21,19 +24,22 @@ impl Insert {
             table: "".to_string(),
             columns: Vec::new(),
             values: Vec::new(),
+            num_node: "0".to_string(),
         }
     }
 
     // Parses the query for later execution
-    pub fn parse_insert(&mut self, query: &str) -> Result<(), Box<dyn Error>> {
+    pub fn parse_insert(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
+        self.num_node = address_node.chars().last().unwrap().to_string();
+
         let parts: Vec<&str> = query.split_whitespace().collect();
 
         if parts.len() < 4 || parts[0] != "INSERT" || parts[1] != "INTO" {
-            return Err(Box::from("INSERT query not valid".to_string()));
+            return Err(MyError::InvalidSyntax("INSERT query not valid".to_string()));
         }
 
         if !parts.contains(&"VALUES") {
-            return Err(Box::from("INSERT query not valid".to_string()));
+            return Err(MyError::InvalidSyntax("INSERT query not valid".to_string()));
         }
 
         let mut skip_index = 3;
@@ -45,6 +51,8 @@ impl Insert {
         } else {
             self.table = parts[2].to_string();
         }
+        self.table = format!("{}_{}", self.table, self.num_node);
+        println!("INSERT en tabla: {}", self.table);
 
         let headers: Vec<String> = self.extract_values(&parts, skip_index);
         // headers.push("timestamp".to_string());
@@ -92,11 +100,11 @@ impl Insert {
     }
 
     // Returns columns and values mapped into a HashMap
-    fn get_mapped_values(&self) -> Result<HashMap<&str, &str>, Box<dyn Error>> {
+    fn get_mapped_values(&self) -> Result<HashMap<&str, &str>, MyError> {
         let mut map: HashMap<&str, &str> = HashMap::new();
         for (key, value) in self.columns.iter().zip(self.values.iter()) {
             if map.keys().any(|k| k == &key.as_str()) {
-                return Err(Box::from("Columns are repeated".to_string()));
+                return Err(MyError::InvalidColumn("Column repeated".to_string()));
             }
             map.insert(key.as_str(), value.as_str());
         }
@@ -104,38 +112,37 @@ impl Insert {
     }
 
     // No se si es necesaria
-    fn check_columns_are_valid(&self, file_headers: &[String]) -> Result<(), Box<dyn Error>> {
+    fn check_columns_are_valid(&self, file_headers: &[String]) -> Result<(), MyError> {
         for header in &self.columns {
             if !file_headers.contains(header) {
-                return Err(Box::from("Column not valid"));
+                return Err(MyError::InvalidColumn("Column not valid".to_string()));
             }
         }
         if self.columns.len() != self.values.len() {
-            return Err(Box::from(
+            return Err(MyError::InvalidSyntax(
                 "Different number of values and columns".to_string(),
             ));
         }
 
         if self.columns.len() > file_headers.len() {
-            return Err(Box::from("Columns are repeated".to_string()));
+            return Err(MyError::InvalidColumn("Columns are repeated".to_string()));
         }
         Ok(())
     }
 
-    pub fn execute_command(& mut self, _path: &str) -> Result<String, Box<dyn Error>> {
+    pub fn execute_command(&self) -> Result<String, MyError> {
         println!("En execute_command de INSERT");
-        let path = "src/tablas";
-        let mut rdr = get_reader(path, &self.table)?;
+        let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let headers = get_file_headers(&mut rdr)?;
         // self.values.push(Utc::now().to_string());
         // INSERT INTO VALUES (val1, val2)
         // values are inserted in the same order as the file headers
         if self.columns.is_empty() {
             if self.values.len() == headers.len() {
-                append_row(path, &self.table, &self.values)?;
+                append_row(TABLE_PATH, &self.table, &self.values)?;
                 return Ok("linea fue agregada".to_string());
             }
-            return Err(Box::from("Invalid INSERT syntax".to_string()));
+            return Err(MyError::InvalidSyntax("Invalid INSERT syntax".to_string()));
         }
 
         self.check_columns_are_valid(&headers)?;
@@ -152,7 +159,7 @@ impl Insert {
         }
         new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
         new_record.push(Utc::now().to_string()); // metes lo mas nuevo
-        append_row(path, &self.table, &new_record)?;
+        append_row(TABLE_PATH, &self.table, &new_record)?;
         Ok("linea fue agregada".to_string())
     }
 

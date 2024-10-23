@@ -1,8 +1,10 @@
 pub mod config;
 pub mod consistent_hashing;
+pub mod my_errors;
 pub mod neighbor_node;
 pub mod nodo;
 pub mod server_message;
+pub mod utils;
 pub mod cql {
     pub mod delete;
     pub mod filter;
@@ -14,7 +16,6 @@ pub mod cql {
     pub mod relation;
     pub mod select;
     pub mod update;
-    pub mod utils;
     pub mod where_clause;
 }
 pub mod clientstuff {

@@ -1,8 +1,7 @@
 use crate::cql::lexer::*;
-use crate::cql::my_errors::MyError;
 use crate::cql::relation::Relation;
 use crate::cql::where_clause::WhereClause;
-use std::error::Error;
+use crate::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub struct Pos {
@@ -47,14 +46,14 @@ impl Parser {
         &self.tokens[pos]
     }
 
-    pub fn parse_relation(&self, pos: &mut Pos) -> Result<Relation, Box<dyn Error>> {
+    pub fn parse_relation(&self, pos: &mut Pos) -> Result<Relation, MyError> {
         let arg1;
         if let Token::Identifier(name) = self.show(pos.head()) {
             arg1 = name.to_string();
         } else {
-            return Err(Box::new(MyError::InvalidSyntax(
-                "Invalid Syntax: <comparison> 1",
-            )));
+            return Err(MyError::InvalidSyntax(
+                "Invalid Syntax: <comparison> 1".to_string(),
+            ));
         }
         pos._move();
         if !matches!(
@@ -66,18 +65,18 @@ impl Parser {
                 | Token::LessThan
                 | Token::LessOrEqualThan
         ) {
-            return Err(Box::new(MyError::InvalidSyntax(
-                "Invalid Syntax: <Relation> 2",
-            )));
+            return Err(MyError::InvalidSyntax(
+                "Invalid Syntax: <Relation> 2".to_string(),
+            ));
         }
         pos._move();
         let arg2;
         if let Token::Identifier(name) = self.show(pos.head()) {
             arg2 = name.to_string();
         } else {
-            return Err(Box::new(MyError::InvalidSyntax(
-                "Invalid Syntax: <Relation> 3",
-            )));
+            return Err(MyError::InvalidSyntax(
+                "Invalid Syntax: <Relation> 3".to_string(),
+            ));
         }
         let relation;
         match *self.show(pos.previous()) {
@@ -88,28 +87,24 @@ impl Parser {
             Token::LessThan => relation = Relation::LessThan(arg1, arg2),
             Token::LessOrEqualThan => relation = Relation::LessOrEqualThan(arg1, arg2),
             _ => {
-                return Err(Box::new(MyError::InvalidSyntax(
-                    "Invalid Syntax: <Relation>",
-                )))
+                return Err(MyError::InvalidSyntax(
+                    "Invalid Syntax: <Relation>".to_string(),
+                ))
             }
         }
         pos._move();
         Ok(relation)
     }
 
-    pub fn parse_whereclause(
-        &self,
-        pos: &mut Pos,
-        _last: Token,
-    ) -> Result<WhereClause, Box<dyn Error>> {
+    pub fn parse_whereclause(&self, pos: &mut Pos, _last: Token) -> Result<WhereClause, MyError> {
         match *self.show(pos.head()) {
             Token::Lpar => {
                 pos._move();
                 let expr = self.parse_whereclause(pos, Token::Rpar)?;
                 if self.show(pos.previous()) != &Token::Rpar {
-                    return Err(Box::new(MyError::InvalidSyntax(
-                        "Invalid Sysntax: <where_clause> with unbalanced parentheses",
-                    )));
+                    return Err(MyError::InvalidSyntax(
+                        "Invalid Sysntax: <where_clause> with unbalanced parentheses".to_string(),
+                    ));
                 }
                 pos._move();
                 Ok(expr)
@@ -133,24 +128,17 @@ impl Parser {
                             Box::new(arg2),
                         ))
                     }
-                    Token::EOF => {
-                        Ok(WhereClause::Relation(rela))
-                    }
-                    _last => {
-                        Ok(WhereClause::Relation(rela))
-                    }
-                    // _ => {
-                    //     Err(Box::new(MyError::InvalidSyntax(
-                    //         "Invalid Sysntax: <where_clause> 1",
-                    //     )))
-                    // }
+                    Token::EOF => Ok(WhereClause::Relation(rela)),
+                    _last => Ok(WhereClause::Relation(rela)), // _ => {
+                                                              //     Err(Box::new(MyError::InvalidSyntax(
+                                                              //         "Invalid Sysntax: <where_clause> 1",
+                                                              //     )))
+                                                              // }
                 }
             }
-            _ => {
-                return Err(Box::new(MyError::InvalidSyntax(
-                    "Invalid Sysntax: <where_clause> 2",
-                )))
-            }
+            _ => Err(MyError::InvalidSyntax(
+                "Invalid Sysntax: <where_clause> 2".to_string(),
+            )),
         }
     }
 }

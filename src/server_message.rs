@@ -13,7 +13,7 @@
 // Ej: "RECEIVED:<nodo.server_ip>:SELECT * FROM table" -> el nodo siendo el que recibe la query del nodo principal"
 // Ej: "TEST:<cualquier cosa>" o "<cualquier cosa>" -> no hace falta que empiece con TEST
 
-use std::error::Error;
+use crate::my_errors::MyError;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum MessageType {
@@ -32,10 +32,10 @@ pub struct ServerMessage {
 }
 
 impl ServerMessage {
-    pub fn new(message: String) -> Result<ServerMessage, Box<dyn Error>> {
+    pub fn new(message: String) -> Result<ServerMessage, MyError> {
         let message_type = ServerMessage::assert_message_type(&message);
         let (original_sender_ip, message) =
-            ServerMessage::get_clean_message(&message, &message_type);
+            ServerMessage::get_clean_message(&message, &message_type)?;
 
         Ok(ServerMessage {
             message_type,
@@ -58,18 +58,29 @@ impl ServerMessage {
         }
     }
 
-    pub fn get_clean_message(message: &str, message_type: &MessageType) -> (String, String) {
+    pub fn get_clean_message(
+        message: &str,
+        message_type: &MessageType,
+    ) -> Result<(String, String), MyError> {
         match message_type {
-            MessageType::Test => return ("".to_string(), "".to_string()),
-            MessageType::Gossip => return ("".to_string(), "".to_string()), // falta implementar
+            MessageType::Test => return Ok(("".to_string(), message.to_string())),
+            MessageType::Gossip => return Ok(("".to_string(), "".to_string())), // falta implementar
             _ => {}
         }
 
         let message = message.trim().replace("\n", "").replace("\r", "");
         let parts: Vec<&str> = message.split(":").collect();
+
+        if parts.len() < 3 {
+            return Err(MyError::ServerMessageError(format!(
+                "Invalid server-server message format: {}",
+                message
+            )));
+        }
+
         let original_ip = parts[1..3].join(":");
         let cleaned_message = parts[3..].join(":");
 
-        (original_ip, cleaned_message)
+        Ok((original_ip, cleaned_message))
     }
 }
