@@ -210,7 +210,7 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
 
         let mut query = Query::new(consulta, node.client_ip.clone());
 
-        let values = query.get_values(); //values lo guarda 1 sola vez
+        // let values = query.get_values(); //values lo guarda 1 sola vez
         //si es insert -> creas las lineas aca y las devolves
         //otros nodos agarran y appendean esas lineas en sus archivos
 

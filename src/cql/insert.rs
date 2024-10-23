@@ -2,7 +2,6 @@ use crate::config::TABLE_PATH;
 use crate::my_errors::MyError;
 use crate::utils::*;
 use std::collections::HashMap;
-use std::error::Error;
 use chrono::Utc;
 #[derive(Debug, Eq, PartialEq)]
 pub struct Insert {
