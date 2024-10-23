@@ -42,6 +42,8 @@ impl Query {
 
     fn get_type(&mut self) {
         let q_upper = self.query.to_ascii_uppercase();
+        println!("query: {:?}", self.query);
+        println!("q_upper: {:?}", q_upper);
         if q_upper.contains("SELECT") {
             self.set_select();
         } else if q_upper.contains("UPDATE") {
@@ -50,6 +52,20 @@ impl Query {
             self.set_insert();
         } else {
             self.set_delete();
+        }
+    }
+
+    pub fn get_values(&mut self) -> String {
+        self.get_type();
+
+        match &mut self.qtype {
+            QType::Select(select) => {
+                //nada
+                select.get_key(); //sacar -> esta para clippy
+                "SELECT".to_string()
+            }
+            QType::Insert(insert) => insert.get_values(),
+            _ => "Error".to_string(),
         }
     }
 
@@ -90,13 +106,33 @@ impl Query {
             // QType::Update(update) => update.execute_command(path)?,
             QType::Insert(insert) => insert.execute_command(),
             // QType::Delete(delete) => delete.execute_command(path)?,
-            _ => Ok("nada".to_string()),
+            _ => Ok("AAAAAAAAAAAAAAAA".to_string()),
         }
     }
 
     // Debe devolver de la query los valores de los campos de las columnas que pertenecen a la partición de esa tabla.
-    pub fn get_key_representing_partition(&self) -> String {
+    pub fn get_key_representing_partition(&mut self, address_node: &str) -> String {
         //devolveme el nombre del aeropuerto
-        self.query.clone()
+        // self.query.clone()
+        self.get_type();
+        println!("type: {:?}", self.qtype);
+        match &mut self.qtype {
+            QType::Select(select) => {
+                let _ = select.parse_select(self.query.as_str(), address_node);
+                select.get_key()
+            }
+            QType::Insert(insert) => {
+                let _ = insert.parse_insert(self.query.as_str(), address_node);
+                insert.get_key()
+            }
+            _ => "BBBBBBBBBBBB".to_string(),
+        }
     }
 }
+//INSERT: Suponiendo que no se puede insertar filas incompletas:
+//te traers self.values[0] y self.values[1]
+
+//SELECT: aeropuerto = ...
+// date = ...
+//pueden estar por separado
+//pueden no estar ninguno en el where?

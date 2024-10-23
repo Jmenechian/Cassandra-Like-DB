@@ -114,8 +114,25 @@ impl Select {
             let split_line = line.split(",").collect::<Vec<&str>>();
             if filter.filter(split_line.into_iter().map(|s| s.to_string()).collect()) {
                 tabla.push_str(&line);
+                tabla.push_str("     "); //asi podes splitear y printear? no se que hacer para mejorar
             }
         }
         Ok(tabla)
+    }
+
+    pub fn get_key(&self) -> String {
+        println!("Where = {:?}", self.whereclause);
+        let aeropuerto = if let Some(aeropuerto) = self.whereclause.find_value_for_key("airport") {
+            aeropuerto
+        } else {
+            "".to_string() // algun error
+        };
+        let date = if let Some(date) = self.whereclause.find_value_for_key("date") {
+            date
+        } else {
+            "".to_string()
+        };
+        let res = format!("{},{}", aeropuerto, date);
+        res
     }
 }
