@@ -89,7 +89,7 @@ impl eframe::App for MapApp {
                         egui::vec2(radius_click * 2.0, radius_click * 2.0)
                     );
 
-                    let date_selected = "".to_string();
+                    let date_selected = "24-12-12".to_string();
                     // Crear un botón en la posición del aeropuerto
                     if ui.interact(button_rect, Id::new(&airport.name), egui::Sense::click()).clicked() {
                         println!("¡Aeropuerto {} presionado!", airport.name);

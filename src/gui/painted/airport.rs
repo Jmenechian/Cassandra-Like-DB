@@ -20,7 +20,7 @@ impl Airport {
     }
 
     pub fn get_origin_flights_from(&self, stream: &Option<TcpStream>, date: &str) -> Result<Vec<Flight>, MyError> {
-        let query = format!("SELECT * FROM origin WHERE date = {} and airport = {}", date, self.name);
+        let query = format!("SELECT * FROM origin WHERE date = '{}' AND airport = '{}'", date, self.name);
         println!("query: {:?}", query);
         if let Some(stream) = stream {
             println!("Por enviar mensaje...");
@@ -36,7 +36,7 @@ impl Airport {
     }
 
     pub fn get_flights_that_return_to(&self, stream: &Option<TcpStream>, date: &str) -> Result<Vec<Flight>, MyError>{
-        let query = format!("SELECT * FROM destination WHERE date = {} and airport = {}", date, self.name);
+        let query = format!("SELECT * FROM destination WHERE date = '{}' AND airport = '{}'", date, self.name);
 
         if let Some(stream) = &stream {
             Client::send_message(stream, query).map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
