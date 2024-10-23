@@ -1,5 +1,5 @@
-use crate::messagestuff::message::Message;
 use crate::messagestuff::message::print_message;
+use crate::messagestuff::message::Message;
 use bufstream::BufStream;
 use std::io::{self, BufRead, Result, Write};
 use std::net::TcpStream;
@@ -42,7 +42,7 @@ impl Client {
                         let message = Message::from_bytes(line.as_bytes());
                         println!("Received: {:?}", message); //sacar despues
                         if message.is_ok() {
-                            let msg = message.unwrap(); 
+                            let msg = message.unwrap();
                             print_message(msg.message);
                         }
                     }

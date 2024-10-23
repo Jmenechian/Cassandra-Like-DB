@@ -1,8 +1,8 @@
 use crate::config::TABLE_PATH;
 use crate::my_errors::MyError;
 use crate::utils::*;
-use std::collections::HashMap;
 use chrono::Utc;
+use std::collections::HashMap;
 #[derive(Debug, Eq, PartialEq)]
 pub struct Insert {
     pub table: String,
@@ -162,13 +162,14 @@ impl Insert {
         Ok("linea fue agregada".to_string())
     }
 
-    pub fn get_key(&self) -> String { //suponiendo que siempre se manda bien
+    pub fn get_key(&self) -> String {
+        //suponiendo que siempre se manda bien
         println!("values = {:?}", self.values);
         let res = format!("{},{}", self.values[0], self.values[1]);
         res
     }
 
-    pub fn get_values(& mut self) -> String {
+    pub fn get_values(&mut self) -> String {
         self.values.push(Utc::now().to_string());
         self.values.join(",")
     }

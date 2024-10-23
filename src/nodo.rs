@@ -62,7 +62,6 @@ impl Node {
     pub fn process_query(&self, query: &mut Query) -> Result<String, MyError> {
         query.execute()
     }
-
 }
 
 // Lee los puertos del archivo
@@ -229,7 +228,8 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
         // let res = process_results(all_results); //devuelve solo una respuesta, para testear sacar esto porque no anda todavia
         //consistency level / read-repair
 
-        let message: Message = Message::create_message_as_server(all_results[0].clone(), node.client_ip.clone()); // Create the message
+        let message: Message =
+            Message::create_message_as_server(all_results[0].clone(), node.client_ip.clone()); // Create the message
         println!("{:?}", message);
 
         let _ = buf.write_all(message.message.as_bytes()); //todo esto en una macro?
@@ -244,11 +244,11 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
 //mapa
 //hago click en AEP con fecha
 //aviones volando -> threads
-//hago click en NY 
+//hago click en NY
 
 // fn process_results(results: &Vec<String>) -> String {
 //     println!("pr ===> {:?}", results);
-    
+
 //     match results.len() {
 //         1 => return results[0].clone(),
 //         2 => {
@@ -270,7 +270,8 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
 //     results[0].clone()
 // }
 
-pub fn look_newer(results: &[String]) -> (&str, usize) { //falta testear en process results
+pub fn look_newer(results: &[String]) -> (&str, usize) {
+    //falta testear en process results
     let mut newer = "";
     let mut index = 0;
     for (i, result) in results.iter().enumerate() {
@@ -371,8 +372,6 @@ pub fn send_query_to_nodes(
                 // if consistency_level == ONE && all_response.len() == 1 {
                 //     process_results(all_response)
                 // }
-                
-
             }
             // if consistency_level == QUORUM && all_response.len() >= 2 {
             //     process_results(all_response)

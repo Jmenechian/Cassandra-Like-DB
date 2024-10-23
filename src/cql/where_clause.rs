@@ -38,7 +38,8 @@ impl WhereClause {
             WhereClause::Relation(_) => None, // Other relations don't match
             WhereClause::And(lhs, rhs) | WhereClause::Or(lhs, rhs) => {
                 // Recursively search both sides
-                lhs.find_value_for_key(key).or_else(|| rhs.find_value_for_key(key))
+                lhs.find_value_for_key(key)
+                    .or_else(|| rhs.find_value_for_key(key))
             }
         }
     }

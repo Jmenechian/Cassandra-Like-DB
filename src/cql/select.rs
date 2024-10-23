@@ -135,5 +135,4 @@ impl Select {
         let res = format!("{},{}", aeropuerto, date);
         res
     }
-
 }

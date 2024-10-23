@@ -59,13 +59,12 @@ impl Query {
         self.get_type();
 
         match &mut self.qtype {
-            QType::Select(select) => { //nada
+            QType::Select(select) => {
+                //nada
                 select.get_key(); //sacar -> esta para clippy
                 "SELECT".to_string()
             }
-            QType::Insert(insert) => {
-                insert.get_values()
-            }
+            QType::Insert(insert) => insert.get_values(),
             _ => "Error".to_string(),
         }
     }
@@ -129,8 +128,6 @@ impl Query {
             _ => "BBBBBBBBBBBB".to_string(),
         }
     }
-
-    
 }
 //INSERT: Suponiendo que no se puede insertar filas incompletas:
 //te traers self.values[0] y self.values[1]
