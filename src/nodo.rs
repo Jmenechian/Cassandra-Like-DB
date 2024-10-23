@@ -209,6 +209,12 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
 
         let mut query = Query::new(consulta, node.client_ip.clone());
 
+        // let values = query.get_values(); //values lo guarda 1 sola vez
+        //si es insert -> creas las lineas aca y las devolves
+        //otros nodos agarran y appendean esas lineas en sus archivos
+
+        // println!("Query: {:?}", query);
+
         // Mando query a los nodos correspondientes
         let all_results = match send_query_to_nodes(&node, &mut query) {
             Ok(results) => results,
@@ -219,15 +225,15 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
         };
 
         // Le devuelvo el resultado que me devolvieron todos los nodos al cliente
-        // Luego se tiene que implementar Read-repear.
-        let res = all_results.join(" - ");
-
+        // let res = process_results(all_results); //devuelve solo una respuesta, para testear sacar esto porque no anda todavia
         //consistency level / read-repair
 
-        let message: Message = Message::create_message_as_server(res, node.client_ip.clone()); // Create the message
+        let message: Message =
+            Message::create_message_as_server(all_results[0].clone(), node.client_ip.clone()); // Create the message
         println!("{:?}", message);
 
-        let _ = buf.write_all(message.message.as_bytes());
+        let _ = buf.write_all(message.message.as_bytes()); //todo esto en una macro?
+        let _ = buf.write_all(b"\n");
         let _ = buf.flush();
 
         line = String::new();
@@ -235,6 +241,50 @@ pub fn handle_connection_client(node: Arc<RwLock<Node>>, stream: TcpStream) -> R
     Ok(())
 }
 
+//mapa
+//hago click en AEP con fecha
+//aviones volando -> threads
+//hago click en NY
+
+// fn process_results(results: &Vec<String>) -> String {
+//     println!("pr ===> {:?}", results);
+
+//     match results.len() {
+//         1 => return results[0].clone(),
+//         2 => {
+//             let (a, b) = (&results[0], &results[1]);
+//             if a == b {
+//                 return a.clone() //no hay que hacer nada mas creo
+//             } else {
+//                 // let newer = look_newer(results);
+//                 // read_repair(newer, ) //update a todos los nodos
+//                 // return newer
+//             }
+//             }
+//         3 => {
+//             let (a, b, c) = (&results[0], &results[1], &results[2]);
+//             // return look_newer(vec![a.clone(), b.clone(), c.clone()]);
+//         }
+//         _ => return "error".to_string(), //rompio todo
+//     }
+//     results[0].clone()
+// }
+
+pub fn look_newer(results: &[String]) -> (&str, usize) {
+    //falta testear en process results
+    let mut newer = "";
+    let mut index = 0;
+    for (i, result) in results.iter().enumerate() {
+        let filas: Vec<&str> = result.split("     ").collect::<Vec<&str>>();
+        for timestamp in filas.iter().filter(|p| p.contains("UTC")) {
+            if timestamp > &newer {
+                newer = timestamp;
+                index = i;
+            }
+        }
+    }
+    (newer, index)
+}
 // Envia la query a los nodos correspondientes
 // HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
 pub fn send_query_to_nodes(
@@ -245,7 +295,9 @@ pub fn send_query_to_nodes(
     let mut hash = ConsistentHash::new(RF);
 
     hash.add_nodes(node.neighbors.to_vec());
-    let key = query.get_key_representing_partition();
+    let key = query.get_key_representing_partition(&node.server_ip);
+    println!("La key es: {}", key);
+    println!("La query es: {:?}", query);
     let nodes_with_result = hash.get_nodes(&key);
 
     println!(
@@ -272,6 +324,8 @@ pub fn send_query_to_nodes(
             }
         }
 
+        //query::new te tira la fila a llenar
+
         if neighbor.status == Status::Disconnected {
             println!("- Nodo desconectado: {}", neighbor.server_ip);
             continue;
@@ -281,7 +335,7 @@ pub fn send_query_to_nodes(
             // - Mando mensaje:
             let mut buf = BufStream::new(socket);
             println!("- Enviando mensaje a {}", neighbor.server_ip);
-            buf.write_all(format!("REQUEST:{}:{}\n", neighbor.server_ip, key).as_bytes())
+            buf.write_all(format!("REQUEST:{}:{}\n", neighbor.server_ip, query.query).as_bytes())
                 .map_err(|e| MyError::SendingMessageError(e.to_string()))?;
             let _ = buf.flush();
             println!("se envio? el mensaje a {}", neighbor.server_ip);
@@ -315,12 +369,15 @@ pub fn send_query_to_nodes(
                     }
                     _ => println!("Error: {}", response),
                 }
+                // if consistency_level == ONE && all_response.len() == 1 {
+                //     process_results(all_response)
+                // }
             }
-
-            //if cons_level == 1
-            // return all_response
-            // else
-            // el más actualizado
+            // if consistency_level == QUORUM && all_response.len() >= 2 {
+            //     process_results(all_response)
+            // } else {
+            //     return "Error".to_string()
+            // }
         } //else {
           // println!("Error conectando a {}", neighbor.server_ip);
           //}
