@@ -1,159 +1,3 @@
-// [1 Byte opcode] [1 byte version] [1 byte consistency level] [4 bytes Length_msg] [msg]  ////// [4 bytes len_ip] [ip_para_responder]
-
-use crate::cql::my_errors::MyError;
-
-const REQUEST: u8 = 0x03;
-const QUORUM: u8 = 0x0004;
-const QUERY: u8 = 0x07;
-
-const RESPONSE: u8 = 0x83;
-const RESULT: u8 = 0x08;
-// const RESPONSE: u8 = 0x83;
-
-#[derive(Debug)]
-pub struct Message {
-    pub version: u8,
-    pub opcode: u8,
-    pub len_msg: u32,
-    pub consistency_level: u8,
-    pub message: String,
-}
-
-impl Message {
-    pub fn new(
-        message: String,
-        version: u8,
-        opcode: u8,
-        len_msg: u32,
-        consistency_level: u8,
-    ) -> Self {
-        Self {
-            version,
-            opcode,
-            len_msg,
-            consistency_level,
-            message,
-        }
-    }
-
-    //opcode version consistency_level length_msg message len_ip ip
-    pub fn to_bytes(&mut self) -> Vec<u8> {
-        let mut combined = Vec::new();
-        combined.push(self.opcode);
-        combined.push(self.version);
-        combined.push(self.consistency_level);
-        combined.extend(&self.len_msg.to_be_bytes());
-        combined.extend(self.message.as_bytes());
-        combined
-    }
-
-    // 48 bits para ip+puerto
-    //
-
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, MyError> {
-        if bytes.len() < 8 {
-            return Err(MyError::Error("error en from_bytes, len < 8"));
-        }
-        let opcode = bytes[0];
-        let version = bytes[1];
-        let consistency_level = bytes[2];
-        let len_msg = u32::from_be_bytes([bytes[3], bytes[4], bytes[5], bytes[6]]);
-        let message = String::from_utf8(bytes[7..].to_vec())
-            .map_err(|_| MyError::Error("error en from_bytes"))?;
-
-        // let mut cursor = Cursor::new(bytes);
-        // let opcode = read_u8(&mut cursor)?;
-        // let version = read_u8(&mut cursor)?;
-        // let consistency_level = read_u8(&mut cursor)?;
-        // let len_msg = read_u32(&mut cursor)?;
-
-        // let msg = Self::deserialize_string(&mut cursor, len_msg)?;
-
-        // let mut buf_msg = vec![0u8; len_msg as usize];
-        // let _ = cursor.read_exact(&mut buf_msg).map_err(|_| MyError::Error("error en dezerialize"))?;
-        // let message = String::from_utf8(buf_msg).map_err(|_| MyError::Error("error en dezerialize"))?;
-
-        Ok(Self {
-            version,
-            opcode,
-            len_msg,
-            consistency_level,
-            message,
-        })
-    }
-
-    // fn serialize_string(field: &str) -> Vec<u8> {
-    //     let mut field_bytes = Vec::new();
-    //     let length = field.len() as u32;
-
-    //     field_bytes.extend(&length.to_be_bytes()); // Write length prefix
-    //     field_bytes.extend(field.as_bytes()); // Write string content
-
-    //     field_bytes
-    // }
-
-    // fn deserialize_string<R: Read>(reader: &mut R, len_msg: u32) -> Result<String, MyError> {
-    //     let mut buf_msg = vec![0u8; len_msg as usize];
-    //     let _ = reader
-    //         .read_exact(&mut buf_msg)
-    //         .map_err(|_| MyError::Error("error en dezerialize"))?;
-    //     String::from_utf8(buf_msg).map_err(|_| MyError::Error("error en dezerialize"))
-
-    // let length = read_u32(reader)? as usize;
-    // let mut buf = vec![0u8; length];
-    // reader.read_exact(&mut buf).map_err(|_| MyError::Error("error en deserlize"))?;
-    // String::from_utf8(buf).map_err(|_| MyError::Error("error en deserlize"))
-    //}
-
-    pub fn create_message_as_client(input: String) -> Message {
-        let ip = "127.0.0.1:45450".to_string();
-        let lenght = (ip.len() + input.len()) as u32;
-        Message::new(input, REQUEST, QUERY, lenght, QUORUM)
-    }
-
-    pub fn create_message_as_server(input: String, ip: String) -> Message {
-        let lenght = (ip.len() + input.len()) as u32;
-        //saca el ip.len() fijo
-        Message::new(input, RESPONSE, RESULT, lenght, QUORUM)
-    }
-}
-
-pub fn print_message(mensaje: String) {
-    let parts: Vec<&str> = mensaje.split("     ").collect();
-    for part in parts {
-        println!("{}", part);
-    }
-}
-
-// fn read_u32<R: Read>(reader: &mut R) -> Result<u32, MyError> {
-//     let mut buf = [0u8; 4]; // 4 bytes
-//     match reader.read_exact(&mut buf) {
-//         Ok(_) => (),
-//         Err(_) => return Err(MyError::Error("Failed to read u32")),
-//     }
-//     Ok(u32::from_be_bytes(buf))
-// }
-
-// fn read_u8<R: Read>(reader: &mut R) -> Result<u8, MyError> {
-//     let mut buf = [0u8; 1];
-//     match reader.read_exact(&mut buf) {
-//         Ok(_) => (),
-//         Err(_) => return Err(MyError::Error("Failed to read u8")),
-//     }
-//     Ok(buf[0])
-// }
-
-// macro_rules! read_u8 {
-//     ($reader:expr) => {{
-//         let mut buf = [0u8; 1];
-//         match $reader.read_exact(&mut buf) {
-//             Ok(_) => (),
-//             Err(_) => return Err(MyError::Error("Failed to read u8".to_string())),
-//         }
-//         Ok(buf[0])
-//     }};
-// }
-
 // OPCODE
 // 0x00    ERROR
 // 0x01    STARTUP
@@ -186,3 +30,178 @@ pub fn print_message(mensaje: String) {
 //   0x0008    SERIAL
 //   0x0009    LOCAL_SERIAL
 //   0x000A    LOCAL_ONE
+
+use crate::config;
+use std::{error::Error, io::{Read, Write}, net::TcpStream};
+use crate::messagestuff::message_cql::cqlenvelope::IntoEnvelope;
+use crate::messagestuff::message_server::serverpacket::IntoPacket;
+pub trait Serialize: std::fmt::Debug {
+    fn to_bytes(&self) -> Vec<u8>;
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> where Self: Sized;
+}
+
+pub trait Sendable: std::fmt::Debug + IntoEnvelope {
+    fn send_through(self, stream: & mut TcpStream) -> Result<(), Box<dyn Error>>
+    where
+        Self: Sized,
+    {
+        let env = self.into_envelope();
+        let bytes = env.to_bytes();
+        if let Err(_) = stream.write_all(&bytes) {
+            return Err(Box::from("Error al escribir en el stream"));
+        };
+        if let Err(_) = stream.flush() {
+            return Err(Box::from("Error al vecial es stream"));
+        }
+        Ok(())
+    }
+
+    fn sent_to(self, addres: String) -> Result<(), Box<dyn Error>>
+    where
+        Self: Sized,
+    {
+        let mut stream = match TcpStream::connect(addres) {
+            Ok(s) => s,
+            Err(_) => return Err(Box::from("Error al conectarse con servidor")),
+        };
+        self.send_through(&mut stream)
+    }
+}
+
+impl<T: IntoEnvelope> Sendable for T {}
+
+pub trait ServerSendable: std::fmt::Debug + IntoPacket {
+    fn send_server_through(self, stream: & mut TcpStream) -> Result<(), Box<dyn Error>>
+    where
+        Self: Sized,
+    {
+        let packet = self.into_packet();
+        let bytes = packet.to_bytes();
+        if let Err(_) = stream.write_all(&bytes) {
+            return Err(Box::from("Error al escribir en el stream"));
+        };
+        if let Err(_) = stream.flush() {
+            return Err(Box::from("Error al vecial es stream"));
+        }
+        Ok(())
+    }
+
+    fn sent_to(self, addres: String) -> Result<(), Box<dyn Error>>
+    where
+        Self: Sized,
+    {
+        let mut stream = match TcpStream::connect(addres) {
+            Ok(s) => s,
+            Err(_) => return Err(Box::from("Error al conectarse con servidor")),
+        };
+        self.send_server_through(&mut stream)
+    }
+}
+
+impl<T: IntoPacket> ServerSendable for T {}
+
+//Las funciones to_bytes() y from_bytes() de los diferentes tipos de datos
+//[byte]: 1 byte unsigned integer
+pub fn byte_to_byte(s: u8) -> Vec<u8> {
+    s.to_be_bytes().to_vec()
+} 
+
+pub fn byte_from_bytes(bytes: Vec<u8>) -> Result<(u8, Vec<u8>), Box<dyn Error>> {
+    if bytes.len() < 1 {
+        return Err(Box::from("No hay suficientes bytes para leer un <byte>"));
+    }
+    let value = u8::from_be_bytes([bytes[0]]);
+    Ok((value, bytes[1..].to_vec()))
+}
+
+//[short]: 2 bytes unsigned integer
+pub fn short_to_bytes(s: u16) -> Vec<u8> {
+    s.to_be_bytes().to_vec()
+} 
+
+pub fn short_from_bytes(bytes: Vec<u8>) -> Result<(u16, Vec<u8>), Box<dyn Error>> {
+    if bytes.len() < 2 {
+        return Err(Box::from("No hay suficientes bytes para leer un <short>"));
+    }
+    let value = u16::from_be_bytes([bytes[0], bytes[1]]);
+    Ok((value, bytes[2..].to_vec()))
+}
+
+//[int]: 4 bytes integer
+pub fn int_to_bytes(i: i32) -> Vec<u8> {
+    i.to_be_bytes().to_vec()
+}
+
+pub fn int_from_bytes(bytes: Vec<u8>) -> Result<(i32, Vec<u8>), Box<dyn Error>> {
+    if bytes.len() < 4 {
+        return Err(Box::from("No hay suficientes bytes para leer un <int>"));
+    }
+    let value = i32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+    Ok((value, bytes[4..].to_vec()))
+}
+
+//[long]: 8 bytes integer
+pub fn long_to_bytes(l: i64) -> Vec<u8> {
+    l.to_be_bytes().to_vec()
+}
+
+pub fn long_from_bytes(bytes: Vec<u8>) -> Result<(i64, Vec<u8>), Box<dyn Error>> {
+    if bytes.len() < 8 {
+        return Err(Box::from("No hay suficientes bytes para leer un <long>"));
+    }
+    let value = i64::from_be_bytes([
+        bytes[0], bytes[1], bytes[2], bytes[3],
+        bytes[4], bytes[5], bytes[6], bytes[7]
+    ]);
+    Ok((value, bytes[8..].to_vec()))
+}
+
+//[sring]: [short] n, followed by n bytes representing an UFT-8 string
+pub fn string_to_bytes(s: String) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    let length = s.len() as u16;
+    bytes.extend_from_slice(&short_to_bytes(length));
+    bytes.extend_from_slice(s.as_bytes());
+    bytes
+}
+
+pub fn string_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), Box<dyn Error>> {
+    if bytes.len() < 2 {
+        return Err(Box::from("No hay suficientes bytes para leer la longitud del <String>"));
+    }
+    let (length, resto) = short_from_bytes(bytes)?;
+    if resto.len() < length as usize {
+        return Err(Box::from("No hay suficientes bytes prar leer el <String>"));
+    }
+    let string_buffer = &resto[..length as usize];
+    let _string = match String::from_utf8(string_buffer.to_vec()) {
+        Ok(string) => string,
+        Err(_) => return Err(Box::from("Error al pasar utf8 a <String>"))
+    };
+    Ok((_string, resto[length as usize..].to_vec()))
+}
+
+//[long string]: [int] n, followed by n bytes representing an UTF-8 string
+pub fn longstring_to_bytes(s: String) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    let length = s.len() as i32;
+    bytes.extend_from_slice(&int_to_bytes(length));
+    bytes.extend_from_slice(s.as_bytes());
+    bytes
+}
+
+pub fn longstring_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), Box<dyn Error>> {
+    if bytes.len() < 4 {
+        return Err(Box::from("No hay suficientes bytes para leer la longitud del <String>"));
+    }
+    let (length, resto) = int_from_bytes(bytes)?;
+    if resto.len() < length as usize {
+        return Err(Box::from("No hay suficientes bytes para leer el <String>"));
+    }
+    let string_buffer = &resto[..length as usize];
+    let _string = match String::from_utf8(string_buffer.to_vec()) {
+        Ok(string) => string,
+        Err(_) => return Err(Box::from("Error al pasar utf8 a <string>"))
+    };
+    Ok((_string, resto[length as usize..].to_vec()))
+}

@@ -3,14 +3,12 @@ pub mod consistent_hashing;
 pub mod my_errors;
 pub mod neighbor_node;
 pub mod nodo;
-pub mod server_message;
 pub mod utils;
 pub mod cql {
     pub mod delete;
     pub mod filter;
     pub mod insert;
     pub mod lexer;
-    pub mod my_errors;
     pub mod parser;
     pub mod query;
     pub mod relation;
@@ -23,12 +21,34 @@ pub mod clientstuff {
 }
 pub mod messagestuff {
     pub mod message;
+    pub mod message_cql {
+        pub mod cqlenvelope;
+        pub mod querymessage;
+        pub mod errormessage;
+        pub mod resultmessage;
+        pub mod resultrowsmessage;
+        pub mod resultvoidmessage;
+    }
+    pub mod message_server {
+        pub mod serverpacket;
+        pub mod gossipmessage;
+        pub mod queryservermessage;
+        pub mod errorservermessage;
+        pub mod resultservermessage;
+        pub mod resultrowsevermsg;
+        pub mod resultvoidservermsg;
+    }
+    
 }
+
+pub use cql::query::Query;
+pub use nodo::Node;
+
+pub use clientstuff::client_cql;
+pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
 
 pub use consistent_hashing::ConsistentHash;
 pub use neighbor_node::NeighborNode;
-pub use nodo::Node;
-pub use server_message::ServerMessage;
 
 //GUI
 pub mod gui {

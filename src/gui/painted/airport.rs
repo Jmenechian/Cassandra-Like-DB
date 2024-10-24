@@ -19,32 +19,32 @@ impl Airport {
         }
     }
 
-    pub fn get_origin_flights_from(&self, stream: &Option<TcpStream>, date: &str) -> Result<Vec<Flight>, MyError> {
-        let query = format!("SELECT * FROM origin WHERE date = '{}' AND airport = '{}'", date, self.name);
+    pub fn get_origin_flights_from(&self, stream: &mut Option<TcpStream>, date: &str) -> Result<Vec<Flight>, MyError> {
+        let query = format!("SELECT * FROM origin WHERE date = {} AND airport = {}", date, self.name);
         println!("query: {:?}", query);
         if let Some(stream) = stream {
             println!("Por enviar mensaje...");
             Client::send_message(stream, query).map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
             let response = Client::read_response(stream).map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-            let flights = response.message.split(",").map(|f| Flight::new(f.to_owned())).collect();
+            let flights = response;
             println!("get_origin_flights_from: {:?}", flights);
-            return Ok(flights);
+            return Ok(vec![]);
         }
 
         Err(MyError::SendingMessageError("Error sending query".to_string()))
     }
 
-    pub fn get_flights_that_return_to(&self, stream: &Option<TcpStream>, date: &str) -> Result<Vec<Flight>, MyError>{
+    pub fn get_flights_that_return_to(&self, stream: &mut Option<TcpStream>, date: &str) -> Result<Vec<Flight>, MyError>{
         let query = format!("SELECT * FROM destination WHERE date = '{}' AND airport = '{}'", date, self.name);
 
-        if let Some(stream) = &stream {
+        if let Some(stream) = stream {
             Client::send_message(stream, query).map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
             let response = Client::read_response(stream).map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-            let flights = response.message.split(",").map(|f| Flight::new(f.to_owned())).collect();
+            let flights = response;
             println!("get_flights_that_return_to: {:?}", flights);
-            return Ok(flights);
+            return Ok(vec![]);
         }
 
         Err(MyError::SendingMessageError("Error sending query".to_string()))
