@@ -18,7 +18,7 @@ impl ConsistentHash<NeighborNode> {
         Self {
             ring: BTreeMap::new(),
             rf,       // Replication Factor
-            total: 0, // Cantidad de nodos
+            total: 8, // Cantidad de nodos
         }
     }
 
@@ -32,7 +32,7 @@ impl ConsistentHash<NeighborNode> {
 
     // Agregar un nodo al anillo
     pub fn add_node(&mut self, node: NeighborNode) {
-        self.total += 1;
+        //self.total += 1;
         let mut hash = self.hash(&node.server_ip);
         while self.ring.contains_key(&hash) {
             hash += 1;
@@ -42,7 +42,7 @@ impl ConsistentHash<NeighborNode> {
 
     // Agregar un nodo al anillo
     pub fn add_nodes(&mut self, nodes: Vec<NeighborNode>) {
-        self.total += nodes.len();
+        //self.total += nodes.len();
         for node in nodes {
             let mut hash = self.hash(&node.server_ip);
             while self.ring.contains_key(&hash) {

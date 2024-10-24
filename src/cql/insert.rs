@@ -1,8 +1,8 @@
 use crate::config::TABLE_PATH;
 use crate::my_errors::MyError;
 use crate::utils::*;
+use chrono::Utc;
 use std::collections::HashMap;
-
 #[derive(Debug, Eq, PartialEq)]
 pub struct Insert {
     pub table: String,
@@ -54,6 +54,7 @@ impl Insert {
         println!("INSERT en tabla: {}", self.table);
 
         let headers: Vec<String> = self.extract_values(&parts, skip_index);
+        // headers.push("timestamp".to_string());
 
         skip_index += headers
             .iter()
@@ -132,7 +133,7 @@ impl Insert {
         println!("En execute_command de INSERT");
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let headers = get_file_headers(&mut rdr)?;
-
+        // self.values.push(Utc::now().to_string());
         // INSERT INTO VALUES (val1, val2)
         // values are inserted in the same order as the file headers
         if self.columns.is_empty() {
@@ -155,7 +156,21 @@ impl Insert {
                 new_record.push(String::new());
             }
         }
+        new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
+        new_record.push(Utc::now().to_string()); // metes lo mas nuevo
         append_row(TABLE_PATH, &self.table, &new_record)?;
         Ok("linea fue agregada".to_string())
+    }
+
+    pub fn get_key(&self) -> String {
+        //suponiendo que siempre se manda bien
+        println!("values = {:?}", self.values);
+        let res = format!("{},{}", self.values[0], self.values[1]);
+        res
+    }
+
+    pub fn get_values(&mut self) -> String {
+        self.values.push(Utc::now().to_string());
+        self.values.join(",")
     }
 }

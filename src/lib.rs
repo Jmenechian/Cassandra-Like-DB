@@ -9,7 +9,6 @@ pub mod cql {
     pub mod filter;
     pub mod insert;
     pub mod lexer;
-    pub mod my_errors;
     pub mod parser;
     pub mod query;
     pub mod relation;

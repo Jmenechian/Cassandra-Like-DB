@@ -162,7 +162,7 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
     known_nodes
 }
 
-fn handle_connection_server_2(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show: bool) -> Result<(), MyError> {
+fn handle_connection_server(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show: bool) -> Result<(), MyError> {
     loop {
         match Packet::from_stream(stream) {
             Ok(packet) => {
@@ -204,7 +204,7 @@ pub fn handle_query(_query: Query) {
     // println!("Llego la query: {}", query.query);
 }
 
-pub fn handle_connection_client_2 (node: Arc<RwLock<Node>>, stream: & mut TcpStream, show: bool) -> Result<(), MyError> {
+pub fn handle_connection_client (node: Arc<RwLock<Node>>, stream: & mut TcpStream, show: bool) -> Result<(), MyError> {
     let node = match node.read() {
         Ok(n) => n,
         Err(e) => {
@@ -237,7 +237,8 @@ pub fn handle_connection_client_2 (node: Arc<RwLock<Node>>, stream: & mut TcpStr
                                 if show{println!("C   Error: {:?}", e);}
                             }
                         } else {
-                            let rows_msg = ResultRowsMessage{rows_count: 1 as i32, rows_content: vec![table[0].clone()]};
+                            let content: Vec<String> = table[0].clone().trim_end().split("     ").map(|s| s.to_string()).collect();
+                            let rows_msg = ResultRowsMessage{rows_count: content.len() as i32, rows_content:content};
                             if let Err(e) = rows_msg.send_through(stream) {
                                 if show{println!("C   Error: {:?}", e);}
                             }
@@ -261,6 +262,50 @@ pub fn handle_connection_client_2 (node: Arc<RwLock<Node>>, stream: & mut TcpStr
     Ok(())
 }
 
+//mapa
+//hago click en AEP con fecha
+//aviones volando -> threads
+//hago click en NY
+
+// fn process_results(results: &Vec<String>) -> String {
+//     println!("pr ===> {:?}", results);
+
+//     match results.len() {
+//         1 => return results[0].clone(),
+//         2 => {
+//             let (a, b) = (&results[0], &results[1]);
+//             if a == b {
+//                 return a.clone() //no hay que hacer nada mas creo
+//             } else {
+//                 // let newer = look_newer(results);
+//                 // read_repair(newer, ) //update a todos los nodos
+//                 // return newer
+//             }
+//             }
+//         3 => {
+//             let (a, b, c) = (&results[0], &results[1], &results[2]);
+//             // return look_newer(vec![a.clone(), b.clone(), c.clone()]);
+//         }
+//         _ => return "error".to_string(), //rompio todo
+//     }
+//     results[0].clone()
+// }
+
+pub fn look_newer(results: &[String]) -> (&str, usize) {
+    //falta testear en process results
+    let mut newer = "";
+    let mut index = 0;
+    for (i, result) in results.iter().enumerate() {
+        let filas: Vec<&str> = result.split("     ").collect::<Vec<&str>>();
+        for timestamp in filas.iter().filter(|p| p.contains("UTC")) {
+            if timestamp > &newer {
+                newer = timestamp;
+                index = i;
+            }
+        }
+    }
+    (newer, index)
+}
 // Envia la query a los nodos correspondientes
 // HAY QUE HACERLO!! ahora se lo esta mandando a todos los nodos
 pub fn send_query_to_nodes(
@@ -272,7 +317,9 @@ pub fn send_query_to_nodes(
     let mut hash = ConsistentHash::new(RF);
     let mut query = Query::new(_query.clone(), node.client_ip.clone());
     hash.add_nodes(node.neighbors.to_vec());
-    let key = query.get_key_representing_partition();
+    let key = query.get_key_representing_partition(&node.server_ip);
+    println!("La key es: {}", key);
+    println!("La query es: {:?}", query);
     let nodes_with_result = hash.get_nodes(&key);
 
     if show{println!(
@@ -431,7 +478,7 @@ where F: Fn(Arc<RwLock<Node>>, &mut TcpStream, bool) -> Result<(), MyError> + Se
 pub fn initialize_2(port: String) -> Result<(), MyError> {
     let show_g: bool = false;
     let show_s: bool = false;
-    let show_c: bool = false;
+    let show_c: bool = true;
 
     let mut current_node: Node = Node::new(&port);
     println!("Nodo actual: {:?}", current_node);
@@ -457,10 +504,10 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
     
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
     // Seccion cliente-servidor
-    listen(current_node.read().unwrap().client_ip.clone(), current_node.clone(), handle_connection_client_2, show_c)?;
+    listen(current_node.read().unwrap().client_ip.clone(), current_node.clone(), handle_connection_client, show_c)?;
 
     // Seccion servidor-servidor
-    listen(current_node.read().unwrap().server_ip.clone(), current_node.clone(), handle_connection_server_2, show_s)?;
+    listen(current_node.read().unwrap().server_ip.clone(), current_node.clone(), handle_connection_server, show_s)?;
 
     // Seccion Gossip
     listen(current_node.read().unwrap().gossip_ip.clone(), current_node.clone(), handle_connection_gossip, show_g)?;
@@ -516,7 +563,7 @@ pub fn initialize(port: String) -> Result<(), MyError> {
             let node_thread = Arc::clone(&current_node_client);
             let t = thread::spawn(move ||  {
                 // bufreader queda con el ownership de stream --> usamos BufStream para solucionarlo
-                let _ = handle_connection_client_2(node_thread, &mut stream, true);
+                let _ = handle_connection_client(node_thread, &mut stream, true);
             });
             let _ = t.join();
         }
@@ -535,7 +582,7 @@ pub fn initialize(port: String) -> Result<(), MyError> {
 
             let node_thread = Arc::clone(&current_node_server);
             thread::spawn(move || {
-                let _ = handle_connection_server_2(node_thread.clone(), &mut stream, true);
+                let _ = handle_connection_server(node_thread.clone(), &mut stream, true);
             });
         }
     });
