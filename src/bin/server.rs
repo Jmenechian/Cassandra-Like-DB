@@ -11,7 +11,7 @@ fn main() {
     println!("args: {:?}", args);
     let ports_file = args[1].to_string();
 
-    match nodo::initialize(ports_file) {
+    match nodo::initialize_2(ports_file) {
         Ok(result) => result,
         Err(e) => {
             eprintln!("{:?}", e);
