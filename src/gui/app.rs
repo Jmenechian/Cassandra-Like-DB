@@ -94,26 +94,18 @@ impl eframe::App for MapApp {
                     if ui.interact(button_rect, Id::new(&airport.name), egui::Sense::click()).clicked() {
                         println!("¡Aeropuerto {} presionado!", airport.name);
 
-                        if let Ok(origin_flights) = airport.get_origin_flights_from(&self.stream_client, &date_selected) {
-                            println!("origin_flights: {:?}", origin_flights);
+                        let origin_flights = airport.get_origin_flights_from(&self.stream_client, &date_selected).unwrap();
+                        let return_flights = airport.get_flights_that_return_to(&self.stream_client, &date_selected).unwrap();
+                        let return_airports = get_return_airport_of(&origin_flights);
+                        let origin_airports = get_origin_airport_of(&return_flights);
 
-                            let return_airports = get_return_airport_of(&origin_flights);
+                        draw_lines_between_airports(&airport, &origin_airports);
+                        draw_lines_between_airports(&airport, &return_airports);
 
-                            if let Ok(return_flights) = airport.get_flights_that_return_to(&self.stream_client, &date_selected) {
+                        draw_outgoing_flights(&origin_flights,&airport, &return_airports);
+                        draw_incoming_flights(&return_flights, &origin_airports, &airport);
 
-                                let origin_airports = get_origin_airport_of(&return_flights);
-                                draw_lines_between_airports(&airport, &origin_airports);
-                                draw_lines_between_airports(&airport, &return_airports);
-
-                                draw_outgoing_flights(&origin_flights,&airport, &return_airports);
-                                draw_incoming_flights(&return_flights, &origin_airports, &airport);
-
-                            }
-                        } else if let Err(origin_flights) = airport.get_origin_flights_from(&self.stream_client, &date_selected) {
-                            println!("Error: {}", origin_flights);
-                        }
                     }
-
                 }
             }
         });
