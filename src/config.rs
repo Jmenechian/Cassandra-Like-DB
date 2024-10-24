@@ -20,6 +20,9 @@ pub const RESULT: u8 = 0x08;
 
 pub const GOSSIP: u8 = 0x11;
 
+pub const CONNECTED: u8 = 0x20;
+pub const DISCONNECTED: u8 = 0x21;
+
 // [consistency]
 pub const ONE: u16 = 0x0001;
 pub const QUORUM: u16 = 0x0004;

@@ -1,6 +1,7 @@
 use crate::config;
 use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
+use crate::messagestuff::message::Sendable;
 use std::io::{self, BufRead, BufReader, Write, Result};
 use std::net::TcpStream;
 use bufstream::BufStream;
@@ -48,15 +49,17 @@ impl Client {
                 let mut input = String::new();
                 if stdin.lock().read_line(& mut input).is_ok() {
                     if !input.is_empty() {
+                        println!("Hola");
                         let msg: QueryMessage = QueryMessage{query: input, consistency: config::ONE};
-                        let env = msg.into_envelope();
+                        let _ = msg.send_through(&mut stream_clone);
+                        /*let env = msg.into_envelope();
                         if let Err(e) = stream_clone.write_all(&env.to_bytes()) {
                             println!("Error al escribir en el stream: {:?}", e);
                         }
                         if let Err(e) = stream_clone.flush() {
                             println!("Error al vecial es stream: {:?}", e);
                             break;
-                        }
+                        }*/
                     }
                 }
             }

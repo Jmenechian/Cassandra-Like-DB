@@ -75,8 +75,8 @@ impl Packet {
     pub fn from_stream(stream: &mut TcpStream) -> Result<Self, Box<dyn Error>> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 5];
-        if let Err(_) = stream.read_exact(&mut header_buffer) {
-            return Err(Box::from("Error al leer el <header> del packet desde Stream"));
+        if let Err(e) = stream.read_exact(&mut header_buffer) {
+            return Err(Box::from(format!("Error al leer el <header> del packet desde Stream{:?}", e)));
         };
         let _opcode = ServerOpcode::from_u8(header_buffer[0])?;
         let _length = i32::from_be_bytes([header_buffer[1],header_buffer[2],header_buffer[3],header_buffer[4]]);
