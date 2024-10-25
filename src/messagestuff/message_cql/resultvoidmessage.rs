@@ -1,16 +1,16 @@
 // Representa un resultado vacio a una consulta
 
-use crate::messagestuff::message_cql::{
-    cqlenvelope::*,
-    resultmessage::*,
-};
+use crate::messagestuff::message_cql::{cqlenvelope::*, resultmessage::*};
 
 #[derive(Debug, PartialEq)]
 pub struct ResultVoidMessage;
 
 impl IntoResultMessage for ResultVoidMessage {
     fn into_result_message(self) -> ResultMessage {
-        ResultMessage{kind: ResultKind::Void, body: ResultBody::Void(self)}
+        ResultMessage {
+            kind: ResultKind::Void,
+            body: ResultBody::Void(self),
+        }
     }
 }
 

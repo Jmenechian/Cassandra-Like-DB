@@ -37,7 +37,6 @@ pub const GREATER_THAN: i32 = 1;
 pub const LESS_THAN: i32 = 2;
 pub const NOT_NUMBER: i32 = 3;
 
-
 // OPCODE
 // 0x00    ERROR
 // 0x01    STARTUP

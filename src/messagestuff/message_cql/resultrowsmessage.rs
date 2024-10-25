@@ -1,12 +1,9 @@
 // Representa a una fila de la tabla de resultado
 // del tipo ResultMessage
 
-use std::error::Error;
 use crate::messagestuff::message::*;
-use crate::messagestuff::message_cql::{
-    cqlenvelope::*,
-    resultmessage::*,
-};
+use crate::messagestuff::message_cql::{cqlenvelope::*, resultmessage::*};
+use std::error::Error;
 
 #[derive(Debug, PartialEq)]
 pub struct ResultRowsMessage {
@@ -33,13 +30,22 @@ impl Serialize for ResultRowsMessage {
             _rows_content.push(_row);
             _bytes = resto;
         }
-        Ok((ResultRowsMessage{rows_count: _rows_count, rows_content: _rows_content}, _bytes))
+        Ok((
+            ResultRowsMessage {
+                rows_count: _rows_count,
+                rows_content: _rows_content,
+            },
+            _bytes,
+        ))
     }
 }
 
 impl IntoResultMessage for ResultRowsMessage {
     fn into_result_message(self) -> ResultMessage {
-        ResultMessage{kind: ResultKind::Rows, body: ResultBody::Rows(self)}
+        ResultMessage {
+            kind: ResultKind::Rows,
+            body: ResultBody::Rows(self),
+        }
     }
 }
 
@@ -56,9 +62,9 @@ mod tests {
 
     #[test]
     fn test_result_rows_message() -> Result<(), Box<dyn Error>> {
-        let expected_result: ResultRowsMessage = ResultRowsMessage{
-                rows_count: 1 as i32, 
-                rows_content: vec!["hola".to_string()],
+        let expected_result: ResultRowsMessage = ResultRowsMessage {
+            rows_count: 1 as i32,
+            rows_content: vec!["hola".to_string()],
         };
         let bytes: Vec<u8> = expected_result.to_bytes();
         let (_result, _) = ResultRowsMessage::from_bytes(bytes)?;
@@ -67,8 +73,8 @@ mod tests {
 
     #[test]
     fn test_result_rows_message_2() -> Result<(), Box<dyn Error>> {
-        let expected_result: ResultRowsMessage = ResultRowsMessage{
-            rows_count: 2 as i32, 
+        let expected_result: ResultRowsMessage = ResultRowsMessage {
+            rows_count: 2 as i32,
             rows_content: vec!["hola".to_string(), "chau".to_string()],
         };
         let bytes: Vec<u8> = expected_result.to_bytes();
@@ -78,29 +84,35 @@ mod tests {
 
     #[test]
     fn test_result_rows_message_3() -> Result<(), Box<dyn Error>> {
-        let expected_result: ResultRowsMessage = ResultRowsMessage{
-            rows_count: 2 as i32, 
+        let expected_result: ResultRowsMessage = ResultRowsMessage {
+            rows_count: 2 as i32,
             rows_content: vec!["hola".to_string(), "chau".to_string()],
         };
         let mut bytes: Vec<u8> = expected_result.to_bytes();
         bytes.pop();
         if let Err(e) = ResultRowsMessage::from_bytes(bytes) {
             let error = e.to_string();
-            return Ok(assert_eq!(error, "No hay suficientes bytes prar leer el <String>"));
+            return Ok(assert_eq!(
+                error,
+                "No hay suficientes bytes prar leer el <String>"
+            ));
         }
         Ok(())
     }
     #[test]
     fn test_result_rows_message_4() -> Result<(), Box<dyn Error>> {
-        let expected_result: ResultRowsMessage = ResultRowsMessage{
-            rows_count: 3 as i32, 
+        let expected_result: ResultRowsMessage = ResultRowsMessage {
+            rows_count: 3 as i32,
             rows_content: vec!["hola".to_string(), "chau".to_string()],
         };
         let mut bytes: Vec<u8> = expected_result.to_bytes();
         bytes.pop();
         if let Err(e) = ResultRowsMessage::from_bytes(bytes) {
             let error = e.to_string();
-            return Ok(assert_eq!(error, "No hay suficientes bytes prar leer el <String>"));
+            return Ok(assert_eq!(
+                error,
+                "No hay suficientes bytes prar leer el <String>"
+            ));
         }
         Ok(())
     }

@@ -1,8 +1,7 @@
-use std::error::Error;
-use std::net::Ipv4Addr;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::serverpacket::*;
 use crate::nodo::Status;
+use std::error::Error;
 
 #[derive(Debug, PartialEq)]
 pub struct GossipMessage {
@@ -14,10 +13,10 @@ pub struct GossipMessage {
 impl GossipMessage {
     pub fn decrease_ttl(&mut self) -> Option<bool> {
         if self.ttl <= 0 {
-            return Some(false)
+            return Some(false);
         }
-        self.ttl = self.ttl - 1;
-        return Some(self.ttl != 0);
+        self.ttl -= 1;
+        Some(self.ttl != 0)
     }
 }
 
@@ -30,12 +29,22 @@ impl Serialize for GossipMessage {
         bytes
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> where Self: Sized {
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>>
+    where
+        Self: Sized,
+    {
         let (_ip, resto) = string_from_bytes(bytes)?;
         let (value, resto) = byte_from_bytes(resto)?;
         let _status = Status::from_u8(value)?;
         let (_ttl, resto) = byte_from_bytes(resto)?;
-        Ok((GossipMessage{ip: _ip, estado: _status, ttl: _ttl}, resto))
+        Ok((
+            GossipMessage {
+                ip: _ip,
+                estado: _status,
+                ttl: _ttl,
+            },
+            resto,
+        ))
     }
 }
 

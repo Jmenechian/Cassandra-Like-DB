@@ -3,21 +3,18 @@
 //
 // Estos son los mensajes que se envian como respuesta a una consulta
 
-use std::error::Error;
 use crate::config;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::{
-    cqlenvelope::*,
-    resultrowsmessage::ResultRowsMessage, 
-    resultvoidmessage::ResultVoidMessage,
+    cqlenvelope::*, resultrowsmessage::ResultRowsMessage, resultvoidmessage::ResultVoidMessage,
 };
-use crate::messagestuff::message_server::serverpacket::*;
+use std::error::Error;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]
 pub enum ResultKind {
     Void = config::VOID,
-    Rows = config::ROWS, 
+    Rows = config::ROWS,
 }
 
 impl ResultKind {
@@ -25,7 +22,7 @@ impl ResultKind {
         match value {
             config::VOID => Ok(ResultKind::Void),
             config::ROWS => Ok(ResultKind::Rows),
-            _ => Err(Box::from("Invalid Result Kind"))
+            _ => Err(Box::from("Invalid Result Kind")),
         }
     }
 }
@@ -45,7 +42,7 @@ pub struct ResultMessage {
 impl Serialize for ResultMessage {
     fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(& int_to_bytes(self.kind as i32));
+        bytes.extend_from_slice(&int_to_bytes(self.kind as i32));
         match &self.body {
             ResultBody::Void(_) => {}
             ResultBody::Rows(rows) => {
@@ -66,7 +63,13 @@ impl Serialize for ResultMessage {
             }
         };
 
-        Ok((ResultMessage{kind: _kind, body: _body}, resto))
+        Ok((
+            ResultMessage {
+                kind: _kind,
+                body: _body,
+            },
+            resto,
+        ))
     }
 }
 
@@ -74,12 +77,12 @@ impl IntoEnvelope for ResultMessage {
     fn into_envelope(self) -> Envelope {
         let _body = self.to_bytes();
         Envelope {
-            version: 0x85 as u8,
-            flags: 0 as u8,
-            stream: 0 as u16,
+            version: 0x85_u8,
+            flags: 0_u8,
+            stream: 0_u16,
             opcode: CqlOpcode::ResultMessage,
             length: _body.len() as i32,
-            body: CqlMessage::Result(self)
+            body: CqlMessage::Result(self),
         }
     }
 }
@@ -94,12 +97,12 @@ mod tests {
 
     #[test]
     fn test_result_rows_message() -> Result<(), Box<dyn Error>> {
-        let expected_result: ResultMessage = ResultMessage{
-            kind: ResultKind::Rows, 
-            body: ResultBody::Rows(ResultRowsMessage{
-                rows_count: 1 as i32, 
+        let expected_result: ResultMessage = ResultMessage {
+            kind: ResultKind::Rows,
+            body: ResultBody::Rows(ResultRowsMessage {
+                rows_count: 1 as i32,
                 rows_content: vec!["hola".to_string()],
-            })
+            }),
         };
         let bytes: Vec<u8> = expected_result.to_bytes();
         let (_result, _) = ResultMessage::from_bytes(bytes)?;
@@ -108,12 +111,12 @@ mod tests {
 
     #[test]
     fn test_result_rows_message_2() -> Result<(), Box<dyn Error>> {
-        let expected_result: ResultMessage = ResultMessage{
-            kind: ResultKind::Rows, 
-            body: ResultBody::Rows(ResultRowsMessage{
-                rows_count: 2 as i32, 
+        let expected_result: ResultMessage = ResultMessage {
+            kind: ResultKind::Rows,
+            body: ResultBody::Rows(ResultRowsMessage {
+                rows_count: 2 as i32,
                 rows_content: vec!["hola".to_string(), "chau".to_string()],
-            })
+            }),
         };
         let bytes: Vec<u8> = expected_result.to_bytes();
         let (_result, _) = ResultMessage::from_bytes(bytes)?;
@@ -122,42 +125,51 @@ mod tests {
 
     #[test]
     fn test_result_rows_message_3() -> Result<(), Box<dyn Error>> {
-        let expected_result: ResultMessage = ResultMessage{
-            kind: ResultKind::Rows, 
-            body: ResultBody::Rows(ResultRowsMessage{
-                rows_count: 2 as i32, 
+        let expected_result: ResultMessage = ResultMessage {
+            kind: ResultKind::Rows,
+            body: ResultBody::Rows(ResultRowsMessage {
+                rows_count: 2 as i32,
                 rows_content: vec!["hola".to_string(), "chau".to_string()],
-            })
+            }),
         };
         let mut bytes: Vec<u8> = expected_result.to_bytes();
         bytes.pop();
         if let Err(e) = ResultMessage::from_bytes(bytes) {
             let error = e.to_string();
-            return Ok(assert_eq!(error, "No hay suficientes bytes prar leer el <String>"));
+            return Ok(assert_eq!(
+                error,
+                "No hay suficientes bytes prar leer el <String>"
+            ));
         }
         Ok(())
     }
     #[test]
     fn test_result_rows_message_4() -> Result<(), Box<dyn Error>> {
-        let expected_result: ResultMessage = ResultMessage{
-            kind: ResultKind::Rows, 
-            body: ResultBody::Rows(ResultRowsMessage{
-                rows_count: 3 as i32, 
+        let expected_result: ResultMessage = ResultMessage {
+            kind: ResultKind::Rows,
+            body: ResultBody::Rows(ResultRowsMessage {
+                rows_count: 3 as i32,
                 rows_content: vec!["hola".to_string(), "chau".to_string()],
-            })
+            }),
         };
         let mut bytes: Vec<u8> = expected_result.to_bytes();
         bytes.pop();
         if let Err(e) = ResultMessage::from_bytes(bytes) {
             let error = e.to_string();
-            return Ok(assert_eq!(error, "No hay suficientes bytes prar leer el <String>"));
+            return Ok(assert_eq!(
+                error,
+                "No hay suficientes bytes prar leer el <String>"
+            ));
         }
         Ok(())
     }
 
     #[test]
     fn test_result_void_message() -> Result<(), Box<dyn Error>> {
-        let expected_result: ResultMessage = ResultMessage{kind: ResultKind::Void, body: ResultBody::Void(ResultVoidMessage)};
+        let expected_result: ResultMessage = ResultMessage {
+            kind: ResultKind::Void,
+            body: ResultBody::Void(ResultVoidMessage),
+        };
         let bytes: Vec<u8> = expected_result.to_bytes();
         let (_result, _) = ResultMessage::from_bytes(bytes)?;
         Ok(assert_eq!(_result, expected_result))

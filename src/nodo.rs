@@ -1,40 +1,28 @@
-use chrono::prelude::*;
-use bufstream::BufStream;
+use crate::config::RF;
+use crate::config::{self, PORTS_FILE};
+use crate::cql::query::Query;
+use crate::messagestuff::{
+    message::*,
+    message_cql::{
+        cqlenvelope::*, errormessage::*, resultrowsmessage::*,
+        resultvoidmessage::*,
+    },
+    message_server::{
+        gossipmessage::*, queryservermessage::QueryServerMessage, resultrowsevermsg::*,
+        resultservermessage::*, serverpacket::Packet,
+        serverpacket::ServerMessage,
+    },
+};
+use crate::my_errors::*;
+use crate::{ConsistentHash, NeighborNode};
+use rand::seq::SliceRandom;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
-use threadpool::ThreadPool;
-use rand::prelude::IteratorRandom;
-use crate::config::{self, N_WORKERS, PORTS_FILE};
-use rand::seq::SliceRandom;
-use crate::config::RF;
-use crate::cql::query::Query;
-use crate::messagestuff::{
-    message::*,
-    message_cql::{
-        cqlenvelope::*,
-        querymessage::*,
-        errormessage::*,
-        resultmessage::*,
-        resultrowsmessage::*,
-        resultvoidmessage::*,
-    },
-    message_server::{
-        serverpacket::Packet,
-        serverpacket::ServerMessage,
-        queryservermessage::QueryServerMessage,
-        resultservermessage::*,
-        resultvoidservermsg::*,
-        resultrowsevermsg::*,
-        gossipmessage::*,
-    },
-};
-use crate::my_errors::*;
-use crate::{ConsistentHash, NeighborNode};
 
 #[derive(Debug, Clone, PartialEq, Copy)]
 #[repr(u8)]
@@ -44,7 +32,7 @@ pub enum Status {
 }
 
 impl Status {
-    pub fn from_u8(value: u8) -> Result<Self,MyError> {
+    pub fn from_u8(value: u8) -> Result<Self, MyError> {
         match value {
             config::CONNECTED => Ok(Status::Connected),
             config::DISCONNECTED => Ok(Status::Disconnected),
@@ -56,11 +44,11 @@ impl Status {
 // Representa al nodo en el que estamos parados
 #[derive(Debug, Clone, PartialEq)]
 pub struct Node {
-    pub ip: String,        //temp
+    pub ip: String, //temp
     pub puerto: String,
     pub server_ip: String, // IP donde nodo se pone a escuchar conecciones de servidores
     pub client_ip: String, // IP donde nodo se pone a escuchar conecciones de cliente
-    pub gossip_ip: String,  // IP donde nodo se pone a escuchar mensajes Gossip
+    pub gossip_ip: String, // IP donde nodo se pone a escuchar mensajes Gossip
     pub file_path: String,
     pub nodes_path: String,
     pub neighbors: Vec<NeighborNode>, // todos los otros nodos
@@ -70,7 +58,7 @@ impl Node {
     pub fn new(port: &str) -> Self {
         Self {
             ip: format!("127.0.0.1:{}", port),
-            puerto: format!("{}", port),
+            puerto: port.to_string(),
             server_ip: format!("127.0.0.1:700{}", port),
             client_ip: format!("127.0.0.1:800{}", port),
             gossip_ip: format!("127.0.0.1:900{}", port),
@@ -85,7 +73,11 @@ impl Node {
     }
 
     pub fn add_neighbor(&mut self, neighbor_node: NeighborNode) -> bool {
-        if let Some(pos) = self.neighbors.iter().position(|n| n.puerto == neighbor_node.puerto) {
+        if let Some(pos) = self
+            .neighbors
+            .iter()
+            .position(|n| n.puerto == neighbor_node.puerto)
+        {
             if self.neighbors[pos].time < neighbor_node.time {
                 self.neighbors[pos] = neighbor_node;
                 false
@@ -100,8 +92,12 @@ impl Node {
 
     pub fn get_random_neighbor(&self, my_port: String) -> Option<&NeighborNode> {
         let mut rng = rand::thread_rng();
-        
-        let filtered: Vec<&NeighborNode> = self.neighbors.iter().filter(|n| n.puerto != my_port).collect();
+
+        let filtered: Vec<&NeighborNode> = self
+            .neighbors
+            .iter()
+            .filter(|n| n.puerto != my_port)
+            .collect();
         filtered.choose(&mut rng).map(|&n| n)
     }
 
@@ -141,7 +137,7 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
             continue;
         }
         let status: Status;
-        if try_connect(format!{"127.0.0.1:700{}", port}).is_some() {
+        if try_connect(format! {"127.0.0.1:700{}", port}).is_some() {
             status = Status::Connected;
             println!("Conectado exitosamente al nodo en el puerto {}", port);
             // Avisar al nodo que me conecte??
@@ -162,17 +158,25 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
     known_nodes
 }
 
-fn handle_connection_server(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show: bool) -> Result<(), MyError> {
+fn handle_connection_server(
+    node: Arc<RwLock<Node>>,
+    stream: &mut TcpStream,
+    show: bool,
+) -> Result<(), MyError> {
     loop {
         match Packet::from_stream(stream) {
             Ok(packet) => {
-                if show{println!("S   El packet recibido es: {:?}", packet);}
+                if show {
+                    println!("S   El packet recibido es: {:?}", packet);
+                }
                 match packet.body {
                     ServerMessage::Query(query) => {
                         let mut node = match node.read() {
                             Ok(n) => n,
                             Err(e) => {
-                                if show{println!("S   Error al tratar de usar el nodo: {:?}", e);}
+                                if show {
+                                    println!("S   Error al tratar de usar el nodo: {:?}", e);
+                                }
                                 return Ok(());
                             }
                         };
@@ -181,16 +185,23 @@ fn handle_connection_server(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show
                             Ok(s) => s,
                             Err(_) => "".to_string(),
                         };
-                        let msg = ResultRowsServerMessage{rows_count: 1, rows_content: vec![table]};
+                        let msg = ResultRowsServerMessage {
+                            rows_count: 1,
+                            rows_content: vec![table],
+                        };
                         let _ = msg.send_server_through(stream);
                     }
                     _ => {
-                        if show{println!("S   Error entre server y servers");}
+                        if show {
+                            println!("S   Error entre server y servers");
+                        }
                     }
                 }
             }
             Err(e) => {
-                if show{println!("S   Error al leer el packet: {:?}", e);}
+                if show {
+                    println!("S   Error al leer el packet: {:?}", e);
+                }
                 break;
             }
         }
@@ -204,57 +215,97 @@ pub fn handle_query(_query: Query) {
     // println!("Llego la query: {}", query.query);
 }
 
-pub fn handle_connection_client (node: Arc<RwLock<Node>>, stream: & mut TcpStream, show: bool) -> Result<(), MyError> {
+pub fn handle_connection_client(
+    node: Arc<RwLock<Node>>,
+    stream: &mut TcpStream,
+    show: bool,
+) -> Result<(), MyError> {
     let node = match node.read() {
         Ok(n) => n,
         Err(e) => {
-            if show{println!("C   Error al tratar de usar el nodo: {:?}", e);}
+            if show {
+                println!("C   Error al tratar de usar el nodo: {:?}", e);
+            }
             return Ok(());
         }
     };
-    
+
     loop {
         match Envelope::from_stream(stream) {
             Ok(env) => {
-                if show{println!("C   El env recibido es: {:?}", env);}
+                if show {
+                    println!("C   El env recibido es: {:?}", env);
+                }
                 match env.body {
                     CqlMessage::Query(querymessage) => {
-                        let mut query = Query::new(querymessage.query.clone(), node.client_ip.clone());
-                        let table = match send_query_to_nodes(&node, querymessage.query.clone(), show) {
+                        // let query =
+                        //     Query::new(querymessage.query.clone(), node.client_ip.clone());
+                        let table = match send_query_to_nodes(
+                            &node,
+                            querymessage.query.clone(),
+                            show,
+                        ) {
                             Ok(r) => r,
                             Err(e) => {
                                 let _error = "Error: algo fallo en send_query_to_node".to_string();
-                                let msg = ErrorMessage{error: _error, code: 0 as i32};
+                                let msg = ErrorMessage {
+                                    error: _error,
+                                    code: 0_i32, //0 as i32
+                                };
                                 if let Err(e) = msg.send_through(stream) {
-                                    if show{println!("C   Error an enviarle un ErrorMessage al cliente: {:?}", e);}
+                                    if show {
+                                        println!("C   Error an enviarle un ErrorMessage al cliente: {:?}", e);
+                                    }
                                 }
-                                return Err(e)
+                                return Err(e);
                             }
                         };
-                        if table.len() == 0 {
+                        if table.is_empty() {
                             let void_msg = ResultVoidMessage;
                             if let Err(e) = void_msg.send_through(stream) {
-                                if show{println!("C   Error: {:?}", e);}
+                                if show {
+                                    println!("C   Error: {:?}", e);
+                                }
                             }
                         } else {
-                            let content: Vec<String> = table[0].clone().trim_end().split("     ").map(|s| s.to_string()).collect();
-                            let rows_msg = ResultRowsMessage{rows_count: content.len() as i32, rows_content:content};
+                            let content: Vec<String> = table[0]
+                                .clone()
+                                .trim_end()
+                                .split("     ")
+                                .map(|s| s.to_string())
+                                .collect();
+                            let rows_msg = ResultRowsMessage {
+                                rows_count: content.len() as i32,
+                                rows_content: content,
+                            };
                             if let Err(e) = rows_msg.send_through(stream) {
-                                if show{println!("C   Error: {:?}", e);}
+                                if show {
+                                    println!("C   Error: {:?}", e);
+                                }
                             }
                         }
                     }
                     _ => {
                         let _error = "Error: Solo me puede llegar un QueryMessage".to_string();
-                        let msg = ErrorMessage{error: _error, code: 0 as i32};
+                        let msg = ErrorMessage {
+                            error: _error,
+                            code: 0_i32, //0 as i32
+                        };
                         if let Err(e) = msg.send_through(stream) {
-                            if show{println!("C   Error an enviarle un ErrorMessage al cliente: {:?}", e);}
+                            if show {
+                                println!(
+                                    "C   Error an enviarle un ErrorMessage al cliente: {:?}",
+                                    e
+                                );
+                            }
                         }
                     }
                 }
             }
             Err(e) => {
-                if show{println!("C    Error al leer el env: {:?}", e);}
+                if show {
+                    println!("C    Error al leer el env: {:?}", e);
+                }
                 break;
             }
         }
@@ -323,150 +374,209 @@ pub fn send_query_to_nodes(
     println!("La query es: {:?}", query);
     let nodes_with_result = hash.get_nodes(&key);
 
-    if show{println!(
-        "
+    if show {
+        println!(
+            "
         C   vecinos: {:?}
         C   Los nodos que tienen la info son: {:?}\n",
-        node.neighbors, nodes_with_result
-    );}
+            node.neighbors, nodes_with_result
+        );
+    }
 
     for neighbor in nodes_with_result {
         // El nodo original porque puede tener el resultado de la query:
         if neighbor.server_ip == node.server_ip {
-            if show{println!(
-                "C   - Buscando el resultado en el nodo original: {}",
-                neighbor.server_ip
-            );}
+            if show {
+                println!(
+                    "C   - Buscando el resultado en el nodo original: {}",
+                    neighbor.server_ip
+                );
+            }
             match node.process_query(&mut query) {
                 Ok(result) => {
                     all_response.push(result);
                 }
                 Err(e) => {
-                    if show{println!("C   Error al procesar la query: {:?}", e);}
+                    if show {
+                        println!("C   Error al procesar la query: {:?}", e);
+                    }
                     all_response.push("Error al procesar la query".to_string());
                     //////////// que hacemos aca?
                 }
             }
             continue;
-        } 
-        else if neighbor.status == Status::Disconnected {
-            if show{println!("C   - Nodo desconectado: {}", neighbor.server_ip);}
+        } else if neighbor.status == Status::Disconnected {
+            if show {
+                println!("C   - Nodo desconectado: {}", neighbor.server_ip);
+            }
             continue;
-        }
-        else if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
+        } else if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
             // Mando mensaje y el IP del nodo que se conecto con el cliente y en ese mismo stream leo la respuesta que me envia como resultado de la consulta.
             // - Mando mensaje:
-            let msg = QueryServerMessage { query: _query.clone(), consistency: 0 };
+            let msg = QueryServerMessage {
+                query: _query.clone(),
+                consistency: 0,
+            };
             let _ = msg.send_server_through(&mut socket);
             loop {
-                match Packet::from_stream(& mut socket) {
+                match Packet::from_stream(&mut socket) {
                     Ok(packet) => {
-                        if show{println!("C   El packet recibido es: {:?}", packet);}
+                        if show {
+                            println!("C   El packet recibido es: {:?}", packet);
+                        }
                         match packet.body {
                             ServerMessage::Result(resultmessage) => {
                                 match resultmessage.body {
                                     ResultServerBody::Rows(r) => {
                                         all_response.push(r.rows_content[0].clone());
-                                    },
-                                    ResultServerBody::Void(_)=> {}
+                                    }
+                                    ResultServerBody::Void(_) => {}
                                 }
                                 break;
                             }
                             _ => {
-                                if show{println!("C   Error entre server y servers");}
+                                if show {
+                                    println!("C   Error entre server y servers");
+                                }
                             }
                         }
                     }
                     Err(e) => {
-                        if show{println!("C   Error al leer el paket: {:?}", e);}
+                        if show {
+                            println!("C   Error al leer el paket: {:?}", e);
+                        }
                     }
                 }
             }
-        } 
+        }
     }
     Ok(all_response)
 }
 
-fn handle_connection_gossip(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show: bool) -> Result<(), MyError> {
-    if show{println!("G   Entro al handle_connection_gossip");}
+fn handle_connection_gossip(
+    node: Arc<RwLock<Node>>,
+    stream: &mut TcpStream,
+    show: bool,
+) -> Result<(), MyError> {
+    if show {
+        println!("G   Entro al handle_connection_gossip");
+    }
     match Packet::from_stream(stream) {
         Ok(packet) => {
-            if show{println!("G   El packet recibido es: {:?}", packet);}
+            if show {
+                println!("G   El packet recibido es: {:?}", packet);
+            }
             match packet.body {
                 ServerMessage::Gossip(mut gossip) => {
                     let ip: String = gossip.ip.clone();
                     let mut node = match node.write() {
                         Ok(n) => n,
                         Err(e) => {
-                            if show {println!("G   Error al tratar de usar el nodo: {:?}", e);}
+                            if show {
+                                println!("G   Error al tratar de usar el nodo: {:?}", e);
+                            }
                             return Err(MyError::LockingError("No puedo usar el nodo".to_string()));
                         }
                     };
-                    
+
                     if let Some(true) = gossip.decrease_ttl() {
                         if let Some(n) = node.get_random_neighbor(node.puerto.clone()) {
                             if let Some(mut stream) = try_connect(n.gossip_ip.clone()) {
                                 //thread::sleep(Duration::from_secs(1));
                                 if let Err(e) = gossip.send_server_through(&mut stream) {
-                                    if show{println!("G   Error al evialr mensaje gossip: {:?}", e);}
+                                    if show {
+                                        println!("G   Error al evialr mensaje gossip: {:?}", e);
+                                    }
                                 }
-                            } else {
-                                if show{println!("G   Error al conectarse al vecino");}
+                            } else if show {
+                                    println!("G   Error al conectarse al vecino");
                             }
                         }
                     }
-                    let new = node.add_neighbor(NeighborNode::new(
-                        &ip.chars().last().unwrap().to_string(),
-                    ));
-                    if show && new {println!("G   Mis vecinos son: {:?}", node.neighbors);}
+                    let new = node
+                        .add_neighbor(NeighborNode::new(&ip.chars().last().unwrap().to_string()));
+                    if show && new {
+                        println!("G   Mis vecinos son: {:?}", node.neighbors);
+                    }
                 }
                 _ => {
-                    if show{println!("G   Error entre gossip y gossip");}
+                    if show {
+                        println!("G   Error entre gossip y gossip");
+                    }
                 }
             }
         }
         Err(e) => {
             let error = format!("G   Error al leer el packet: {:?}", e);
-            if show{println!("{}", error);}
-            return Err(MyError::Error(error))
+            if show {
+                println!("{}", error);
+            }
+            return Err(MyError::Error(error));
         }
     }
     Ok(())
 }
 
-fn connect_to_random_gossip(ports: Vec<u16>, my_port: &String, show: bool) -> Option<(TcpStream, String)> {
+fn connect_to_random_gossip(
+    ports: Vec<u16>,
+    my_port: &String,
+    show: bool,
+) -> Option<(TcpStream, String)> {
     let mut shuffeld_ports = ports.clone();
     shuffeld_ports.shuffle(&mut rand::thread_rng());
-    if show{println!("MEZCLO y me queda: {:?}, siendo y el: {:?}", shuffeld_ports, my_port);}
+    if show {
+        println!(
+            "MEZCLO y me queda: {:?}, siendo y el: {:?}",
+            shuffeld_ports, my_port
+        );
+    }
     for &port in &shuffeld_ports {
-        if &port.to_string() == my_port {continue};
+        if &port.to_string() == my_port {
+            continue;
+        };
         let addr = format!("127.0.0.1:900{}", port);
-        if let Some (mut stream) = try_connect(addr.clone()) {
-            if show{println!("El primero que encontre fue el: {:?}", addr);}
+        if let Some(mut stream) = try_connect(addr.clone()) {
+            if show {
+                println!("El primero que encontre fue el: {:?}", addr);
+            }
             return Some((stream, addr));
         }
     }
     None
 }
 
-fn listen<F> (ip: String, node: Arc<RwLock<Node>>, handler: F, show: bool) 
--> Result<JoinHandle<Result<(), MyError>>, MyError> 
-where F: Fn(Arc<RwLock<Node>>, &mut TcpStream, bool) -> Result<(), MyError> + Send + 'static + Copy  {
+fn listen<F>(
+    ip: String,
+    node: Arc<RwLock<Node>>,
+    handler: F,
+    show: bool,
+) -> Result<JoinHandle<Result<(), MyError>>, MyError>
+where
+    F: Fn(Arc<RwLock<Node>>, &mut TcpStream, bool) -> Result<(), MyError> + Send + 'static + Copy,
+{
     let current_node = Arc::clone(&node);
     let t = thread::spawn(move || {
-        let listener = match  TcpListener::bind(ip) {
+        let listener = match TcpListener::bind(ip) {
             Ok(j) => j,
-            Err(_) => return Err(MyError::TcpListenerError("Error al conectarse al puerto".to_string())),
+            Err(_) => {
+                return Err(MyError::TcpListenerError(
+                    "Error al conectarse al puerto".to_string(),
+                ))
+            }
         };
         for stream in listener.incoming() {
             let mut s: TcpStream = match stream {
                 Ok(s) => s,
-                Err(_) => return Err(MyError::TcpStreamError("Error al leer TcpStream".to_string())),
+                Err(_) => {
+                    return Err(MyError::TcpStreamError(
+                        "Error al leer TcpStream".to_string(),
+                    ))
+                }
             };
             let node_thread = Arc::clone(&current_node);
             thread::spawn(move || {
                 match handler(node_thread.clone(), &mut s, show) {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(e) => println!("Error: {:?}", e),
                 };
             });
@@ -484,43 +594,64 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
     let mut current_node: Node = Node::new(&port);
     println!("Nodo actual: {:?}", current_node);
     //me agrego a mi mismo a vecinos
-    current_node.add_neighbor(NeighborNode::new(
-        &current_node.puerto,
-    ));
+    current_node.add_neighbor(NeighborNode::new(&current_node.puerto));
 
     //empiezo gossip
     let ports = read_ports_from_file(PORTS_FILE);
     let my_ip = current_node.server_ip.clone();
     match connect_to_random_gossip(ports.clone(), &port, show_g) {
         Some((mut s, addr)) => {
-            let gossip_msg = GossipMessage{ip: my_ip.clone(), estado: Status::Connected, ttl: 5 as u8};
+            let gossip_msg = GossipMessage {
+                ip: my_ip.clone(),
+                estado: Status::Connected,
+                ttl: 5_u8, //5 as u8
+            };
             let _ = gossip_msg.send_server_through(&mut s);
-            let new = current_node.add_neighbor(NeighborNode::new(
-                &addr.chars().last().unwrap().to_string(),
-            ));
-            if show_g && new {println!("G   Mis vecinos son: {:?}", current_node.neighbors);}
-        },
+            let new = current_node
+                .add_neighbor(NeighborNode::new(&addr.chars().last().unwrap().to_string()));
+            if show_g && new {
+                println!("G   Mis vecinos son: {:?}", current_node.neighbors);
+            }
+        }
         None => println!("tengo que ser el primer nodo porque no encontre otro"),
     };
-    
+
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
-    // Seccion cliente-servidor
-    listen(current_node.read().unwrap().client_ip.clone(), current_node.clone(), handle_connection_client, show_c)?;
+                                                                               // Seccion cliente-servidor
+    listen(
+        current_node.read().unwrap().client_ip.clone(),
+        current_node.clone(),
+        handle_connection_client,
+        show_c,
+    )?;
 
     // Seccion servidor-servidor
-    listen(current_node.read().unwrap().server_ip.clone(), current_node.clone(), handle_connection_server, show_s)?;
+    listen(
+        current_node.read().unwrap().server_ip.clone(),
+        current_node.clone(),
+        handle_connection_server,
+        show_s,
+    )?;
 
     // Seccion Gossip
-    listen(current_node.read().unwrap().gossip_ip.clone(), current_node.clone(), handle_connection_gossip, show_g)?;
-
+    listen(
+        current_node.read().unwrap().gossip_ip.clone(),
+        current_node.clone(),
+        handle_connection_gossip,
+        show_g,
+    )?;
 
     loop {
         thread::sleep(Duration::from_secs(10));
         match connect_to_random_gossip(ports.clone(), &port, show_g) {
             Some((mut s, _)) => {
-                let gossip_msg = GossipMessage{ip: my_ip.clone(), estado: Status::Connected, ttl: 5 as u8};
+                let gossip_msg = GossipMessage {
+                    ip: my_ip.clone(),
+                    estado: Status::Connected,
+                    ttl: 5_u8, //5 as u8
+                };
                 let _ = gossip_msg.send_server_through(&mut s);
-            },
+            }
             None => println!("tengo que ser el primer nodo porque no encontre otro"),
         };
     }
@@ -562,7 +693,7 @@ pub fn initialize(port: String) -> Result<(), MyError> {
             let mut stream = stream.unwrap();
 
             let node_thread = Arc::clone(&current_node_client);
-            let t = thread::spawn(move ||  {
+            let t = thread::spawn(move || {
                 // bufreader queda con el ownership de stream --> usamos BufStream para solucionarlo
                 let _ = handle_connection_client(node_thread, &mut stream, true);
             });

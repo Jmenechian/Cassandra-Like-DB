@@ -18,7 +18,7 @@ impl NeighborNode {
         Self {
             server_ip: format!("127.0.0.1:700{}", port),
             gossip_ip: format!("127.0.0.1:900{}", port),
-            puerto: format!("{}", port),
+            puerto: port.to_string(),
             status: Status::Connected, // Deberia empezar desconectado?
             time: Local::now(),
         }

@@ -1,56 +1,28 @@
-// OPCODE
-// 0x00    ERROR
-// 0x01    STARTUP
-// 0x02    READY
-// 0x03    AUTHENTICATE
-// 0x05    OPTIONS
-// 0x06    SUPPORTED
-// 0x07    QUERY
-// 0x08    RESULT
-// 0x09    PREPARE
-// 0x0A    EXECUTE
-// 0x0B    REGISTER
-// 0x0C    EVENT
-// 0x0D    BATCH
-// 0x0E    AUTH_CHALLENGE
-// 0x0F    AUTH_RESPONSE
-// 0x10    AUTH_SUCCESS
-
-// [consistency]  A consistency level specification. This is a [short]
-// representing a consistency level with the following
-// correspondance:
-//   0x0000    ANY
-//   0x0001    ONE
-//   0x0002    TWO
-//   0x0003    THREE
-//   0x0004    QUORUM
-//   0x0005    ALL
-//   0x0006    LOCAL_QUORUM
-//   0x0007    EACH_QUORUM
-//   0x0008    SERIAL
-//   0x0009    LOCAL_SERIAL
-//   0x000A    LOCAL_ONE
-
-use crate::config;
-use std::{error::Error, io::{Read, Write}, net::TcpStream};
 use crate::messagestuff::message_cql::cqlenvelope::IntoEnvelope;
 use crate::messagestuff::message_server::serverpacket::IntoPacket;
+use std::{
+    error::Error,
+    io::Write,
+    net::TcpStream,
+};
 pub trait Serialize: std::fmt::Debug {
     fn to_bytes(&self) -> Vec<u8>;
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> where Self: Sized;
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>>
+    where
+        Self: Sized;
 }
 
 pub trait Sendable: std::fmt::Debug + IntoEnvelope {
-    fn send_through(self, stream: & mut TcpStream) -> Result<(), Box<dyn Error>>
+    fn send_through(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error>>
     where
         Self: Sized,
     {
         let env = self.into_envelope();
         let bytes = env.to_bytes();
-        if let Err(_) = stream.write_all(&bytes) {
+        if stream.write_all(&bytes).is_err() {
             return Err(Box::from("Error al escribir en el stream"));
         };
-        if let Err(_) = stream.flush() {
+        if stream.flush().is_err() {
             return Err(Box::from("Error al vecial es stream"));
         }
         Ok(())
@@ -71,16 +43,16 @@ pub trait Sendable: std::fmt::Debug + IntoEnvelope {
 impl<T: IntoEnvelope> Sendable for T {}
 
 pub trait ServerSendable: std::fmt::Debug + IntoPacket {
-    fn send_server_through(self, stream: & mut TcpStream) -> Result<(), Box<dyn Error>>
+    fn send_server_through(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error>>
     where
         Self: Sized,
     {
         let packet = self.into_packet();
         let bytes = packet.to_bytes();
-        if let Err(_) = stream.write_all(&bytes) {
+        if stream.write_all(&bytes).is_err() {
             return Err(Box::from("Error al escribir en el stream"));
         };
-        if let Err(_) = stream.flush() {
+        if stream.flush().is_err() {
             return Err(Box::from("Error al vecial es stream"));
         }
         Ok(())
@@ -104,10 +76,10 @@ impl<T: IntoPacket> ServerSendable for T {}
 //[byte]: 1 byte unsigned integer
 pub fn byte_to_byte(s: u8) -> Vec<u8> {
     s.to_be_bytes().to_vec()
-} 
+}
 
 pub fn byte_from_bytes(bytes: Vec<u8>) -> Result<(u8, Vec<u8>), Box<dyn Error>> {
-    if bytes.len() < 1 {
+    if bytes.is_empty() {
         return Err(Box::from("No hay suficientes bytes para leer un <byte>"));
     }
     let value = u8::from_be_bytes([bytes[0]]);
@@ -117,7 +89,7 @@ pub fn byte_from_bytes(bytes: Vec<u8>) -> Result<(u8, Vec<u8>), Box<dyn Error>> 
 //[short]: 2 bytes unsigned integer
 pub fn short_to_bytes(s: u16) -> Vec<u8> {
     s.to_be_bytes().to_vec()
-} 
+}
 
 pub fn short_from_bytes(bytes: Vec<u8>) -> Result<(u16, Vec<u8>), Box<dyn Error>> {
     if bytes.len() < 2 {
@@ -150,8 +122,7 @@ pub fn long_from_bytes(bytes: Vec<u8>) -> Result<(i64, Vec<u8>), Box<dyn Error>>
         return Err(Box::from("No hay suficientes bytes para leer un <long>"));
     }
     let value = i64::from_be_bytes([
-        bytes[0], bytes[1], bytes[2], bytes[3],
-        bytes[4], bytes[5], bytes[6], bytes[7]
+        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
     ]);
     Ok((value, bytes[8..].to_vec()))
 }
@@ -167,7 +138,9 @@ pub fn string_to_bytes(s: String) -> Vec<u8> {
 
 pub fn string_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), Box<dyn Error>> {
     if bytes.len() < 2 {
-        return Err(Box::from("No hay suficientes bytes para leer la longitud del <String>"));
+        return Err(Box::from(
+            "No hay suficientes bytes para leer la longitud del <String>",
+        ));
     }
     let (length, resto) = short_from_bytes(bytes)?;
     if resto.len() < length as usize {
@@ -176,7 +149,7 @@ pub fn string_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), Box<dyn Er
     let string_buffer = &resto[..length as usize];
     let _string = match String::from_utf8(string_buffer.to_vec()) {
         Ok(string) => string,
-        Err(_) => return Err(Box::from("Error al pasar utf8 a <String>"))
+        Err(_) => return Err(Box::from("Error al pasar utf8 a <String>")),
     };
     Ok((_string, resto[length as usize..].to_vec()))
 }
@@ -192,7 +165,9 @@ pub fn longstring_to_bytes(s: String) -> Vec<u8> {
 
 pub fn longstring_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), Box<dyn Error>> {
     if bytes.len() < 4 {
-        return Err(Box::from("No hay suficientes bytes para leer la longitud del <String>"));
+        return Err(Box::from(
+            "No hay suficientes bytes para leer la longitud del <String>",
+        ));
     }
     let (length, resto) = int_from_bytes(bytes)?;
     if resto.len() < length as usize {
@@ -201,7 +176,7 @@ pub fn longstring_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), Box<dy
     let string_buffer = &resto[..length as usize];
     let _string = match String::from_utf8(string_buffer.to_vec()) {
         Ok(string) => string,
-        Err(_) => return Err(Box::from("Error al pasar utf8 a <string>"))
+        Err(_) => return Err(Box::from("Error al pasar utf8 a <string>")),
     };
     Ok((_string, resto[length as usize..].to_vec()))
 }

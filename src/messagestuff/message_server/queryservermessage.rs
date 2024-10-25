@@ -1,6 +1,6 @@
-use std::error::Error;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::serverpacket::*;
+use std::error::Error;
 
 #[derive(Debug, PartialEq)]
 pub struct QueryServerMessage {
@@ -19,11 +19,15 @@ impl Serialize for QueryServerMessage {
     fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> {
         let (_query, resto) = longstring_from_bytes(bytes)?;
         let (_consistency, resto) = short_from_bytes(resto)?;
-        Ok((QueryServerMessage{query: _query, consistency: _consistency}, resto))
+        Ok((
+            QueryServerMessage {
+                query: _query,
+                consistency: _consistency,
+            },
+            resto,
+        ))
     }
 }
-
-
 
 impl IntoPacket for QueryServerMessage {
     fn into_packet(self) -> Packet {

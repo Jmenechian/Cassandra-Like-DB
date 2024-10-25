@@ -23,22 +23,21 @@ pub mod messagestuff {
     pub mod message;
     pub mod message_cql {
         pub mod cqlenvelope;
-        pub mod querymessage;
         pub mod errormessage;
+        pub mod querymessage;
         pub mod resultmessage;
         pub mod resultrowsmessage;
         pub mod resultvoidmessage;
     }
     pub mod message_server {
-        pub mod serverpacket;
+        pub mod errorservermessage;
         pub mod gossipmessage;
         pub mod queryservermessage;
-        pub mod errorservermessage;
-        pub mod resultservermessage;
         pub mod resultrowsevermsg;
+        pub mod resultservermessage;
         pub mod resultvoidservermsg;
+        pub mod serverpacket;
     }
-    
 }
 
 pub use cql::query::Query;

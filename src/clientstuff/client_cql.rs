@@ -1,10 +1,9 @@
 use crate::config;
+use crate::messagestuff::message::Sendable;
 use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
-use crate::messagestuff::message::Sendable;
-use std::io::{self, BufRead, BufReader, Write, Result};
+use std::io::{self, BufRead, Result};
 use std::net::TcpStream;
-use bufstream::BufStream;
 
 use std::thread;
 
@@ -47,16 +46,17 @@ impl Client {
             let stdin = io::stdin();
             loop {
                 let mut input = String::new();
-                if stdin.lock().read_line(& mut input).is_ok() {
-                    if !input.is_empty() {
+                if stdin.lock().read_line(&mut input).is_ok() && !input.is_empty() {
                         println!("Hola");
-                        let msg: QueryMessage = QueryMessage{query: input, consistency: config::ONE};
+                        let msg: QueryMessage = QueryMessage {
+                            query: input,
+                            consistency: config::ONE,
+                        };
                         let _ = msg.send_through(&mut stream_clone);
-                    }
                 }
             }
         });
-        
+
         loop {
             match Envelope::from_stream(&mut stream) {
                 Ok(env) => {
