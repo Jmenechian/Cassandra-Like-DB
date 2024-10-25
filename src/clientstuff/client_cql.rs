@@ -98,7 +98,9 @@ impl Client {
                     match env.body {
                         CqlMessage::Result(result) => {
                             match result.body {
-                                ResultBody::Void(_) => {},
+                                ResultBody::Void(_) => {
+                                    return Ok(vec!["".to_string()]);
+                                },
                                 ResultBody::Rows(rows) => {
                                     return Ok(rows.rows_content);
                                 }
