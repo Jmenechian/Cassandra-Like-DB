@@ -47,12 +47,12 @@ impl Client {
             loop {
                 let mut input = String::new();
                 if stdin.lock().read_line(&mut input).is_ok() && !input.is_empty() {
-                        println!("Hola");
-                        let msg: QueryMessage = QueryMessage {
-                            query: input,
-                            consistency: config::ONE,
-                        };
-                        let _ = msg.send_through(&mut stream_clone);
+                    println!("Hola");
+                    let msg: QueryMessage = QueryMessage {
+                        query: input,
+                        consistency: config::ONE,
+                    };
+                    let _ = msg.send_through(&mut stream_clone);
                 }
             }
         });

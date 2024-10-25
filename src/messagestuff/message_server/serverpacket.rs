@@ -1,11 +1,10 @@
+use crate::config;
 use crate::messagestuff::{
-    message::*,
-    message_server::errorservermessage::ErrorServerMessage,
+    message::*, message_server::errorservermessage::ErrorServerMessage,
     message_server::gossipmessage::GossipMessage,
     message_server::queryservermessage::QueryServerMessage,
     message_server::resultservermessage::ResultServerMessage,
 };
-use crate::config;
 use std::{error::Error, io::Read, net::TcpStream};
 
 #[derive(Copy, Clone, Debug)]

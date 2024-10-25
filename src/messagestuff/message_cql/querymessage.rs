@@ -38,9 +38,9 @@ impl IntoEnvelope for QueryMessage {
     fn into_envelope(self) -> Envelope {
         let _body = self.to_bytes();
         Envelope {
-            version: 0x05_u8,  //0x05 as u8,
-            flags:  0_u8,      //0 as u8,
-            stream: 0_u16,     //0 as u16,
+            version: 0x05_u8, //0x05 as u8,
+            flags: 0_u8,      //0 as u8,
+            stream: 0_u16,    //0 as u16,
             opcode: CqlOpcode::QueryMessage,
             length: _body.len() as i32,
             body: CqlMessage::Query(self),

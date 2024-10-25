@@ -3,14 +3,10 @@ use crate::config::{self, PORTS_FILE};
 use crate::cql::query::Query;
 use crate::messagestuff::{
     message::*,
-    message_cql::{
-        cqlenvelope::*, errormessage::*, resultrowsmessage::*,
-        resultvoidmessage::*,
-    },
+    message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultvoidmessage::*},
     message_server::{
         gossipmessage::*, queryservermessage::QueryServerMessage, resultrowsevermsg::*,
-        resultservermessage::*, serverpacket::Packet,
-        serverpacket::ServerMessage,
+        resultservermessage::*, serverpacket::Packet, serverpacket::ServerMessage,
     },
 };
 use crate::my_errors::*;
@@ -489,7 +485,7 @@ fn handle_connection_gossip(
                                     }
                                 }
                             } else if show {
-                                    println!("G   Error al conectarse al vecino");
+                                println!("G   Error al conectarse al vecino");
                             }
                         }
                     }
@@ -660,66 +656,68 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
 // Inicializa el nodo
 // Lo conecta al cliente y lo conecta al server
 // Punto de entrada para toda la logica
-pub fn initialize(port: String) -> Result<(), MyError> {
-    let mut current_node: Node = Node::new(&port);
+// pub fn initialize(port: String) -> Result<(), MyError> {
+//     let mut current_node: Node = Node::new(&port);
 
-    println!("Soy nodo en ip: {}", current_node.server_ip);
+//     println!("Soy nodo en ip: {}", current_node.server_ip);
 
-    let ports = read_ports_from_file(PORTS_FILE);
+//     let ports = read_ports_from_file(PORTS_FILE);
 
-    let neighbor_nodes: Vec<NeighborNode> = connect_to_ports(ports, &port);
-    current_node.add_neighbors(neighbor_nodes);
+//     let neighbor_nodes: Vec<NeighborNode> = connect_to_ports(ports, &port);
+//     current_node.add_neighbors(neighbor_nodes);
 
-    let server_ip = current_node.server_ip.clone();
-    current_node.add_neighbor(NeighborNode::new(
-        &server_ip.chars().last().unwrap().to_string(),
-    ));
+//     let server_ip = current_node.server_ip.clone();
+//     current_node.add_neighbor(NeighborNode::new(
+//         &server_ip.chars().last().unwrap().to_string(),
+//     ));
 
-    //let current_node = Arc::new(Mutex::new(current_node)); --> Usamos RwLock en vex de Mutex
-    let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
+//     //let current_node = Arc::new(Mutex::new(current_node)); --> Usamos RwLock en vex de Mutex
+//     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
 
-    ////////////////////////////
-    // FALTA HACER GOSSIP ACA //
-    ////////////////////////////
-    // Seccion cliente-servidor
+//     ////////////////////////////
+//     // FALTA HACER GOSSIP ACA //
+//     ////////////////////////////
+//     // Seccion cliente-servidor
 
-    let current_node_client = Arc::clone(&current_node); // node para CLIENT THREAD
+//     let current_node_client = Arc::clone(&current_node); // node para CLIENT THREAD
 
-    let thread_cliente = thread::spawn(move || {
-        let client_listener = TcpListener::bind(&current_node_client.read().unwrap().client_ip)
-            .expect("Error al conectarse al puerto client_ip");
+//     let thread_cliente = thread::spawn(move || {
+//         let client_listener = TcpListener::bind(&current_node_client.read().unwrap().client_ip)
+//             .expect("Error al conectarse al puerto client_ip");
 
-        for stream in client_listener.incoming() {
-            let mut stream = stream.unwrap();
+//         for stream in client_listener.incoming() {
+//             let mut stream = stream.unwrap();
 
-            let node_thread = Arc::clone(&current_node_client);
-            let t = thread::spawn(move || {
-                // bufreader queda con el ownership de stream --> usamos BufStream para solucionarlo
-                let _ = handle_connection_client(node_thread, &mut stream, true);
-            });
-            let _ = t.join();
-        }
-    });
+//             let node_thread = Arc::clone(&current_node_client);
+//             let t = thread::spawn(move || {
+//                 // bufreader queda con el ownership de stream --> usamos BufStream para solucionarlo
+//                 let _ = handle_connection_client(node_thread, &mut stream, true);
+//             });
+//             let _ = t.join();
+//         }
+//     });
 
-    // Seccion servidor-servidor
+//     // Seccion servidor-servidor
 
-    let current_node_server = Arc::clone(&current_node); // node para SERVER THREAD
+//     let current_node_server = Arc::clone(&current_node); // node para SERVER THREAD
 
-    let thread_servidor = thread::spawn(move || {
-        let server_listener = TcpListener::bind(&current_node_server.read().unwrap().server_ip)
-            .expect("Error al conectarse al puerto server_ip");
+//     let thread_servidor = thread::spawn(move || {
+//         let server_listener = TcpListener::bind(&current_node_server.read().unwrap().server_ip)
+//             .expect("Error al conectarse al puerto server_ip");
 
-        for stream in server_listener.incoming() {
-            let mut stream: TcpStream = stream.unwrap();
+//         for stream in server_listener.incoming() {
+//             let mut stream: TcpStream = stream.unwrap();
 
-            let node_thread = Arc::clone(&current_node_server);
-            thread::spawn(move || {
-                let _ = handle_connection_server(node_thread.clone(), &mut stream, true);
-            });
-        }
-    });
+//             let node_thread = Arc::clone(&current_node_server);
+//             thread::spawn(move || {
+//                 let _ = handle_connection_server(node_thread.clone(), &mut stream, true);
+//             });
+//         }
+//     });
 
-    thread_cliente.join().unwrap();
-    thread_servidor.join().unwrap();
-    Ok(())
-}
+//     join_thread(thread_cliente)?;
+//     join_thread(thread_servidor)?;
+//     // thread_cliente.join().unwrap();
+//     // thread_servidor.join().unwrap();
+//     Ok(())
+// }
