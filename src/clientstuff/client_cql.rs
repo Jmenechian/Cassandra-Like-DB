@@ -94,11 +94,14 @@ impl Client {
         loop {
             match Envelope::from_stream(stream) {
                 Ok(env) => {
+                    println!("El env recibido es: {:?}", env);
                     match env.body {
                         CqlMessage::Result(result) => {
                             match result.body {
                                 ResultBody::Void(_) => {},
-                                ResultBody::Rows(rows) => {return Ok(rows.rows_content);}
+                                ResultBody::Rows(rows) => {
+                                    return Ok(rows.rows_content);
+                                }
                             }
                         }
                         _ => {continue;}

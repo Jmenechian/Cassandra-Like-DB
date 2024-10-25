@@ -1,5 +1,4 @@
-use super::airport::Airport;
+// use egui::Painter;
+// use crate::gui::painted::airport::Airport;
 
-pub fn draw_lines_between_airports(airport: &Airport, origin_airport: &Vec<Airport>) {
-    
-}
+// pub fn draw_lines_between_airports(selected_airport: &Airport, airports: &Vec<Airport>, painter: &Painter) {}

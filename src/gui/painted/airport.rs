@@ -1,8 +1,7 @@
-use std::net::TcpStream;
+use std::{collections::HashMap, net::TcpStream};
 
 use crate::{clientstuff::client_cql::Client, my_errors::MyError};
-
-use super::flight::{self, Flight};
+use super::flight::Flight;
 
 #[derive(Debug)]
 #[derive(Clone)]
@@ -19,32 +18,74 @@ impl Airport {
         }
     }
 
-    pub fn get_origin_flights_from(&self, stream: &mut Option<TcpStream>, date: &str) -> Result<Vec<Flight>, MyError> {
+    pub fn get_origin_flights_from(&self, stream: &mut Option<TcpStream>, date: &str, airports: &HashMap<String, Airport>) -> Result<Vec<Flight>, MyError> {
         let query = format!("SELECT * FROM origin WHERE date = {} AND airport = {}", date, self.name);
         println!("query: {:?}", query);
         if let Some(stream) = stream {
-            println!("Por enviar mensaje...");
             Client::send_message(stream, query).map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
             let response = Client::read_response(stream).map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-            let flights = response;
-            println!("get_origin_flights_from: {:?}", flights);
-            return Ok(vec![]);
+
+            let mut flights: Vec<Flight> = vec![];
+            for line in response {
+                if line.is_empty() {
+                    continue;
+                }
+                let values: Vec<String> = line.split(",").map(|f| f.to_string()).collect();
+
+                let mut coordinates = (0.0, 0.0);
+                if let Some(airport_aux) = airports.get(&values[0]) {
+                    coordinates = airport_aux.coordinates.clone();
+                }
+                let airport_o = Airport::new(values[0].clone(), coordinates);
+
+                let mut coordinates = (0.0, 0.0);
+                if let Some(airport_aux) = airports.get(&values[1]) {
+                    coordinates = airport_aux.coordinates.clone();
+                }
+                let airport_r = Airport::new(values[1].clone(), coordinates);
+
+                flights.push(Flight::new(values[3].clone(), airport_o, airport_r));
+            }
+            println!("origin_flights: {:?}", flights);
+            return Ok(flights);
         }
 
         Err(MyError::SendingMessageError("Error sending query".to_string()))
     }
 
-    pub fn get_flights_that_return_to(&self, stream: &mut Option<TcpStream>, date: &str) -> Result<Vec<Flight>, MyError>{
+    pub fn get_flights_that_return_to(&self, stream: &mut Option<TcpStream>, date: &str, airports: &HashMap<String, Airport>) -> Result<Vec<Flight>, MyError>{
         let query = format!("SELECT * FROM destination WHERE date = '{}' AND airport = '{}'", date, self.name);
 
         if let Some(stream) = stream {
             Client::send_message(stream, query).map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
             let response = Client::read_response(stream).map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-            let flights = response;
-            println!("get_flights_that_return_to: {:?}", flights);
-            return Ok(vec![]);
+            
+            let mut flights: Vec<Flight> = vec![];
+            for line in response {
+                if line.is_empty() {
+                    continue;
+                }
+                let values: Vec<String> = line.split(",").map(|f| f.to_string()).collect();
+
+                let mut coordinates = (0.0, 0.0);
+                if let Some(airport_aux) = airports.get(&values[1]) {
+                    coordinates = airport_aux.coordinates.clone();
+                }
+                let airport_o = Airport::new(values[1].clone(), coordinates);
+
+                let mut coordinates = (0.0, 0.0);
+                if let Some(airport_aux) = airports.get(&values[0]) {
+                    coordinates = airport_aux.coordinates.clone();
+                }
+                let airport_r = Airport::new(values[0].clone(), coordinates);
+                
+                flights.push(Flight::new(values[3].clone(), airport_o, airport_r));
+
+            }
+            println!("flights_that_return: {:?}", flights);
+            return Ok(flights);
         }
 
         Err(MyError::SendingMessageError("Error sending query".to_string()))
