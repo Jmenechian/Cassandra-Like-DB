@@ -1,15 +1,11 @@
-use chrono::prelude::*;
-use bufstream::BufStream;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
-use threadpool::ThreadPool;
-use rand::prelude::IteratorRandom;
-use crate::config::{self, N_WORKERS, PORTS_FILE};
+use crate::config::{self, PORTS_FILE};
 use rand::seq::SliceRandom;
 use crate::config::RF;
 use crate::cql::query::Query;
@@ -169,7 +165,7 @@ fn handle_connection_server(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show
                 if show{println!("S   El packet recibido es: {:?}", packet);}
                 match packet.body {
                     ServerMessage::Query(query) => {
-                        let mut node = match node.read() {
+                        let node = match node.read() {
                             Ok(n) => n,
                             Err(e) => {
                                 if show{println!("S   Error al tratar de usar el nodo: {:?}", e);}
@@ -178,9 +174,13 @@ fn handle_connection_server(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show
                         };
                         let mut query = Query::new(query.query.clone(), node.server_ip.clone());
                         let table = match query.execute() {
-                            Ok(s) => s,
+                            Ok(s) => {
+                                println!("{}", s);
+                                s
+                            },
                             Err(_) => "".to_string(),
                         };
+                        println!("RESULTADO, TABLA: {}", table);
                         let msg = ResultRowsServerMessage{rows_count: 1, rows_content: vec![table]};
                         let _ = msg.send_server_through(stream);
                     }
@@ -310,7 +310,22 @@ pub fn send_query_to_nodes(
 ) -> Result<String, MyError> {
     let mut all_response: Vec<String> = vec![];
     let mut hash = ConsistentHash::new(RF);
-    let mut query = Query::new(_query.clone(), node.client_ip.clone());
+    let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());
+    
+    // Si es un create table, lo ejecuto y devuelvo vacio
+    if query.query.contains("CREATE TABLE") {
+        match query.execute(){
+            Ok(_) => {
+                return Ok("".to_string());
+            }
+            Err(e) => {
+                if show{println!("C   Error al procesar la query: {:?}", e);}
+                return Ok("Error al procesar la query".to_string());
+            }
+        }
+    }
+    
+    
     hash.add_nodes(node.neighbors.to_vec());
     let key = query.get_key_representing_partition(&node.server_ip);
     println!("La key es: {}", key);
@@ -323,7 +338,7 @@ pub fn send_query_to_nodes(
         C   Los nodos que tienen la info son: {:?}\n",
         node.neighbors, nodes_with_result
     );}
-
+    println!("nodes with result: {:?}", nodes_with_result);
     for neighbor in nodes_with_result {
         // El nodo original porque puede tener el resultado de la query:
         if neighbor.server_ip == node.server_ip {
@@ -409,7 +424,7 @@ fn handle_connection_gossip(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show
                             if let Some(mut stream) = try_connect(n.gossip_ip.clone()) {
                                 //thread::sleep(Duration::from_secs(1));
                                 if let Err(e) = gossip.send_server_through(&mut stream) {
-                                    if show{println!("G   Error al evialr mensaje gossip: {:?}", e);}
+                                    if show{println!("G   Error al eviarle mensaje gossip: {:?}", e);}
                                 }
                             } else {
                                 if show{println!("G   Error al conectarse al vecino");}

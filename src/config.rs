@@ -11,7 +11,15 @@ pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Ha
 
 pub static TABLE_PATH: &str = "src/tables";
 
+pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";
+
+pub static MAP_PATH: &str = "src/gui/assets/map.png";
+
+pub static PLANE_PATH: &str = "src/gui/assets/air-plane.png";
+
 pub static N_WORKERS: usize = 10; //Nos dijeron que usemos 10.
+
+pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 
 // OPCODE
 pub const QUERY: u8 = 0x07;

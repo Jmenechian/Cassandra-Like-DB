@@ -1,2 +1,1 @@
-airport,date,flight,status,timestamp
-AEP,24-12-12,1,scheduled,2024-10-29 16:19:28.896329570 UTC
+airport,destination,date,flight,status,timestamp
