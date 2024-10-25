@@ -14,6 +14,7 @@ pub mod cql {
     pub mod relation;
     pub mod select;
     pub mod update;
+    pub mod create_table;
     pub mod where_clause;
 }
 pub mod clientstuff {

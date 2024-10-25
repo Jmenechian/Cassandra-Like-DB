@@ -19,6 +19,8 @@ pub static PLANE_PATH: &str = "src/gui/assets/air-plane.png";
 
 pub static N_WORKERS: usize = 10; //Nos dijeron que usemos 10.
 
+pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
+
 // OPCODE
 pub const QUERY: u8 = 0x07;
 pub const ERROR: u8 = 0x00;

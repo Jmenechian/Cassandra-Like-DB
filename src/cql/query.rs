@@ -2,6 +2,7 @@ use crate::cql::delete::Delete;
 use crate::cql::insert::Insert;
 use crate::cql::select::Select;
 use crate::cql::update::Update;
+use crate::cql::create_table::CreateTable;
 use crate::my_errors::MyError;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -11,6 +12,7 @@ pub enum QType {
     Update(Update),
     Insert(Insert),
     Delete(Delete),
+    CreateTable(CreateTable),
 }
 
 #[derive(Debug)]
@@ -50,8 +52,10 @@ impl Query {
             self.set_update();
         } else if q_upper.contains("INSERT") {
             self.set_insert();
-        } else {
+        } else if q_upper.contains("DELETE"){
             self.set_delete();
+        } else {
+            self.set_createtable();
         }
     }
 
@@ -85,15 +89,19 @@ impl Query {
         self.qtype = QType::Delete(Delete::new());
     }
 
+    pub fn set_createtable(&mut self) {
+        self.qtype = QType::CreateTable(CreateTable::new());
+    }
+
     // Delegates the parsing
     pub fn parse_query(&mut self) -> Result<(), MyError> {
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to parse".to_string())),
             QType::Select(select) => select.parse_select(&self.query, &self.sender_node_ip),
-            // QType::Update(update) => update.parse_update(query)?,
+            QType::Update(update) => update.parse_update(&self.query, &self.sender_node_ip),
             QType::Insert(insert) => insert.parse_insert(&self.query, &self.sender_node_ip),
-            // QType::Delete(delete) => delete.parse_delete(query)?,
-            _ => Ok(()),
+            QType::Delete(delete) => delete.parse_delete(&self.query, &self.sender_node_ip),
+            QType::CreateTable(create_table) => create_table.parse_create_table(&self.query),
         }
     }
 
@@ -103,10 +111,10 @@ impl Query {
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to execute".to_string())),
             QType::Select(select) => select.execute_command(),
-            // QType::Update(update) => update.execute_command(path)?,
+            QType::Update(update) => update.execute_command(),
             QType::Insert(insert) => insert.execute_command(),
-            // QType::Delete(delete) => delete.execute_command(path)?,
-            _ => Ok("AAAAAAAAAAAAAAAA".to_string()),
+            QType::Delete(delete) => delete.execute_command(),
+            QType::CreateTable(create_table) => create_table.execute_command(),
         }
     }
 
