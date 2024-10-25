@@ -50,17 +50,9 @@ impl Query {
             self.set_update();
         } else if q_upper.contains("INSERT") {
             self.set_insert();
-        } else if q_upper.contains("CREATE_TABLE") {
-            self.create_table();  
         } else {
             self.set_delete();
         }
-    }
-
-    pub fn execute_if_create_table(&mut self) -> Result<String, MyError> { //falta
-        let q_upper = self.query.to_ascii_uppercase();
-        if q_upper.contains("CREATE_TABLE") {
-            self.create_table();
     }
 
     pub fn get_values(&mut self) -> String {

@@ -220,16 +220,7 @@ pub fn handle_connection_client (node: Arc<RwLock<Node>>, stream: & mut TcpStrea
                 match env.body {
                     CqlMessage::Query(querymessage) => {
                         let mut query = Query::new(querymessage.query.clone(), node.client_ip.clone());
-                        ///
-                        if query.execute_if_create_table() { ///ver despues
-                            let content: Vec<String> = table.clone().trim_end().split("     ").map(|s| s.to_string()).collect();
-                            let rows_msg = ResultRowsMessage{rows_count: content.len() as i32, rows_content:content};
-                            if let Err(e) = rows_msg.send_through(stream) {
-                                if show{println!("C   Error: {:?}", e);}
-                            }
-                            continue; //??
-                        }
-                        ///
+
                         let table = match send_query_to_nodes(&node, querymessage.query.clone(), querymessage.consistency, show) {
                             Ok(r) => r,
                             Err(e) => {
