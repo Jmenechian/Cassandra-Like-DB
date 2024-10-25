@@ -19,6 +19,7 @@
 //     PRIMARY KEY ((app_name,env), hostname, log_datetime)
 //   ) 
 //   WITH CLUSTERING ORDER BY (hostname ASC, log_datetime DESC); 
+//
 
 use crate::my_errors::MyError;
 use crate::utils::*;
