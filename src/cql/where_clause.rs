@@ -31,4 +31,19 @@ impl WhereClause {
             Self::Or(expr1, expr2) => expr1.relate(cols, vals) || expr2.relate(cols, vals),
         }
     }
+
+    pub fn find_value_for_key(&self, key: &str) -> Option<String> {
+        match self {
+            WhereClause::True => None, // Nothing to find in True
+            WhereClause::Relation(Relation::Equal(left, right)) if left == key => {
+                Some(right.clone()) // Found the desired relation, return the value
+            }
+            WhereClause::Relation(_) => None, // Other relations don't match
+            WhereClause::And(lhs, rhs) | WhereClause::Or(lhs, rhs) => {
+                // Recursively search both sides
+                lhs.find_value_for_key(key)
+                    .or_else(|| rhs.find_value_for_key(key))
+            }
+        }
+    }
 }

@@ -7,6 +7,8 @@ use chrono::{DateTime, Local};
 #[derive(Debug, Clone, PartialEq)]
 pub struct NeighborNode {
     pub server_ip: String, // uso su ip para saber a quien mandarle la query --> Consistent Hashing
+    pub gossip_ip: String,
+    pub puerto: String,
     pub status: Status,
     pub time: DateTime<Local>,
 }
@@ -15,7 +17,9 @@ impl NeighborNode {
     pub fn new(port: &str) -> Self {
         Self {
             server_ip: format!("127.0.0.1:700{}", port),
-            status: Status::Connected, // Deberia empezar desconectado -> cambiar con Gossip
+            gossip_ip: format!("127.0.0.1:900{}", port),
+            puerto: format!("{}", port),
+            status: Status::Connected, // Deberia empezar desconectado?
             time: Local::now(),
         }
     }

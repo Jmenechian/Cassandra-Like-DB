@@ -18,19 +18,8 @@ fn main() -> Result<()> {
 
     println!("Cliente: {:?}", client);
 
-    match client.handle_connection() {
-        Ok(result) => result,
-        Err(e) => {
-            eprintln!("{:?}", e);
-            exit(1);
-        }
-    };
-
+    if let Err(_) = client.handle_connection() { //solo manda no escucha
+        println!("Error");
+    }
     Ok(())
 }
-
-// cuando escuche: ->esto ya anda
-//     agarras solo message.message en nodo y podes procesar la query
-
-// aparte:
-//     seguir con el protocolo
