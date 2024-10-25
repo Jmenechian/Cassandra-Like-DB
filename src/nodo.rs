@@ -169,7 +169,7 @@ fn handle_connection_server(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show
                 if show{println!("S   El packet recibido es: {:?}", packet);}
                 match packet.body {
                     ServerMessage::Query(query) => {
-                        let mut node = match node.read() {
+                        let node = match node.read() {
                             Ok(n) => n,
                             Err(e) => {
                                 if show{println!("S   Error al tratar de usar el nodo: {:?}", e);}
@@ -178,9 +178,13 @@ fn handle_connection_server(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show
                         };
                         let mut query = Query::new(query.query.clone(), node.server_ip.clone());
                         let table = match query.execute() {
-                            Ok(s) => s,
+                            Ok(s) => {
+                                println!("{}", s);
+                                s
+                            },
                             Err(_) => "".to_string(),
                         };
+                        println!("RESULTADO, TABLA: {}", table);
                         let msg = ResultRowsServerMessage{rows_count: 1, rows_content: vec![table]};
                         let _ = msg.send_server_through(stream);
                     }

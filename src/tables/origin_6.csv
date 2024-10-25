@@ -1,1 +1,2 @@
-airport,date,flight,status,timestamp
+airport,destination,date,flight,status,timestamp
+MEX,IBR,24-12-12,1,scheduled,2024-10-23 16:19:28.901321686 UTC

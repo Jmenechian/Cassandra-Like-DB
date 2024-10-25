@@ -49,3 +49,17 @@ pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
 
 pub use consistent_hashing::ConsistentHash;
 pub use neighbor_node::NeighborNode;
+
+//GUI
+pub mod gui {
+    pub mod app;
+    pub mod painted {
+        pub mod airport;
+        pub mod airport_coordinates;
+        pub mod flight;
+        pub mod draw_flights;
+        pub mod draw_lines;
+    }
+}
+//pub use gui::app::MapApp; 
+
