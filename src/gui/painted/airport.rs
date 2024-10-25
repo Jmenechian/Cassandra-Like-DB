@@ -3,14 +3,22 @@ use std::{collections::HashMap, net::TcpStream};
 use crate::{clientstuff::client_cql::Client, my_errors::MyError};
 use super::flight::Flight;
 
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Airport {
     pub name: String,
     pub coordinates: (f32, f32), // (latitud, longitud)
 }
 
 impl Airport {
+    pub fn default() -> Self {
+        let name = "".to_string();
+        let coordinates = (0.0, 0.0);
+        Self {
+            name,
+            coordinates,
+        }
+    }
+
     pub fn new(name: String, coordinates: (f32, f32)) -> Self {
         Self {
             name,

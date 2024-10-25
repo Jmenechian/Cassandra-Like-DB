@@ -166,6 +166,8 @@ impl eframe::App for MapApp {
                     }
                 }
 
+                let mut last_o: &Airport = &Airport::default();
+                let mut last_r: &Airport = &Airport::default();
                 for (origin, destination, flight) in &self.connections {
                     let plane_size = 50.0;
                     let (screen_x_o, screen_y_o) = get_coordinate_positioning_on_map(origin.coordinates, texture.size());
@@ -180,7 +182,11 @@ impl eframe::App for MapApp {
                     );
 
                     // Posición media para el avión
-                    let (mid_x, mid_y) = obtain_middle_position(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
+                    let (mut mid_x, mut mid_y) = obtain_middle_position(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
+
+                    if last_o == origin && last_r == destination {
+                        (mid_x, mid_y) = (mid_x + 25.0, mid_y + 25.0);
+                    }
 
                     // Ángulo de rotación
                     let _angle = get_angle(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
@@ -209,6 +215,9 @@ impl eframe::App for MapApp {
                         let name_pos = egui::pos2(mid_x + 30.0, mid_y); // Ajusta la posicion segun la imagen del avion
                         painter.text(name_pos, egui::Align2::LEFT_CENTER, &flight.name, FontId::default(), Color32::WHITE);
                     }
+
+                    last_o = &origin;
+                    last_r = &destination;
                 }
             }
         });
