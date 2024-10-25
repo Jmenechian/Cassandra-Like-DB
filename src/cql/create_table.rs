@@ -284,7 +284,6 @@ mod tests {
         assert_eq!(create_table.partition_keys, expected_partition_keys);
         assert_eq!(create_table.clustering_keys, expected_clustering_keys);
         assert_eq!(create_table.clustering_orderby, expected_orderby);
-    
     }
 }
 

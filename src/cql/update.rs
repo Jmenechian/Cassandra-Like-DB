@@ -23,7 +23,7 @@ impl Update {
         }
     }
 
-    pub fn parse_update(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
+    pub fn parse_update(&mut self, _query: &str, _address_node: &str) -> Result<(), MyError> {
         Ok(())
     }
 

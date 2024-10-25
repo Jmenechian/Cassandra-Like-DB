@@ -20,7 +20,7 @@ impl Delete {
         }
     }
 
-    pub fn parse_delete(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
+    pub fn parse_delete(&mut self, _query: &str, _address_node: &str) -> Result<(), MyError> {
         Ok(())
     }
 
