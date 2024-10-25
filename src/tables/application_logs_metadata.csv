@@ -1,0 +1,3 @@
+partition:app_name,env
+clusters:hostname,log_datetime
+clustering_orderby:log_datetime:DESC,hostname:ASC

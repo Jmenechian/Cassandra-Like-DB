@@ -220,7 +220,8 @@ pub fn handle_connection_client (node: Arc<RwLock<Node>>, stream: & mut TcpStrea
                 match env.body {
                     CqlMessage::Query(querymessage) => {
                         let mut query = Query::new(querymessage.query.clone(), node.client_ip.clone());
-                        let table = match send_query_to_nodes(&node, querymessage.query.clone(), show) {
+
+                        let table = match send_query_to_nodes(&node, querymessage.query.clone(), querymessage.consistency, show) {
                             Ok(r) => r,
                             Err(e) => {
                                 let _error = "Error: algo fallo en send_query_to_node".to_string();
@@ -231,13 +232,13 @@ pub fn handle_connection_client (node: Arc<RwLock<Node>>, stream: & mut TcpStrea
                                 return Err(e)
                             }
                         };
-                        if table.len() == 0 {
+                        if table.len() == 0 { //es un string ahora entonces ???
                             let void_msg = ResultVoidMessage;
                             if let Err(e) = void_msg.send_through(stream) {
                                 if show{println!("C   Error: {:?}", e);}
                             }
                         } else {
-                            let content: Vec<String> = table[0].clone().trim_end().split("     ").map(|s| s.to_string()).collect();
+                            let content: Vec<String> = table.clone().trim_end().split("     ").map(|s| s.to_string()).collect();
                             let rows_msg = ResultRowsMessage{rows_count: content.len() as i32, rows_content:content};
                             if let Err(e) = rows_msg.send_through(stream) {
                                 if show{println!("C   Error: {:?}", e);}
@@ -267,29 +268,22 @@ pub fn handle_connection_client (node: Arc<RwLock<Node>>, stream: & mut TcpStrea
 //aviones volando -> threads
 //hago click en NY
 
-// fn process_results(results: &Vec<String>) -> String {
-//     println!("pr ===> {:?}", results);
+fn process_results(results: &Vec<String>) -> String {
+    println!("pr ===> {:?}", results);
 
-//     match results.len() {
-//         1 => return results[0].clone(),
-//         2 => {
-//             let (a, b) = (&results[0], &results[1]);
-//             if a == b {
-//                 return a.clone() //no hay que hacer nada mas creo
-//             } else {
-//                 // let newer = look_newer(results);
-//                 // read_repair(newer, ) //update a todos los nodos
-//                 // return newer
-//             }
-//             }
-//         3 => {
-//             let (a, b, c) = (&results[0], &results[1], &results[2]);
-//             // return look_newer(vec![a.clone(), b.clone(), c.clone()]);
-//         }
-//         _ => return "error".to_string(), //rompio todo
-//     }
-//     results[0].clone()
-// }
+    match results.len() {
+        1 => return results[0].clone(),
+        2 => {
+            let (newer, index) = look_newer(results);
+            return results[index].clone();
+        }
+        3 => {
+            let (newer, index) = look_newer(results);
+            return results[index].clone();
+        }
+        _ => return "error".to_string(), //rompio todo
+    }
+}
 
 pub fn look_newer(results: &[String]) -> (&str, usize) {
     //falta testear en process results
@@ -311,8 +305,9 @@ pub fn look_newer(results: &[String]) -> (&str, usize) {
 pub fn send_query_to_nodes(
     node: &RwLockReadGuard<'_, Node>,
     _query: String,
+    consistency_level: u16,
     show: bool,
-) -> Result<Vec<String>, MyError> {
+) -> Result<String, MyError> {
     let mut all_response: Vec<String> = vec![];
     let mut hash = ConsistentHash::new(RF);
     let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());
@@ -321,11 +316,11 @@ pub fn send_query_to_nodes(
     if query.query.contains("CREATE TABLE") {
         match query.execute(){
             Ok(_) => {
-                return Ok(vec!["".to_string()]);
+                return Ok("".to_string());
             }
             Err(e) => {
                 if show{println!("C   Error al procesar la query: {:?}", e);}
-                return Ok(vec!["Error al procesar la query".to_string()]);
+                return Ok("Error al procesar la query".to_string());
             }
         }
     }
@@ -343,7 +338,7 @@ pub fn send_query_to_nodes(
         C   Los nodos que tienen la info son: {:?}\n",
         node.neighbors, nodes_with_result
     );}
-
+    println!("nodes with result: {:?}", nodes_with_result);
     for neighbor in nodes_with_result {
         // El nodo original porque puede tener el resultado de la query:
         if neighbor.server_ip == node.server_ip {
@@ -354,6 +349,10 @@ pub fn send_query_to_nodes(
             match node.process_query(&mut query) {
                 Ok(result) => {
                     all_response.push(result);
+
+                    if consistency_level != 1 && all_response.len() == 1 { //ver como se cambia eso
+                        return Ok(process_results(&all_response));
+                    }
                 }
                 Err(e) => {
                     if show{println!("C   Error al procesar la query: {:?}", e);}
@@ -398,7 +397,10 @@ pub fn send_query_to_nodes(
             }
         } 
     }
-    Ok(all_response)
+    // if consistency_level != 1 && all_response.len() == 1 { //ver como se cambia eso
+    //     return Ok(process_results(&all_response));
+    // }
+    Ok(process_results(&all_response))
 }
 
 fn handle_connection_gossip(node:Arc<RwLock<Node>>, stream: &mut TcpStream, show: bool) -> Result<(), MyError> {

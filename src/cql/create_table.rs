@@ -176,7 +176,8 @@ impl CreateTable {
         
         for i in 1..=RING_SIZE {
             // Creo nueva tabla por nodo
-            let path = get_file_path(TABLE_PATH, self.table_name.as_str()) + format!("_{}", i).as_str();
+            // let table_name = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
+            let path = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
             let mut f = File::create_new(path).map_err(|e| MyError::FileError(e.to_string()))?;
             
             let columns: Vec<String> = self.columns.keys().map(|s| s.to_string()).collect();
@@ -185,7 +186,9 @@ impl CreateTable {
         }
         
         // Creo un solo archivo de metadata
-        let path_metadata = get_file_path(TABLE_PATH, self.table_name.as_str()) + "_metadata";
+        // let table_name = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, "metadata");
+        let path_metadata = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, "metadata");
+        // let path_metadata = get_file_path(TABLE_PATH, self.table_name.as_str()) + "_metadata";
         let mut f_metadata = File::create_new(path_metadata).map_err(|e| MyError::FileError(e.to_string()))?;
 
         let display_orderby = self.clustering_orderby.iter().map(|(k,v)| format!("{}:{}", k, v)).collect::<Vec<String>>().join(",");
