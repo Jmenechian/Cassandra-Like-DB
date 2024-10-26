@@ -1,5 +1,5 @@
 use eframe::egui;
-use egui::{popup, Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureId};
+use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureId};
 
 use image::GenericImageView;
 use std::{collections::HashMap, net::TcpStream};
@@ -26,7 +26,6 @@ pub struct MapApp {
     client: Client,
     stream_client: Option<TcpStream>,
     connections: Vec<(Airport, Airport, Flight)>,
-    show_date: bool,
     date_selected: String,
 }
 
@@ -39,7 +38,6 @@ impl MapApp {
         let client = Client::initialize(port);
         let stream_client = None;
         let connections = vec![];
-        let show_date = false;
         let date_selected = "".to_string();
         Self {
             airports,
@@ -48,7 +46,6 @@ impl MapApp {
             client,
             stream_client,
             connections,
-            show_date,
             date_selected,
         }
     }
