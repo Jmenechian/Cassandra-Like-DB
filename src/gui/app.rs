@@ -1,5 +1,5 @@
 use eframe::egui;
-use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureId, popup};
+use egui::{popup, Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureId};
 
 use image::GenericImageView;
 use std::{collections::HashMap, net::TcpStream};
@@ -211,11 +211,13 @@ impl eframe::App for MapApp {
             if let Some(texture) = &texture {
                 // Mostrar el mapa
                 ui.image(texture);
-                
 
-                ui.horizontal(|ui|.. {
-                    ui.label("Enter date:");
-                    ui.text_edit_singleline(&mut self.date_selected);});
+                ui.horizontal(|ui| {
+                    ..{
+                        ui.label("Enter date:");
+                        ui.text_edit_singleline(&mut self.date_selected);
+                    }
+                });
                 let painter = ui.painter();
 
                 // Dibujar los aeropuertos
@@ -233,63 +235,62 @@ impl eframe::App for MapApp {
                         .clicked()
                     {
                         println!("¡Aeropuerto {} presionado!", airport.name);
-                        
+
                         self.reset_connection();
-                        
-                        
+
                         if !self.date_selected.is_empty() {
-                        
-                        if let (Ok(origin_flights), Ok(return_flights)) = (
-                            airport.get_origin_flights_from(
-                                &mut self.stream_client,
-                                &self.date_selected,
-                                &self.airports,
-                            ),
-                            airport.get_flights_that_return_to(
-                                &mut self.stream_client,
-                                &self.date_selected,
-                                &self.airports,
-                            ),
-                        ) {
-                            if origin_flights.is_empty() && return_flights.is_empty() {
-                                continue;
-                            }
+                            if let (Ok(origin_flights), Ok(return_flights)) = (
+                                airport.get_origin_flights_from(
+                                    &mut self.stream_client,
+                                    &self.date_selected,
+                                    &self.airports,
+                                ),
+                                airport.get_flights_that_return_to(
+                                    &mut self.stream_client,
+                                    &self.date_selected,
+                                    &self.airports,
+                                ),
+                            ) {
+                                if origin_flights.is_empty() && return_flights.is_empty() {
+                                    continue;
+                                }
 
-                            for flight_r in return_flights {
-                                //airport_o
-                                let (screen_x_o, screen_y_o) = get_coordinate_positioning_on_map(
-                                    flight_r.origin_airport.coordinates,
-                                    texture.size(),
-                                );
-                                if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
-                                    self.add_connection(
-                                        airport.clone(),
-                                        flight_r.origin_airport.clone(),
-                                        flight_r,
-                                    );
+                                for flight_r in return_flights {
+                                    //airport_o
+                                    let (screen_x_o, screen_y_o) =
+                                        get_coordinate_positioning_on_map(
+                                            flight_r.origin_airport.coordinates,
+                                            texture.size(),
+                                        );
+                                    if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
+                                        self.add_connection(
+                                            airport.clone(),
+                                            flight_r.origin_airport.clone(),
+                                            flight_r,
+                                        );
+                                    }
+                                }
+
+                                for flight_o in origin_flights {
+                                    // airport_r
+                                    let (screen_x_r, screen_y_r) =
+                                        get_coordinate_positioning_on_map(
+                                            flight_o.return_airport.coordinates,
+                                            texture.size(),
+                                        );
+                                    if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
+                                        self.add_connection(
+                                            airport.clone(),
+                                            flight_o.return_airport.clone(),
+                                            flight_o,
+                                        );
+                                    }
                                 }
                             }
-
-                            for flight_o in origin_flights {
-                                // airport_r
-                                let (screen_x_r, screen_y_r) = get_coordinate_positioning_on_map(
-                                    flight_o.return_airport.coordinates,
-                                    texture.size(),
-                                );
-                                if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
-                                    self.add_connection(
-                                        airport.clone(),
-                                        flight_o.return_airport.clone(),
-                                        flight_o,
-                                    );
-                                }
-                            }
+                            // self.date_selected.clear();
                         }
-                        // self.date_selected.clear();
                     }
                 }
-                }
-
 
                 let mut last_o: &Airport = &Airport::default_new();
                 let mut last_r: &Airport = &Airport::default_new();
