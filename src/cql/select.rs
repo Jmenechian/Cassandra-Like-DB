@@ -31,7 +31,11 @@ impl Select {
     }
 
     pub fn parse_select(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
-        self.num_node = address_node.chars().last().unwrap().to_string();
+        let port = match address_node.chars().last() {
+            Some(c) => c,
+            None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
+        };
+        self.num_node = port.to_string();
 
         let mut parts: Vec<&str> = query.split_whitespace().collect();
         if parts.len() < 4 || parts[0] != "SELECT" || parts[1] == "FROM" {

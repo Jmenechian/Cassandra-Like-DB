@@ -16,6 +16,7 @@ use crate::messagestuff::{
 use crate::my_errors::*;
 use crate::{ConsistentHash, NeighborNode};
 use rand::seq::SliceRandom;
+use std::cell::BorrowMutError;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::net::{TcpListener, TcpStream};
@@ -108,16 +109,21 @@ impl Node {
 }
 
 // Lee los puertos del archivo
-fn read_ports_from_file(filename: &str) -> Vec<u16> {
-    let file = File::open(filename)
-        .map_err(|e| MyError::FileError(e.to_string()))
-        .unwrap();
-
+fn read_ports_from_file(filename: &str) -> Result<Vec<u16>, MyError> {
+    let file = match File::open(filename) {
+        Ok(f) => f,
+        Err(e) => return Err(MyError::FileError(e.to_string())),
+    };
     let reader = BufReader::new(file);
-    reader
+    reader 
         .lines()
-        .filter_map(|line| line.ok()?.parse().ok())
+        .map(|l| {
+            let l_string = l.map_err(|e| MyError::FileError(e.to_string()))?;
+            l_string.parse::<u16>()
+                .map_err(|e| MyError::FileError(e.to_string()))
+        })
         .collect()
+    
 }
 
 fn try_connect(ip: String) -> Option<TcpStream> {
@@ -519,8 +525,12 @@ fn handle_connection_gossip(
                             }
                         }
                     }
+                    let port = match ip.chars().last() {
+                        Some(c) => c,
+                        None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
+                    };
                     let new = node
-                        .add_neighbor(NeighborNode::new(&ip.chars().last().unwrap().to_string()));
+                        .add_neighbor(NeighborNode::new(&port.to_string()));
                     if show && new {
                         println!("G   Mis vecinos son: {:?}", node.neighbors);
                     }
@@ -623,7 +633,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
     current_node.add_neighbor(NeighborNode::new(&current_node.puerto));
 
     //empiezo gossip
-    let ports = read_ports_from_file(PORTS_FILE);
+    let ports = read_ports_from_file(PORTS_FILE)?;
     let my_ip = current_node.server_ip.clone();
     match connect_to_random_gossip(ports.clone(), &port, show_g) {
         Some((mut s, addr)) => {
@@ -633,8 +643,12 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
                 ttl: 5 as u8,
             };
             let _ = gossip_msg.send_server_through(&mut s);
+            let port = match addr.chars().last() {
+                Some(c) => c,
+                None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
+            };
             let new = current_node
-                .add_neighbor(NeighborNode::new(&addr.chars().last().unwrap().to_string()));
+                .add_neighbor(NeighborNode::new(&port.to_string()));
             if show_g && new {
                 println!("G   Mis vecinos son: {:?}", current_node.neighbors);
             }
@@ -642,10 +656,15 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
         None => println!("tengo que ser el primer nodo porque no encontre otro"),
     };
 
+    let server_ip = current_node.server_ip.clone();
+    let client_ip = current_node.client_ip.clone();
+    let gossip_ip = current_node.gossip_ip.clone();
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
-                                                                               // Seccion cliente-servidor
+    
+    // Seccion cliente-servidor
+
     listen(
-        current_node.read().unwrap().client_ip.clone(),
+        client_ip,
         current_node.clone(),
         handle_connection_client,
         show_c,
@@ -653,7 +672,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
 
     // Seccion servidor-servidor
     listen(
-        current_node.read().unwrap().server_ip.clone(),
+        server_ip,
         current_node.clone(),
         handle_connection_server,
         show_s,
@@ -661,7 +680,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
 
     // Seccion Gossip
     listen(
-        current_node.read().unwrap().gossip_ip.clone(),
+        gossip_ip,
         current_node.clone(),
         handle_connection_gossip,
         show_g,
@@ -691,14 +710,14 @@ pub fn initialize(port: String) -> Result<(), MyError> {
 
     println!("Soy nodo en ip: {}", current_node.server_ip);
 
-    let ports = read_ports_from_file(PORTS_FILE);
+    let ports = read_ports_from_file(PORTS_FILE)?;
 
     let neighbor_nodes: Vec<NeighborNode> = connect_to_ports(ports, &port);
     current_node.add_neighbors(neighbor_nodes);
 
-    let server_ip = current_node.server_ip.clone();
+    let server_ip = current_node.puerto.clone();
     current_node.add_neighbor(NeighborNode::new(
-        &server_ip.chars().last().unwrap().to_string(),
+        &server_ip,
     ));
 
     //let current_node = Arc::new(Mutex::new(current_node)); --> Usamos RwLock en vex de Mutex

@@ -29,7 +29,11 @@ impl Insert {
 
     // Parses the query for later execution
     pub fn parse_insert(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
-        self.num_node = address_node.chars().last().unwrap().to_string();
+        let port = match address_node.chars().last() {
+            Some(c) => c,
+            None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
+        };
+        self.num_node = port.to_string();
 
         let parts: Vec<&str> = query.split_whitespace().collect();
 
