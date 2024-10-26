@@ -1,5 +1,13 @@
-use crate::config::RF;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::net::{TcpListener, TcpStream};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::thread;
+use std::thread::JoinHandle;
+use std::time::Duration;
 use crate::config::{self, PORTS_FILE};
+use rand::seq::SliceRandom;
+use crate::config::RF;
 use crate::cql::query::Query;
 use crate::messagestuff::{
     message::*,
@@ -11,14 +19,6 @@ use crate::messagestuff::{
 };
 use crate::my_errors::*;
 use crate::{ConsistentHash, NeighborNode};
-use rand::seq::SliceRandom;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, RwLock, RwLockReadGuard};
-use std::thread;
-use std::thread::JoinHandle;
-use std::time::Duration;
 
 #[derive(Debug, Clone, PartialEq, Copy)]
 #[repr(u8)]
@@ -167,7 +167,7 @@ fn handle_connection_server(
                 }
                 match packet.body {
                     ServerMessage::Query(query) => {
-                        let mut node = match node.read() {
+                        let node = match node.read() {
                             Ok(n) => n,
                             Err(e) => {
                                 if show {
@@ -178,13 +178,14 @@ fn handle_connection_server(
                         };
                         let mut query = Query::new(query.query.clone(), node.server_ip.clone());
                         let table = match query.execute() {
-                            Ok(s) => s,
+                            Ok(s) => {
+                                println!("{}", s);
+                                s
+                            },
                             Err(_) => "".to_string(),
                         };
-                        let msg = ResultRowsServerMessage {
-                            rows_count: 1,
-                            rows_content: vec![table],
-                        };
+                        println!("RESULTADO, TABLA: {}", table);
+                        let msg = ResultRowsServerMessage{rows_count: 1, rows_content: vec![table]};
                         let _ = msg.send_server_through(stream);
                     }
                     _ => {
@@ -234,13 +235,7 @@ pub fn handle_connection_client(
                 }
                 match env.body {
                     CqlMessage::Query(querymessage) => {
-                        // let query =
-                        //     Query::new(querymessage.query.clone(), node.client_ip.clone());
-                        let table = match send_query_to_nodes(
-                            &node,
-                            querymessage.query.clone(),
-                            show,
-                        ) {
+                        let table = match send_query_to_nodes(&node, querymessage.query.clone(), querymessage.consistency, show) {
                             Ok(r) => r,
                             Err(e) => {
                                 let _error = "Error: algo fallo en send_query_to_node".to_string();
@@ -256,7 +251,7 @@ pub fn handle_connection_client(
                                 return Err(e);
                             }
                         };
-                        if table.is_empty() {
+                        if table.len() == 0 { //es un string ahora entonces ???
                             let void_msg = ResultVoidMessage;
                             if let Err(e) = void_msg.send_through(stream) {
                                 if show {
@@ -264,16 +259,8 @@ pub fn handle_connection_client(
                                 }
                             }
                         } else {
-                            let content: Vec<String> = table[0]
-                                .clone()
-                                .trim_end()
-                                .split("     ")
-                                .map(|s| s.to_string())
-                                .collect();
-                            let rows_msg = ResultRowsMessage {
-                                rows_count: content.len() as i32,
-                                rows_content: content,
-                            };
+                            let content: Vec<String> = table.clone().trim_end().split("     ").map(|s| s.to_string()).collect();
+                            let rows_msg = ResultRowsMessage{rows_count: content.len() as i32, rows_content:content};
                             if let Err(e) = rows_msg.send_through(stream) {
                                 if show {
                                     println!("C   Error: {:?}", e);
@@ -314,29 +301,22 @@ pub fn handle_connection_client(
 //aviones volando -> threads
 //hago click en NY
 
-// fn process_results(results: &Vec<String>) -> String {
-//     println!("pr ===> {:?}", results);
+fn process_results(results: &Vec<String>) -> String {
+    println!("pr ===> {:?}", results);
 
-//     match results.len() {
-//         1 => return results[0].clone(),
-//         2 => {
-//             let (a, b) = (&results[0], &results[1]);
-//             if a == b {
-//                 return a.clone() //no hay que hacer nada mas creo
-//             } else {
-//                 // let newer = look_newer(results);
-//                 // read_repair(newer, ) //update a todos los nodos
-//                 // return newer
-//             }
-//             }
-//         3 => {
-//             let (a, b, c) = (&results[0], &results[1], &results[2]);
-//             // return look_newer(vec![a.clone(), b.clone(), c.clone()]);
-//         }
-//         _ => return "error".to_string(), //rompio todo
-//     }
-//     results[0].clone()
-// }
+    match results.len() {
+        1 => return results[0].clone(),
+        2 => {
+            let (_newer, index) = look_newer(results);
+            return results[index].clone();
+        }
+        3 => {
+            let (_newer, index) = look_newer(results);
+            return results[index].clone();
+        }
+        _ => return "error".to_string(), //rompio todo
+    }
+}
 
 pub fn look_newer(results: &[String]) -> (&str, usize) {
     //falta testear en process results
@@ -355,15 +335,30 @@ pub fn look_newer(results: &[String]) -> (&str, usize) {
 }
 // Envia la query a los nodos correspondientes
 // Utiliza ConsistentHash para determinar los nodos
-// Utiliza mensajes del tipo ServerMessage
 pub fn send_query_to_nodes(
     node: &RwLockReadGuard<'_, Node>,
     _query: String,
+    consistency_level: u16,
     show: bool,
-) -> Result<Vec<String>, MyError> {
+) -> Result<String, MyError> {
     let mut all_response: Vec<String> = vec![];
     let mut hash = ConsistentHash::new(RF);
-    let mut query = Query::new(_query.clone(), node.client_ip.clone());
+    let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());
+    
+    // Si es un create table, lo ejecuto y devuelvo vacio
+    if query.query.contains("CREATE TABLE") {
+        match query.execute(){
+            Ok(_) => {
+                return Ok("".to_string());
+            }
+            Err(e) => {
+                if show{println!("C   Error al procesar la query: {:?}", e);}
+                return Ok("Error al procesar la query".to_string());
+            }
+        }
+    }
+    
+    
     hash.add_nodes(node.neighbors.to_vec());
     let key = query.get_key_representing_partition(&node.server_ip);
     println!("La key es: {}", key);
@@ -375,10 +370,9 @@ pub fn send_query_to_nodes(
             "
         C   vecinos: {:?}
         C   Los nodos que tienen la info son: {:?}\n",
-            node.neighbors, nodes_with_result
-        );
-    }
-
+        node.neighbors, nodes_with_result
+    );}
+    println!("nodes with result: {:?}", nodes_with_result);
     for neighbor in nodes_with_result {
         // El nodo original porque puede tener el resultado de la query:
         if neighbor.server_ip == node.server_ip {
@@ -391,6 +385,10 @@ pub fn send_query_to_nodes(
             match node.process_query(&mut query) {
                 Ok(result) => {
                     all_response.push(result);
+
+                    if consistency_level != 1 && all_response.len() == 1 { //ver como se cambia eso
+                        return Ok(process_results(&all_response));
+                    }
                 }
                 Err(e) => {
                     if show {
@@ -407,7 +405,6 @@ pub fn send_query_to_nodes(
             }
             continue;
         } else if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
-            // Mando mensaje y el IP del nodo que se conecto con el cliente y en ese mismo stream leo la respuesta que me envia como resultado de la consulta.
             // - Mando mensaje:
             let msg = QueryServerMessage {
                 query: _query.clone(),
@@ -446,7 +443,10 @@ pub fn send_query_to_nodes(
             }
         }
     }
-    Ok(all_response)
+    // if consistency_level != 1 && all_response.len() == 1 { //ver como se cambia eso
+    //     return Ok(process_results(&all_response));
+    // }
+    Ok(process_results(&all_response))
 }
 
 fn handle_connection_gossip(
@@ -480,12 +480,10 @@ fn handle_connection_gossip(
                             if let Some(mut stream) = try_connect(n.gossip_ip.clone()) {
                                 //thread::sleep(Duration::from_secs(1));
                                 if let Err(e) = gossip.send_server_through(&mut stream) {
-                                    if show {
-                                        println!("G   Error al evialr mensaje gossip: {:?}", e);
-                                    }
+                                    if show{println!("G   Error al eviarle mensaje gossip: {:?}", e);}
                                 }
-                            } else if show {
-                                println!("G   Error al conectarse al vecino");
+                            } else {
+                                if show{println!("G   Error al conectarse al vecino");}
                             }
                         }
                     }
@@ -531,7 +529,7 @@ fn connect_to_random_gossip(
             continue;
         };
         let addr = format!("127.0.0.1:900{}", port);
-        if let Some(mut stream) = try_connect(addr.clone()) {
+        if let Some(stream) = try_connect(addr.clone()) {
             if show {
                 println!("El primero que encontre fue el: {:?}", addr);
             }
