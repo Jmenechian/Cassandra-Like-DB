@@ -207,12 +207,21 @@ impl eframe::App for MapApp {
             let texture = self.map_texture.clone();
             if let Some(texture) = &texture {
                 // Mostrar el mapa
+
                 ui.image(texture);
+
+                //print para ubicar en el mapa
+                // if ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary)) {
+                //     if let Some(pos) = ctx.pointer_interact_pos() {
+                //         println!("Se marcó en el mapa - post: {:?}", pos);
+                //     }
+                // }
 
                 ui.horizontal(|ui| {
                     ..{
                         ui.label("Enter date:");
                         ui.text_edit_singleline(&mut self.date_selected);
+                        self.date_selected = self.date_selected.trim().to_string();
                     }
                 });
                 let painter = ui.painter();
