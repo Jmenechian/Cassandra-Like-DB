@@ -1,4 +1,4 @@
-# Taller de Programacion {Grupo}
+# Taller de Programacion {Grupo: Ferris}
 
 ## Integrantes
 Benito, Agustin
