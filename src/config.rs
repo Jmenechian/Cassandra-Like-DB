@@ -23,7 +23,7 @@ pub static MAP_PATH: &str = "src/gui/assets/map.png";
 pub static PLANE_PATH: &str = "src/gui/assets/air-plane.png";
 
 pub static RADIUS_CLICK_AIRPORT: f32 = 15.0; // Radio del botón
-pub static RADIUS_PAINT_AIRPORT: f32 = 5.0;
+pub static RADIUS_PAINT_AIRPORT: f32 = 5.0; //
 pub static PLANE_SIZE: f32 = 50.0;
 
 // OPCODE
