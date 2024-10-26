@@ -18,12 +18,12 @@
 //     log_level             VARCHAR,
 //     log_message           TEXT,
 //     PRIMARY KEY ((app_name,env), hostname, log_datetime)
-//   ) 
-//   WITH CLUSTERING ORDER BY (hostname ASC, log_datetime DESC); 
+//   )
+//   WITH CLUSTERING ORDER BY (hostname ASC, log_datetime DESC);
 
 use crate::config::{RING_SIZE, TABLE_PATH};
 use crate::my_errors::MyError;
-use crate::config::{TABLE_PATH, RING_SIZE};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 
@@ -31,9 +31,9 @@ use std::io::Write;
 pub struct CreateTable {
     pub if_not_exists: bool, // si contiene [IF NOT EXISTS] en la query
     pub table_name: String,
-    pub column_type: HashMap<String, String>,  // nombre de columna, tipo de columna
+    pub column_type: HashMap<String, String>, // nombre de columna, tipo de columna
     pub columns: Vec<String>,
-    pub partition_keys: Vec<String>,       // {"partition": ["app_name", "env"], "clustering": ["hostname", "log_datetime"]}
+    pub partition_keys: Vec<String>, // {"partition": ["app_name", "env"], "clustering": ["hostname", "log_datetime"]}
     pub clustering_keys: Vec<String>,
     pub clustering_orderby: HashMap<String, String>,
 }
@@ -92,10 +92,10 @@ impl CreateTable {
         Ok(())
     }
 
-    fn set_columns(&mut self, columns_str: String) -> HashMap<String,String> {
+    fn set_columns(&mut self, columns_str: String) -> HashMap<String, String> {
         let parts = columns_str.split_whitespace().collect::<Vec<&str>>();
-        
-        let mut column_type: HashMap<String, String>  = HashMap::new();
+
+        let mut column_type: HashMap<String, String> = HashMap::new();
 
         for chunk in parts.chunks(2) {
             if chunk[0].contains("PRIMARY") || chunk[1].contains(")") {
@@ -199,26 +199,40 @@ impl CreateTable {
             let mut f = File::create_new(path).map_err(|e| MyError::FileError(e.to_string()))?;
 
             println!("columns:{:?}", self.columns);
-            f.write_all(self.columns.join(",").as_bytes()).map_err(|e| MyError::FileError(e.to_string()))?;
-
-            let columns: Vec<String> = self.columns.keys().map(|s| s.to_string()).collect();
-            f.write_all(columns.join(",").as_bytes())
+            f.write_all(self.columns.join(",").as_bytes())
                 .map_err(|e| MyError::FileError(e.to_string()))?;
         }
 
         // Creo un solo archivo de metadata
         let path_metadata = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, "metadata");
-        let mut f_metadata = File::create_new(path_metadata).map_err(|e| MyError::FileError(e.to_string()))?;
+        let mut f_metadata =
+            File::create_new(path_metadata).map_err(|e| MyError::FileError(e.to_string()))?;
 
-        let display_orderby: String = self.clustering_orderby.iter().map(|(k,v)| format!("{}:{}", k, v)).collect::<Vec<String>>().join(",");
-        let display_columns: String = self.columns.iter().map(|col| format!("{}:{}",col, self.column_type.get(col).unwrap())).collect::<Vec<String>>().join(",");
+        let display_orderby: String = self
+            .clustering_orderby
+            .iter()
+            .map(|(k, v)| format!("{}:{}", k, v))
+            .collect::<Vec<String>>()
+            .join(",");
+        let display_columns: String = self
+            .columns
+            .iter()
+            .map(|col| format!("{}:{}", col, self.column_type.get(col).unwrap()))
+            .collect::<Vec<String>>()
+            .join(",");
 
-        f_metadata.write_all(
-            format!("partition:{}\nclusters:{}\nclustering_orderby:{}\ncolumns:{}", 
-                self.partition_keys.join(","),
-                self.clustering_keys.join(","),
-                display_orderby,
-                display_columns).as_bytes()).map_err(|e| MyError::FileError(e.to_string()))?;
+        f_metadata
+            .write_all(
+                format!(
+                    "partition:{}\nclusters:{}\nclustering_orderby:{}\ncolumns:{}",
+                    self.partition_keys.join(","),
+                    self.clustering_keys.join(","),
+                    display_orderby,
+                    display_columns
+                )
+                .as_bytes(),
+            )
+            .map_err(|e| MyError::FileError(e.to_string()))?;
 
         Ok("tabla creada".to_string())
     }
@@ -239,8 +253,9 @@ mod tests {
     #[test]
     pub fn test_set_columns() {
         let mut create_table = CreateTable::new();
-        let columns_str = "(id INT, app_name VARCHAR, hostname VARCHAR, PRIMARY KEY (id))".to_string();
-        
+        let columns_str =
+            "(id INT, app_name VARCHAR, hostname VARCHAR, PRIMARY KEY (id))".to_string();
+
         let mut expected_map = HashMap::new();
         expected_map.insert("id".to_string(), "INT".to_string());
         expected_map.insert("app_name".to_string(), "VARCHAR".to_string());
@@ -311,7 +326,15 @@ mod tests {
         assert_eq!(create_table.table_name, "application_logs".to_string());
         assert_eq!(create_table.if_not_exists, false);
         assert_eq!(create_table.column_type, expected_columns);
-        assert_eq!(create_table.columns, vec!["id".to_string(), "app_name".to_string(), "hostname".to_string(), "log_datetime".to_string()]);
+        assert_eq!(
+            create_table.columns,
+            vec![
+                "id".to_string(),
+                "app_name".to_string(),
+                "hostname".to_string(),
+                "log_datetime".to_string()
+            ]
+        );
         assert_eq!(create_table.partition_keys, expected_partition_keys);
         assert_eq!(create_table.clustering_keys, expected_clustering_keys);
         assert_eq!(create_table.clustering_orderby, expected_orderby);

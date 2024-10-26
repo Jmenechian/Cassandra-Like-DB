@@ -12,7 +12,7 @@ use crate::{
             get_airport_coordinates, get_angle, get_coordinate_positioning_on_map,
             obtain_middle_position,
         },
-        flight::Flight
+        flight::Flight,
     },
 };
 
