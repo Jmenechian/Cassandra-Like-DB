@@ -11,15 +11,20 @@ pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Ha
 
 pub static TABLE_PATH: &str = "src/tables";
 
-pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";
-
-pub static MAP_PATH: &str = "src/gui/assets/map.png";
-
-pub static PLANE_PATH: &str = "src/gui/assets/air-plane.png";
-
 pub static N_WORKERS: usize = 10; //Nos dijeron que usemos 10.
 
 pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
+
+//GUI
+
+pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";
+
+pub static MAP_PATH: &str = "src/gui/assets/map.png";
+pub static PLANE_PATH: &str = "src/gui/assets/air-plane.png";
+
+pub static RADIUS_CLICK_AIRPORT: f32 = 15.0; // Radio del botón
+pub static RADIUS_PAINT_AIRPORT: f32 = 5.0;
+pub static PLANE_SIZE: f32 = 50.0;
 
 // OPCODE
 pub const QUERY: u8 = 0x07;
@@ -38,7 +43,6 @@ pub const QUORUM: u16 = 0x0004;
 // Result Kind
 pub const VOID: i32 = 0x0001;
 pub const ROWS: i32 = 0x0002;
-
 
 // OPCODE
 // 0x00    ERROR

@@ -1,9 +1,6 @@
-use std::error::Error;
 use crate::messagestuff::message::*;
-use crate::messagestuff::message_server::{
-    serverpacket::*,
-    resultservermessage::*,
-};
+use crate::messagestuff::message_server::{resultservermessage::*, serverpacket::*};
+use std::error::Error;
 
 #[derive(Debug, PartialEq)]
 pub struct ResultRowsServerMessage {
@@ -30,13 +27,22 @@ impl Serialize for ResultRowsServerMessage {
             _rows_content.push(_row);
             _bytes = resto;
         }
-        Ok((ResultRowsServerMessage{rows_count: _rows_count, rows_content: _rows_content}, _bytes))
+        Ok((
+            ResultRowsServerMessage {
+                rows_count: _rows_count,
+                rows_content: _rows_content,
+            },
+            _bytes,
+        ))
     }
 }
 
 impl IntoResultServerMessage for ResultRowsServerMessage {
     fn into_result_server_message(self) -> ResultServerMessage {
-        ResultServerMessage{kind: ResultServerKind::Rows, body: ResultServerBody::Rows(self)}
+        ResultServerMessage {
+            kind: ResultServerKind::Rows,
+            body: ResultServerBody::Rows(self),
+        }
     }
 }
 

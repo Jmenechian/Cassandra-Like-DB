@@ -1,7 +1,6 @@
-use std::error::Error;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::serverpacket::*;
-
+use std::error::Error;
 
 #[derive(Debug, PartialEq)]
 pub struct ErrorServerMessage {
@@ -21,7 +20,13 @@ impl Serialize for ErrorServerMessage {
         let (_code, resto) = int_from_bytes(bytes)?;
         let (_error, resto) = string_from_bytes(resto)?;
 
-        Ok((ErrorServerMessage{error: _error, code: _code}, resto))
+        Ok((
+            ErrorServerMessage {
+                error: _error,
+                code: _code,
+            },
+            resto,
+        ))
     }
 }
 

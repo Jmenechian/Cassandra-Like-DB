@@ -1,24 +1,34 @@
-use std::{net::TcpStream, collections::HashMap};
 use eframe::egui;
-use egui::{Color32, FontId, Id, Stroke};
+use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureId};
 use image::GenericImageView;
+use std::{collections::HashMap, net::TcpStream};
 
-use crate::{clientstuff::client_cql::Client, config::{MAP_PATH, PLANE_PATH}, gui::painted::{airport::Airport, 
-        airport_coordinates::{get_airport_coordinates,
-            get_angle, get_coordinate_positioning_on_map, obtain_middle_position}}};
+use crate::{
+    clientstuff::client_cql::Client,
+    config::{MAP_PATH, PLANE_PATH, PLANE_SIZE, RADIUS_CLICK_AIRPORT, RADIUS_PAINT_AIRPORT},
+    gui::painted::{
+        airport::Airport,
+        airport_coordinates::{
+            get_airport_coordinates, get_angle, get_coordinate_positioning_on_map,
+            obtain_middle_position,
+        },
+        flight::Flight
+    },
+};
 
-use super::painted::flight::Flight;
-
+/// Estructura que representa la interfaz de usuario.
+/// Mapa con aeropuestos y vuelos que conectan a los aeropuestos.
 pub struct MapApp {
     airports: HashMap<String, Airport>,
     map_texture: Option<egui::TextureHandle>,
     plane_texture: Option<egui::TextureHandle>,
     client: Client,
     stream_client: Option<TcpStream>,
-    connections: Vec<(Airport, Airport, Flight)>
+    connections: Vec<(Airport, Airport, Flight)>,
 }
 
 impl MapApp {
+    /// Se inicializan los valores a usar en la interfaz.
     pub fn new(port: String) -> Self {
         let airports = get_airport_coordinates();
         let map_texture = None;
@@ -68,11 +78,13 @@ impl MapApp {
         let (width, height) = map_image.dimensions();
         let image_rgba = map_image.to_rgba8();
         let texture = ctx.load_texture(
-            "map", 
-            egui::ColorImage::from_rgba_unmultiplied([width.try_into().unwrap(), height.try_into().unwrap()], 
-            &image_rgba
-        ), 
-        Default::default());
+            "map",
+            egui::ColorImage::from_rgba_unmultiplied(
+                [width.try_into().unwrap(), height.try_into().unwrap()],
+                &image_rgba,
+            ),
+            Default::default(),
+        );
         self.map_texture = Some(texture)
     }
 
@@ -81,27 +93,112 @@ impl MapApp {
         self.connections.push((origin, destination, flight));
     }
 
+    /// Se resetean las conecciones entre aeropuesto. Se desconectan todos los aeropuestos.
     fn reset_connection(&mut self) {
         self.connections = vec![];
+    }
+
+    fn initialize_fields(&mut self, ctx: &Context) {
+        if self.map_texture.is_none() {
+            self.load_map_texture(ctx);
+        }
+
+        if self.plane_texture.is_none() {
+            self.load_plane_texture(ctx);
+        }
+
+        if self.stream_client.is_none() {
+            self.set_connection_server();
+        }
+    }
+
+    fn draw_airports(
+        &self,
+        painter: &Painter,
+        screen_x: f32,
+        screen_y: f32,
+        airport_name: &String,
+    ) -> Rect {
+        // Marcar el aeropuesto
+        painter.circle_filled(
+            egui::pos2(screen_x, screen_y),
+            RADIUS_PAINT_AIRPORT,
+            egui::Color32::RED,
+        );
+
+        // Posicionar el nombre
+        let name_pos = egui::pos2(screen_x + RADIUS_PAINT_AIRPORT + 5.0, screen_y); // Ajusta la posición según el radio
+        painter.text(
+            name_pos,
+            egui::Align2::LEFT_CENTER,
+            airport_name,
+            FontId::default(),
+            Color32::WHITE,
+        );
+
+        // Posicionar el botón
+        Rect::from_center_size(
+            egui::pos2(screen_x, screen_y),
+            egui::vec2(RADIUS_CLICK_AIRPORT * 2.0, RADIUS_CLICK_AIRPORT * 2.0),
+        )
+    }
+
+    fn draw_line(
+        &self,
+        painter: &Painter,
+        screen_x_o: f32,
+        screen_y_o: f32,
+        screen_x_d: f32,
+        screen_y_d: f32,
+    ) {
+        painter.line_segment(
+            [
+                egui::pos2(screen_x_o, screen_y_o),
+                egui::pos2(screen_x_d, screen_y_d),
+            ],
+            Stroke::new(5.0, Color32::GRAY), // Color y grosor de la línea
+        );
+    }
+
+    fn draw_plane(
+        &self,
+        painter: &Painter,
+        mid_x: f32,
+        mid_y: f32,
+        plane_texture_id: TextureId,
+        flight_name: &String,
+        _angle: f32,
+    ) {
+        let plane_rect = egui::Rect::from_center_size(
+            egui::pos2(mid_x, mid_y),
+            egui::vec2(PLANE_SIZE, PLANE_SIZE),
+        );
+
+        let uv_rect = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+
+        //sprite imagenes
+
+        painter.image(plane_texture_id, plane_rect, uv_rect, Color32::WHITE);
+
+        // Posicionar el nombre
+        let name_pos = egui::pos2(mid_x + 30.0, mid_y); // Ajusta la posicion segun la imagen del avion
+        painter.text(
+            name_pos,
+            egui::Align2::LEFT_CENTER,
+            flight_name,
+            FontId::default(),
+            Color32::WHITE,
+        );
     }
 }
 
 impl eframe::App for MapApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    /// Se llama cada vez que es necesario volver a pintar la interfaz de usuario, lo que puede ocurrir muchas veces por segundo.
+    fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Mapa de Aeropuertos");
 
-            if self.map_texture.is_none() {
-                self.load_map_texture(ctx);
-            }
-
-            if self.plane_texture.is_none() {
-                self.load_plane_texture(ctx);
-            }
-
-            if self.stream_client.is_none() {
-                self.set_connection_server();
-            }
+            self.initialize_fields(ctx);
 
             let texture = self.map_texture.clone();
             if let Some(texture) = &texture {
@@ -112,112 +209,106 @@ impl eframe::App for MapApp {
                 // Dibujar los aeropuertos
                 let airports = self.airports.clone();
                 for airport in airports.values() {
-                    let (screen_x, screen_y) = get_coordinate_positioning_on_map(airport.coordinates, texture.size());
-                
-                    let radius_click = 15.0; // Radio del botón
-                    let radius_paint = 5.0;
+                    let (screen_x, screen_y) =
+                        get_coordinate_positioning_on_map(airport.coordinates, texture.size());
 
-                    // Marcar el aeropuesto
-                    painter.circle_filled(egui::pos2(screen_x, screen_y), radius_paint, egui::Color32::RED);
-
-                    // Posicionar el nombre
-                    let name_pos = egui::pos2(screen_x + radius_paint + 5.0, screen_y); // Ajusta la posición según el radio
-                    painter.text(name_pos, egui::Align2::LEFT_CENTER, &airport.name, FontId::default(), Color32::WHITE);
-
-                    // Posicionar el botón
-                    let button_rect = egui::Rect::from_center_size(
-                        egui::pos2(screen_x, screen_y), 
-                        egui::vec2(radius_click * 2.0, radius_click * 2.0)
-                    );
+                    let button_rect =
+                        self.draw_airports(painter, screen_x, screen_y, &airport.name);
 
                     let date_selected = "24-12-12".to_string();
                     // Crear un botón en la posición del aeropuerto
-                    if ui.interact(button_rect, Id::new(&airport.name), egui::Sense::click()).clicked() {
+                    if ui
+                        .interact(button_rect, Id::new(&airport.name), egui::Sense::click())
+                        .clicked()
+                    {
                         println!("¡Aeropuerto {} presionado!", airport.name);
                         self.reset_connection();
 
-                        if let (Ok(origin_flights), Ok(return_flights)) = (airport.get_origin_flights_from(&mut self.stream_client, &date_selected, &self.airports),
-                        airport.get_flights_that_return_to(&mut self.stream_client, &date_selected, &self.airports)) {
+                        if let (Ok(origin_flights), Ok(return_flights)) = (
+                            airport.get_origin_flights_from(
+                                &mut self.stream_client,
+                                &date_selected,
+                                &self.airports,
+                            ),
+                            airport.get_flights_that_return_to(
+                                &mut self.stream_client,
+                                &date_selected,
+                                &self.airports,
+                            ),
+                        ) {
                             if origin_flights.is_empty() && return_flights.is_empty() {
                                 continue;
                             }
 
-                            //let origin_airports = get_origin_airport_of(&return_flights, &self.airports);
-                            //let return_airports = get_return_airport_of(&origin_flights, &self.airports);
-
                             for flight_r in return_flights {
                                 //airport_o
-                                let (screen_x_o, screen_y_o) = get_coordinate_positioning_on_map(flight_r.origin_airport.coordinates, texture.size());
-                            
+                                let (screen_x_o, screen_y_o) = get_coordinate_positioning_on_map(
+                                    flight_r.origin_airport.coordinates,
+                                    texture.size(),
+                                );
                                 if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
-                                    self.add_connection(airport.clone(), flight_r.origin_airport.clone(), flight_r);
+                                    self.add_connection(
+                                        airport.clone(),
+                                        flight_r.origin_airport.clone(),
+                                        flight_r,
+                                    );
                                 }
                             }
 
                             for flight_o in origin_flights {
                                 // airport_r
-                                let (screen_x_r, screen_y_r) = get_coordinate_positioning_on_map(flight_o.return_airport.coordinates, texture.size());
-                            
+                                let (screen_x_r, screen_y_r) = get_coordinate_positioning_on_map(
+                                    flight_o.return_airport.coordinates,
+                                    texture.size(),
+                                );
                                 if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
-                                    self.add_connection(airport.clone(), flight_o.return_airport.clone(), flight_o);
+                                    self.add_connection(
+                                        airport.clone(),
+                                        flight_o.return_airport.clone(),
+                                        flight_o,
+                                    );
                                 }
                             }
                         }
                     }
                 }
 
-                let mut last_o: &Airport = &Airport::default();
-                let mut last_r: &Airport = &Airport::default();
+                let mut last_o: &Airport = &Airport::default_new();
+                let mut last_r: &Airport = &Airport::default_new();
                 for (origin, destination, flight) in &self.connections {
-                    let plane_size = 50.0;
-                    let (screen_x_o, screen_y_o) = get_coordinate_positioning_on_map(origin.coordinates, texture.size());
-                    let (screen_x_d, screen_y_d) = get_coordinate_positioning_on_map(destination.coordinates, texture.size());
-                
-                    painter.line_segment(
-                        [
-                            egui::pos2(screen_x_o, screen_y_o),
-                            egui::pos2(screen_x_d, screen_y_d),
-                        ],
-                        Stroke::new(5.0, Color32::GRAY), // Color y grosor de la línea
-                    );
+                    let (screen_x_o, screen_y_o) =
+                        get_coordinate_positioning_on_map(origin.coordinates, texture.size());
+                    let (screen_x_d, screen_y_d) =
+                        get_coordinate_positioning_on_map(destination.coordinates, texture.size());
+
+                    self.draw_line(painter, screen_x_o, screen_y_o, screen_x_d, screen_y_d);
 
                     // Posición media para el avión
-                    let (mut mid_x, mut mid_y) = obtain_middle_position(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
+                    let (mut mid_x, mut mid_y) =
+                        obtain_middle_position(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
 
                     if last_o == origin && last_r == destination {
                         (mid_x, mid_y) = (mid_x + 25.0, mid_y + 25.0);
                     }
 
                     // Ángulo de rotación
-                    let _angle = get_angle(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
+                    let angle = get_angle(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
 
                     // Dibujar el avión
                     let plane_texture = self.plane_texture.clone();
                     if let Some(plane_texture) = plane_texture {
-                        let plane_rect = egui::Rect::from_center_size(
-                            egui::pos2(mid_x, mid_y),
-                            egui::vec2(plane_size, plane_size),
-                        );
-
-                        let uv_rect = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-
-                        // let plane_rect = plane_rect.rotate_bb(Rot2::from_angle(angle));
-                        // let plane_rect = plane_rect.translate(Vec2::new(mid_x, mid_y));
-
-                        painter.image(
+                        self.draw_plane(
+                            painter,
+                            mid_x,
+                            mid_y,
                             plane_texture.id(),
-                            plane_rect,
-                            uv_rect,
-                            Color32::WHITE,
+                            &flight.name,
+                            angle,
                         );
-
-                        // Posicionar el nombre
-                        let name_pos = egui::pos2(mid_x + 30.0, mid_y); // Ajusta la posicion segun la imagen del avion
-                        painter.text(name_pos, egui::Align2::LEFT_CENTER, &flight.name, FontId::default(), Color32::WHITE);
                     }
 
-                    last_o = &origin;
-                    last_r = &destination;
+                    last_o = origin;
+                    last_r = destination;
                 }
             }
         });

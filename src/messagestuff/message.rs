@@ -32,16 +32,22 @@
 //   0x000A    LOCAL_ONE
 
 use crate::config;
-use std::{error::Error, io::{Read, Write}, net::TcpStream};
 use crate::messagestuff::message_cql::cqlenvelope::IntoEnvelope;
 use crate::messagestuff::message_server::serverpacket::IntoPacket;
+use std::{
+    error::Error,
+    io::{Read, Write},
+    net::TcpStream,
+};
 pub trait Serialize: std::fmt::Debug {
     fn to_bytes(&self) -> Vec<u8>;
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> where Self: Sized;
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>>
+    where
+        Self: Sized;
 }
 
 pub trait Sendable: std::fmt::Debug + IntoEnvelope {
-    fn send_through(self, stream: & mut TcpStream) -> Result<(), Box<dyn Error>>
+    fn send_through(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error>>
     where
         Self: Sized,
     {
@@ -71,7 +77,7 @@ pub trait Sendable: std::fmt::Debug + IntoEnvelope {
 impl<T: IntoEnvelope> Sendable for T {}
 
 pub trait ServerSendable: std::fmt::Debug + IntoPacket {
-    fn send_server_through(self, stream: & mut TcpStream) -> Result<(), Box<dyn Error>>
+    fn send_server_through(self, stream: &mut TcpStream) -> Result<(), Box<dyn Error>>
     where
         Self: Sized,
     {
@@ -104,7 +110,7 @@ impl<T: IntoPacket> ServerSendable for T {}
 //[byte]: 1 byte unsigned integer
 pub fn byte_to_byte(s: u8) -> Vec<u8> {
     s.to_be_bytes().to_vec()
-} 
+}
 
 pub fn byte_from_bytes(bytes: Vec<u8>) -> Result<(u8, Vec<u8>), Box<dyn Error>> {
     if bytes.len() < 1 {
@@ -117,7 +123,7 @@ pub fn byte_from_bytes(bytes: Vec<u8>) -> Result<(u8, Vec<u8>), Box<dyn Error>> 
 //[short]: 2 bytes unsigned integer
 pub fn short_to_bytes(s: u16) -> Vec<u8> {
     s.to_be_bytes().to_vec()
-} 
+}
 
 pub fn short_from_bytes(bytes: Vec<u8>) -> Result<(u16, Vec<u8>), Box<dyn Error>> {
     if bytes.len() < 2 {
@@ -150,8 +156,7 @@ pub fn long_from_bytes(bytes: Vec<u8>) -> Result<(i64, Vec<u8>), Box<dyn Error>>
         return Err(Box::from("No hay suficientes bytes para leer un <long>"));
     }
     let value = i64::from_be_bytes([
-        bytes[0], bytes[1], bytes[2], bytes[3],
-        bytes[4], bytes[5], bytes[6], bytes[7]
+        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
     ]);
     Ok((value, bytes[8..].to_vec()))
 }
@@ -167,7 +172,9 @@ pub fn string_to_bytes(s: String) -> Vec<u8> {
 
 pub fn string_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), Box<dyn Error>> {
     if bytes.len() < 2 {
-        return Err(Box::from("No hay suficientes bytes para leer la longitud del <String>"));
+        return Err(Box::from(
+            "No hay suficientes bytes para leer la longitud del <String>",
+        ));
     }
     let (length, resto) = short_from_bytes(bytes)?;
     if resto.len() < length as usize {
@@ -176,7 +183,7 @@ pub fn string_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), Box<dyn Er
     let string_buffer = &resto[..length as usize];
     let _string = match String::from_utf8(string_buffer.to_vec()) {
         Ok(string) => string,
-        Err(_) => return Err(Box::from("Error al pasar utf8 a <String>"))
+        Err(_) => return Err(Box::from("Error al pasar utf8 a <String>")),
     };
     Ok((_string, resto[length as usize..].to_vec()))
 }
@@ -192,7 +199,9 @@ pub fn longstring_to_bytes(s: String) -> Vec<u8> {
 
 pub fn longstring_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), Box<dyn Error>> {
     if bytes.len() < 4 {
-        return Err(Box::from("No hay suficientes bytes para leer la longitud del <String>"));
+        return Err(Box::from(
+            "No hay suficientes bytes para leer la longitud del <String>",
+        ));
     }
     let (length, resto) = int_from_bytes(bytes)?;
     if resto.len() < length as usize {
@@ -201,7 +210,7 @@ pub fn longstring_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), Box<dy
     let string_buffer = &resto[..length as usize];
     let _string = match String::from_utf8(string_buffer.to_vec()) {
         Ok(string) => string,
-        Err(_) => return Err(Box::from("Error al pasar utf8 a <string>"))
+        Err(_) => return Err(Box::from("Error al pasar utf8 a <string>")),
     };
     Ok((_string, resto[length as usize..].to_vec()))
 }

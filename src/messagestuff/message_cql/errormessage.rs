@@ -1,7 +1,6 @@
-use std::error::Error;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::cqlenvelope::*;
-
+use std::error::Error;
 
 #[derive(Debug, PartialEq)]
 pub struct ErrorMessage {
@@ -21,7 +20,13 @@ impl Serialize for ErrorMessage {
         let (_code, resto) = int_from_bytes(bytes)?;
         let (_error, resto) = string_from_bytes(resto)?;
 
-        Ok((ErrorMessage{error: _error, code: _code}, resto))
+        Ok((
+            ErrorMessage {
+                error: _error,
+                code: _code,
+            },
+            resto,
+        ))
     }
 }
 
@@ -34,7 +39,7 @@ impl IntoEnvelope for ErrorMessage {
             stream: 0 as u16,
             opcode: CqlOpcode::ErrorMessage,
             length: _body.len() as i32,
-            body: CqlMessage::Error(self)
+            body: CqlMessage::Error(self),
         }
     }
 }
@@ -45,7 +50,10 @@ mod tests {
 
     #[test]
     fn test_error_message() -> Result<(), Box<dyn Error>> {
-        let expected_error: ErrorMessage = ErrorMessage{error: "Hola".to_string(), code: 0 as i32};
+        let expected_error: ErrorMessage = ErrorMessage {
+            error: "Hola".to_string(),
+            code: 0 as i32,
+        };
         let bytes: Vec<u8> = expected_error.to_bytes();
         let (_error, _) = ErrorMessage::from_bytes(bytes)?;
         Ok(assert_eq!(_error, expected_error))

@@ -1,14 +1,13 @@
-use std::{error::Error, io::Read, net::TcpStream};
-use crate::{config, Query};
 use crate::messagestuff::{
-    message::*,
-    message_cql::resultrowsmessage::ResultRowsMessage,
+    message::*, message_cql::resultrowsmessage::ResultRowsMessage,
     message_cql::resultvoidmessage::ResultVoidMessage,
-    message_server::gossipmessage::GossipMessage,
     message_server::errorservermessage::ErrorServerMessage,
+    message_server::gossipmessage::GossipMessage,
     message_server::queryservermessage::QueryServerMessage,
     message_server::resultservermessage::ResultServerMessage,
 };
+use crate::{config, Query};
+use std::{error::Error, io::Read, net::TcpStream};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -60,14 +59,14 @@ pub struct Packet {
 impl Packet {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(& byte_to_byte(self.opcode as u8));
-        bytes.extend_from_slice(& int_to_bytes(self.length));
+        bytes.extend_from_slice(&byte_to_byte(self.opcode as u8));
+        bytes.extend_from_slice(&int_to_bytes(self.length));
 
         match &self.body {
-            ServerMessage::Gossip(msg) => bytes.extend_from_slice(& msg.to_bytes()),
-            ServerMessage::ErrorServer(msg) => bytes.extend_from_slice(& msg.to_bytes()),
-            ServerMessage::Query(msg) => bytes.extend_from_slice(& msg.to_bytes()),
-            ServerMessage::Result(msg) => bytes.extend_from_slice(& msg.to_bytes()),
+            ServerMessage::Gossip(msg) => bytes.extend_from_slice(&msg.to_bytes()),
+            ServerMessage::ErrorServer(msg) => bytes.extend_from_slice(&msg.to_bytes()),
+            ServerMessage::Query(msg) => bytes.extend_from_slice(&msg.to_bytes()),
+            ServerMessage::Result(msg) => bytes.extend_from_slice(&msg.to_bytes()),
         }
         bytes
     }
@@ -76,14 +75,22 @@ impl Packet {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 5];
         if let Err(e) = stream.read_exact(&mut header_buffer) {
-            return Err(Box::from(format!("Error al leer el <header> del packet desde Stream{:?}", e)));
+            return Err(Box::from(format!(
+                "Error al leer el <header> del packet desde Stream{:?}",
+                e
+            )));
         };
         let _opcode = ServerOpcode::from_u8(header_buffer[0])?;
-        let _length = i32::from_be_bytes([header_buffer[1],header_buffer[2],header_buffer[3],header_buffer[4]]);
+        let _length = i32::from_be_bytes([
+            header_buffer[1],
+            header_buffer[2],
+            header_buffer[3],
+            header_buffer[4],
+        ]);
 
         let mut body_buffer = vec![0u8; _length as usize];
         if let Err(_) = stream.read_exact(&mut body_buffer) {
-            return Err(Box::from("Error al leer el <body> desde Stream"))
+            return Err(Box::from("Error al leer el <body> desde Stream"));
         }
         let _body = match _opcode {
             ServerOpcode::GossipMessage => {
@@ -103,7 +110,11 @@ impl Packet {
                 ServerMessage::Result(result)
             }
         };
-        Ok(Packet{opcode: _opcode, length: _length, body: _body})
+        Ok(Packet {
+            opcode: _opcode,
+            length: _length,
+            body: _body,
+        })
     }
 }
 
