@@ -1,5 +1,6 @@
 use eframe::egui;
-use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureId};
+use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureId, popup};
+
 use image::GenericImageView;
 use std::{collections::HashMap, net::TcpStream};
 
@@ -25,6 +26,8 @@ pub struct MapApp {
     client: Client,
     stream_client: Option<TcpStream>,
     connections: Vec<(Airport, Airport, Flight)>,
+    show_date: bool,
+    date_selected: String,
 }
 
 impl MapApp {
@@ -36,6 +39,8 @@ impl MapApp {
         let client = Client::initialize(port);
         let stream_client = None;
         let connections = vec![];
+        let show_date = false;
+        let date_selected = "".to_string();
         Self {
             airports,
             map_texture,
@@ -43,6 +48,8 @@ impl MapApp {
             client,
             stream_client,
             connections,
+            show_date,
+            date_selected,
         }
     }
 
@@ -204,6 +211,11 @@ impl eframe::App for MapApp {
             if let Some(texture) = &texture {
                 // Mostrar el mapa
                 ui.image(texture);
+                
+
+                ui.horizontal(|ui|.. {
+                    ui.label("Enter date:");
+                    ui.text_edit_singleline(&mut self.date_selected);});
                 let painter = ui.painter();
 
                 // Dibujar los aeropuertos
@@ -215,24 +227,27 @@ impl eframe::App for MapApp {
                     let button_rect =
                         self.draw_airports(painter, screen_x, screen_y, &airport.name);
 
-                    let date_selected = "24-12-12".to_string();
                     // Crear un botón en la posición del aeropuerto
                     if ui
                         .interact(button_rect, Id::new(&airport.name), egui::Sense::click())
                         .clicked()
                     {
                         println!("¡Aeropuerto {} presionado!", airport.name);
+                        
                         self.reset_connection();
-
+                        
+                        
+                        if !self.date_selected.is_empty() {
+                        
                         if let (Ok(origin_flights), Ok(return_flights)) = (
                             airport.get_origin_flights_from(
                                 &mut self.stream_client,
-                                &date_selected,
+                                &self.date_selected,
                                 &self.airports,
                             ),
                             airport.get_flights_that_return_to(
                                 &mut self.stream_client,
-                                &date_selected,
+                                &self.date_selected,
                                 &self.airports,
                             ),
                         ) {
@@ -270,8 +285,11 @@ impl eframe::App for MapApp {
                                 }
                             }
                         }
+                        // self.date_selected.clear();
                     }
                 }
+                }
+
 
                 let mut last_o: &Airport = &Airport::default_new();
                 let mut last_r: &Airport = &Airport::default_new();
