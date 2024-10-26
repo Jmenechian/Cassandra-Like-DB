@@ -1,17 +1,15 @@
-use std::error::Error;
 use crate::config;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::{
-    serverpacket::*,
-    resultrowsevermsg::*,
-    resultvoidservermsg::*,
+    resultrowsevermsg::*, resultvoidservermsg::*, serverpacket::*,
 };
+use std::error::Error;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]
 pub enum ResultServerKind {
     Void = config::VOID,
-    Rows = config::ROWS, 
+    Rows = config::ROWS,
 }
 
 impl ResultServerKind {
@@ -19,7 +17,7 @@ impl ResultServerKind {
         match value {
             config::VOID => Ok(ResultServerKind::Void),
             config::ROWS => Ok(ResultServerKind::Rows),
-            _ => Err(Box::from("Invalid Result Kind"))
+            _ => Err(Box::from("Invalid Result Kind")),
         }
     }
 }
@@ -39,7 +37,7 @@ pub struct ResultServerMessage {
 impl Serialize for ResultServerMessage {
     fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(& int_to_bytes(self.kind as i32));
+        bytes.extend_from_slice(&int_to_bytes(self.kind as i32));
         match &self.body {
             ResultServerBody::Void(_) => {}
             ResultServerBody::Rows(rows) => {
@@ -60,7 +58,13 @@ impl Serialize for ResultServerMessage {
             }
         };
 
-        Ok((ResultServerMessage{kind: _kind, body: _body}, resto))
+        Ok((
+            ResultServerMessage {
+                kind: _kind,
+                body: _body,
+            },
+            resto,
+        ))
     }
 }
 

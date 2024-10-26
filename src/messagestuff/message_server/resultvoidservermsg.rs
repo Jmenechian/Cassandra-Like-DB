@@ -1,14 +1,14 @@
-use crate::messagestuff::message_server::{
-    serverpacket::*,
-    resultservermessage::*,
-};
+use crate::messagestuff::message_server::{resultservermessage::*, serverpacket::*};
 
 #[derive(Debug, PartialEq)]
 pub struct ResultVoidServerMessage;
 
 impl IntoResultServerMessage for ResultVoidServerMessage {
     fn into_result_server_message(self) -> ResultServerMessage {
-        ResultServerMessage{kind: ResultServerKind::Void, body: ResultServerBody::Void(self)}
+        ResultServerMessage {
+            kind: ResultServerKind::Void,
+            body: ResultServerBody::Void(self),
+        }
     }
 }
 

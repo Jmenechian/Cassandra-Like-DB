@@ -1,6 +1,7 @@
 use super::airport::Airport;
 
 #[derive(Debug)]
+/// Estructura que representa un vuelo, con su nombre, el aeropuesto de origen y el de destino.
 pub struct Flight {
     pub name: String,
     pub origin_airport: Airport,
@@ -8,6 +9,7 @@ pub struct Flight {
 }
 
 impl Flight {
+    /// Se crea un nuevo vuelo con los datos indicados.
     pub fn new(name: String, origin_airport: Airport, return_airport: Airport) -> Self {
         Self {
             name,

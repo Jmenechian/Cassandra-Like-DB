@@ -102,7 +102,8 @@ impl Select {
         Ok(())
     }
 
-    pub fn execute_command(&mut self) -> Result<String, MyError> { //cambiarlo a vec string
+    pub fn execute_command(&mut self) -> Result<String, MyError> {
+        //cambiarlo a vec string
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let col_names = get_file_headers(&mut rdr)?;
 

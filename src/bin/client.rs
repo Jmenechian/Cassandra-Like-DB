@@ -15,7 +15,8 @@ fn main() -> Result<()> {
 
     println!("Cliente: {:?}", client);
 
-    if let Err(_) = client.handle_connection() { //solo manda no escucha
+    if let Err(_) = client.handle_connection() {
+        //solo manda no escucha
         println!("Error");
     }
     Ok(())

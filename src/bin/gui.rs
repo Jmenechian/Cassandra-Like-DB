@@ -17,9 +17,9 @@ fn main() -> Result<(), eframe::Error> {
             .with_icon(
                 // NOTE: Adding an icon is optional
                 eframe::icon_data::from_png_bytes(&include_bytes!("../gui/assets/plane.png")[..])
-                .expect("Failed to load icon"),
+                    .expect("Failed to load icon"),
             ),
-        ..Default::default() 
+        ..Default::default()
     };
 
     eframe::run_native(
