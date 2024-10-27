@@ -169,7 +169,18 @@ impl Insert {
     pub fn get_key(&self) -> String {
         //suponiendo que siempre se manda bien
         println!("values = {:?}", self.values);
-        let res = format!("{},{}", self.values[0], self.values[1]);
+
+        let index_col_airport = self.columns
+                    .iter()
+                    .position(|e| e == "airport")
+                    .unwrap_or(0);
+
+        let index_col_date = self.columns
+                    .iter()
+                    .position(|e| e == "date")
+                    .unwrap_or(0);
+
+        let res = format!("{},{}", self.values[index_col_airport], self.values[index_col_date]);
         res
     }
 

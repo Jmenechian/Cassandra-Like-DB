@@ -23,7 +23,7 @@ impl Airport {
         Self { name, coordinates }
     }
 
-    /// Se obtienen los vuelos cuyo aeropuesto de origen es el indicado.
+    /// Se obtienen los vuelos cuyo aeropuerto de origen es el indicado.
     /// Se especifica la fecha en la que salen esos vuelos.
     pub fn get_origin_flights_from(
         &self,
@@ -74,7 +74,7 @@ impl Airport {
         ))
     }
 
-    /// Se obtienen los vuelos cuyo aeropuesto de retorno es el indicado.
+    /// Se obtienen los vuelos cuyo aeropuerto de retorno es el indicado.
     /// Se especifica la fecha en la que llegan esos vuelos.
     pub fn get_flights_that_return_to(
         &self,
@@ -83,7 +83,7 @@ impl Airport {
         airports: &HashMap<String, Airport>,
     ) -> Result<Vec<Flight>, MyError> {
         let query = format!(
-            "SELECT * FROM destination WHERE date = '{}' AND airport = '{}'",
+            "SELECT * FROM destination WHERE date = {} AND airport = {}",
             date, self.name
         );
 
