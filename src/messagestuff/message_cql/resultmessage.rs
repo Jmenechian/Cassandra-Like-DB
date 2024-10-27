@@ -17,7 +17,9 @@ impl ResultKind {
         match value {
             config::VOID => Ok(ResultKind::Void),
             config::ROWS => Ok(ResultKind::Rows),
-            _ => Err(MyError::ServerMessageError("Invalid Result Kind".to_string())),
+            _ => Err(MyError::ServerMessageError(
+                "Invalid Result Kind".to_string(),
+            )),
         }
     }
 }
@@ -133,7 +135,7 @@ mod tests {
             let error = e.to_string();
             return Ok(assert_eq!(
                 error,
-                "No hay suficientes bytes prar leer el <String>"
+                "[TCP_STREAM_ERROR]: [No hay suficientes bytes prar leer el <String>]"
             ));
         }
         Ok(())
@@ -152,7 +154,9 @@ mod tests {
         if let Err(e) = ResultMessage::from_bytes(bytes) {
             return Ok(assert_eq!(
                 e,
-                MyError::CqlMessageError("No hay suficientes bytes prar leer el <String>".to_string())
+                MyError::TcpStreamError(
+                    "No hay suficientes bytes prar leer el <String>".to_string()
+                )
             ));
         }
         Ok(())

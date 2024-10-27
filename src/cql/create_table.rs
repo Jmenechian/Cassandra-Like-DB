@@ -218,10 +218,11 @@ impl CreateTable {
             .columns
             .iter()
             .map(|col| {
-                self.column_type.get(col)
+                self.column_type
+                    .get(col)
                     .map(|col_type| format!("{}:{}", col, col_type))
                     .ok_or_else(|| MyError::Error("Error".to_string()))
-            })    
+            })
             .collect();
         let display_columns = display_columns?;
 

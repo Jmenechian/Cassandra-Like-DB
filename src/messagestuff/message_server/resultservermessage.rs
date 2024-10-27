@@ -5,7 +5,6 @@ use crate::messagestuff::message_server::{
 };
 use crate::my_errors::MyError;
 
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]
 pub enum ResultServerKind {
@@ -18,7 +17,9 @@ impl ResultServerKind {
         match value {
             config::VOID => Ok(ResultServerKind::Void),
             config::ROWS => Ok(ResultServerKind::Rows),
-            _ => Err(MyError::ServerMessageError("Invalid Result Kind".to_string())),
+            _ => Err(MyError::ServerMessageError(
+                "Invalid Result Kind".to_string(),
+            )),
         }
     }
 }

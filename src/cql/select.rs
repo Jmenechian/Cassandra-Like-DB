@@ -129,11 +129,13 @@ impl Select {
         let aeropuerto = if let Some(aeropuerto) = self.whereclause.find_value_for_key("airport") {
             aeropuerto
         } else {
+            println!("\n\nERRRORRRRRRRRRRRRRR AEROPUERTO KEY SELECT\n\n");
             "".to_string() // algun error
         };
         let date = if let Some(date) = self.whereclause.find_value_for_key("date") {
             date
         } else {
+            println!("\n\nERRRORRRRRRRRRRRRRR DATE KEY SELECT\n\n");
             "".to_string()
         };
         let res = format!("{},{}", aeropuerto, date);

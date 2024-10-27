@@ -69,10 +69,7 @@ impl MapApp {
         let height: usize = height.try_into().unwrap_or(0);
         let texture = ctx.load_texture(
             "plane",
-            egui::ColorImage::from_rgba_unmultiplied(
-                [width, height],
-                &image_rgba,
-            ),
+            egui::ColorImage::from_rgba_unmultiplied([width, height], &image_rgba),
             Default::default(),
         );
         self.plane_texture = Some(texture);
@@ -87,10 +84,7 @@ impl MapApp {
         let height: usize = height.try_into().unwrap_or(0);
         let texture = ctx.load_texture(
             "map",
-            egui::ColorImage::from_rgba_unmultiplied(
-                [width, height],
-                &image_rgba,
-            ),
+            egui::ColorImage::from_rgba_unmultiplied([width, height], &image_rgba),
             Default::default(),
         );
         self.map_texture = Some(texture)
@@ -274,8 +268,8 @@ impl eframe::App for MapApp {
                                         );
                                     if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
                                         self.add_connection(
-                                            airport.clone(),
                                             flight_r.origin_airport.clone(),
+                                            flight_r.return_airport.clone(),
                                             flight_r,
                                         );
                                     }
@@ -290,7 +284,7 @@ impl eframe::App for MapApp {
                                         );
                                     if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
                                         self.add_connection(
-                                            airport.clone(),
+                                            flight_o.origin_airport.clone(),
                                             flight_o.return_airport.clone(),
                                             flight_o,
                                         );

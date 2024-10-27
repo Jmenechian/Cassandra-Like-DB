@@ -91,7 +91,7 @@ mod tests {
             let error = e.to_string();
             return Ok(assert_eq!(
                 error,
-                "No hay suficientes bytes prar leer el <String>"
+                "[TCP_STREAM_ERROR]: [No hay suficientes bytes prar leer el <String>]"
             ));
         }
         Ok(())
@@ -106,8 +106,10 @@ mod tests {
         bytes.pop();
         if let Err(e) = ResultRowsMessage::from_bytes(bytes) {
             return Ok(assert_eq!(
-               e,
-                MyError::TcpStreamError("No hay suficientes bytes prar leer el <String>".to_string())
+                e,
+                MyError::TcpStreamError(
+                    "No hay suficientes bytes prar leer el <String>".to_string()
+                )
             ));
         }
         Ok(())

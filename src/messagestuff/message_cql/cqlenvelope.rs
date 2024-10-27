@@ -64,7 +64,10 @@ impl Envelope {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 9];
         if let Err(e) = stream.read_exact(&mut header_buffer) {
-            let _error = format!("Error al leer el <header> del envelope desde Stream: {:?}", e);
+            let _error = format!(
+                "Error al leer el <header> del envelope desde Stream: {:?}",
+                e
+            );
             return Err(MyError::TcpStreamError(_error));
         }
         let _version = header_buffer[0];

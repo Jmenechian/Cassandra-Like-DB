@@ -1,16 +1,13 @@
 use crate::config::{self, PORTS_FILE};
 use crate::cql::query::Query;
-use crate::messagestuff::{
-    message::*,
-    message_server::gossipmessage::*,
-};
-use crate::serverstuff::{
-    handleconnectionserver::handle_connection_server,
-    handleconnectiongossip::handle_connection_gossip,
-    handleconnectiongossip::connect_to_random_gossip,
-    handleconnectionclient::handle_connection_client,
-};
+use crate::messagestuff::{message::*, message_server::gossipmessage::*};
 use crate::my_errors::*;
+use crate::serverstuff::{
+    handleconnectionclient::handle_connection_client,
+    handleconnectiongossip::connect_to_random_gossip,
+    handleconnectiongossip::handle_connection_gossip,
+    handleconnectionserver::handle_connection_server,
+};
 use crate::NeighborNode;
 use rand::seq::SliceRandom;
 use std::fs::File;
@@ -111,15 +108,15 @@ fn read_ports_from_file(filename: &str) -> Result<Vec<u16>, MyError> {
         Err(e) => return Err(MyError::FileError(e.to_string())),
     };
     let reader = BufReader::new(file);
-    reader 
+    reader
         .lines()
         .map(|l| {
             let l_string = l.map_err(|e| MyError::FileError(e.to_string()))?;
-            l_string.parse::<u16>()
+            l_string
+                .parse::<u16>()
                 .map_err(|e| MyError::FileError(e.to_string()))
         })
         .collect()
-    
 }
 
 pub fn try_connect(ip: String) -> Option<TcpStream> {
@@ -159,7 +156,6 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
     }
     known_nodes
 }
-
 
 // Le deberia mandar la query a los nodos correspondientes!
 pub fn handle_query(_query: Query) {
@@ -233,8 +229,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
                 Some(c) => c,
                 None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
             };
-            let new = current_node
-                .add_neighbor(NeighborNode::new(&port.to_string()));
+            let new = current_node.add_neighbor(NeighborNode::new(&port.to_string()));
             if show_g && new {
                 println!("G   Mis vecinos son: {:?}", current_node.neighbors);
             }
@@ -246,7 +241,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
     let client_ip = current_node.client_ip.clone();
     let gossip_ip = current_node.gossip_ip.clone();
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
-    
+
     // Seccion cliente-servidor
     listen(
         client_ip,
@@ -285,71 +280,4 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
             None => println!("tengo que ser el primer nodo porque no encontre otro"),
         };
     }
-}
-
-// Inicializa el nodo
-// Lo conecta al cliente y lo conecta al server-server
-// Punto de entrada para toda la logica
-pub fn initialize(port: String) -> Result<(), MyError> {
-    let mut current_node: Node = Node::new(&port);
-
-    println!("Soy nodo en ip: {}", current_node.server_ip);
-
-    let ports = read_ports_from_file(PORTS_FILE)?;
-
-    let neighbor_nodes: Vec<NeighborNode> = connect_to_ports(ports, &port);
-    current_node.add_neighbors(neighbor_nodes);
-
-    let server_ip = current_node.puerto.clone();
-    current_node.add_neighbor(NeighborNode::new(
-        &server_ip,
-    ));
-
-    //let current_node = Arc::new(Mutex::new(current_node)); --> Usamos RwLock en vex de Mutex
-    let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
-
-    ////////////////////////////
-    // FALTA HACER GOSSIP ACA //
-    ////////////////////////////
-    // Seccion cliente-servidor
-
-    let current_node_client = Arc::clone(&current_node); // node para CLIENT THREAD
-
-    let thread_cliente = thread::spawn(move || {
-        let client_listener = TcpListener::bind(&current_node_client.read().unwrap().client_ip)
-            .expect("Error al conectarse al puerto client_ip");
-
-        for stream in client_listener.incoming() {
-            let mut stream = stream.unwrap();
-
-            let node_thread = Arc::clone(&current_node_client);
-            let t = thread::spawn(move || {
-                // bufreader queda con el ownership de stream --> usamos BufStream para solucionarlo
-                let _ = handle_connection_client(node_thread, &mut stream, true);
-            });
-            let _ = t.join();
-        }
-    });
-
-    // Seccion servidor-servidor
-
-    let current_node_server = Arc::clone(&current_node); // node para SERVER THREAD
-
-    let thread_servidor = thread::spawn(move || {
-        let server_listener = TcpListener::bind(&current_node_server.read().unwrap().server_ip)
-            .expect("Error al conectarse al puerto server_ip");
-
-        for stream in server_listener.incoming() {
-            let mut stream: TcpStream = stream.unwrap();
-
-            let node_thread = Arc::clone(&current_node_server);
-            thread::spawn(move || {
-                let _ = handle_connection_server(node_thread.clone(), &mut stream, true);
-            });
-        }
-    });
-
-    thread_cliente.join().unwrap();
-    thread_servidor.join().unwrap();
-    Ok(())
 }
