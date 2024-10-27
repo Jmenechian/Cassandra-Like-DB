@@ -29,7 +29,11 @@ impl Insert {
 
     // Parses the query for later execution
     pub fn parse_insert(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
-        self.num_node = address_node.chars().last().unwrap().to_string();
+        let port = match address_node.chars().last() {
+            Some(c) => c,
+            None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
+        };
+        self.num_node = port.to_string();
 
         let parts: Vec<&str> = query.split_whitespace().collect();
 
@@ -129,7 +133,7 @@ impl Insert {
         Ok(())
     }
 
-    pub fn execute_command(&self) -> Result<String, MyError> {
+    pub fn execute_command(&self) -> Result<Vec<String>, MyError> {
         println!("En execute_command de INSERT");
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let headers = get_file_headers(&mut rdr)?;
@@ -139,7 +143,7 @@ impl Insert {
         if self.columns.is_empty() {
             if self.values.len() == headers.len() {
                 append_row(TABLE_PATH, &self.table, &self.values)?;
-                return Ok("linea fue agregada".to_string());
+                return Ok(vec!["linea fue agregada".to_string()]);
             }
             return Err(MyError::InvalidSyntax("Invalid INSERT syntax".to_string()));
         }
@@ -159,7 +163,7 @@ impl Insert {
         new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
         new_record.push(Utc::now().to_string()); // metes lo mas nuevo
         append_row(TABLE_PATH, &self.table, &new_record)?;
-        Ok("linea fue agregada".to_string())
+        Ok(vec!["linea fue agregada".to_string()])
     }
 
     pub fn get_key(&self) -> String {

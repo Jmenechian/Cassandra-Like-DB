@@ -32,7 +32,7 @@ impl Query {
         }
     }
 
-    pub fn execute(&mut self) -> Result<String, MyError> {
+    pub fn execute(&mut self) -> Result<Vec<String>, MyError> {
         println!("En execute Query");
         self.get_type();
         match self.parse_query() {
@@ -106,7 +106,7 @@ impl Query {
     }
 
     // Delegates the command execution
-    pub fn execute_command(&mut self) -> Result<String, MyError> {
+    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         println!("En execute_command GRAL: {:?}", self.qtype);
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to execute".to_string())),

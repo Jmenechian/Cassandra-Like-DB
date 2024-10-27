@@ -65,10 +65,12 @@ impl MapApp {
         let plane_image = image::open(PLANE_PATH).expect("Failed to load plane image");
         let (width, height) = plane_image.dimensions();
         let image_rgba = plane_image.to_rgba8();
+        let width: usize = width.try_into().unwrap_or(0);
+        let height: usize = height.try_into().unwrap_or(0);
         let texture = ctx.load_texture(
             "plane",
             egui::ColorImage::from_rgba_unmultiplied(
-                [width.try_into().unwrap(), height.try_into().unwrap()],
+                [width, height],
                 &image_rgba,
             ),
             Default::default(),
@@ -81,10 +83,12 @@ impl MapApp {
         let map_image = image::open(MAP_PATH).expect("Failed to load map image");
         let (width, height) = map_image.dimensions();
         let image_rgba = map_image.to_rgba8();
+        let width: usize = width.try_into().unwrap_or(0);
+        let height: usize = height.try_into().unwrap_or(0);
         let texture = ctx.load_texture(
             "map",
             egui::ColorImage::from_rgba_unmultiplied(
-                [width.try_into().unwrap(), height.try_into().unwrap()],
+                [width, height],
                 &image_rgba,
             ),
             Default::default(),

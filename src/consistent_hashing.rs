@@ -1,6 +1,5 @@
 use fasthash::murmur;
 use std::collections::BTreeMap;
-
 use crate::NeighborNode;
 
 #[derive(Debug, Clone)]
@@ -26,7 +25,10 @@ impl ConsistentHash<NeighborNode> {
     // Aplicamos el hash a la dirección del nodo y normalizamos este valor en el anillo de nodos.
     // Esto nos da la posicion del nodo en el anillo.
     pub fn hash(&self, key: &str) -> usize {
-        let tocken: usize = murmur::hash32(key).try_into().unwrap();
+        let tocken: usize = match murmur::hash32(key).try_into() {
+            Ok(u) => u,
+            Err(_) => {0}
+        };
         tocken % self.total
     }
 

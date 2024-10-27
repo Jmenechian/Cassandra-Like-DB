@@ -27,7 +27,7 @@ impl Update {
         Ok(())
     }
 
-    pub fn execute_command(&mut self) -> Result<String, MyError> {
-        Ok("".to_string())
+    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
+        Ok(vec![])
     }
 }

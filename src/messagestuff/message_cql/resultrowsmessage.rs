@@ -1,6 +1,6 @@
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::{cqlenvelope::*, resultmessage::*};
-use std::error::Error;
+use crate::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub struct ResultRowsMessage {
@@ -18,7 +18,7 @@ impl Serialize for ResultRowsMessage {
         bytes
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), MyError> {
         let (_rows_count, resto) = int_from_bytes(bytes)?;
         let mut _bytes = resto;
         let mut _rows_content: Vec<String> = Vec::new();
@@ -58,7 +58,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_result_rows_message() -> Result<(), Box<dyn Error>> {
+    fn test_result_rows_message() -> Result<(), MyError> {
         let expected_result: ResultRowsMessage = ResultRowsMessage {
             rows_count: 1 as i32,
             rows_content: vec!["hola".to_string()],
@@ -69,7 +69,7 @@ mod tests {
     }
 
     #[test]
-    fn test_result_rows_message_2() -> Result<(), Box<dyn Error>> {
+    fn test_result_rows_message_2() -> Result<(), MyError> {
         let expected_result: ResultRowsMessage = ResultRowsMessage {
             rows_count: 2 as i32,
             rows_content: vec!["hola".to_string(), "chau".to_string()],
@@ -80,7 +80,7 @@ mod tests {
     }
 
     #[test]
-    fn test_result_rows_message_3() -> Result<(), Box<dyn Error>> {
+    fn test_result_rows_message_3() -> Result<(), MyError> {
         let expected_result: ResultRowsMessage = ResultRowsMessage {
             rows_count: 2 as i32,
             rows_content: vec!["hola".to_string(), "chau".to_string()],
@@ -97,7 +97,7 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_result_rows_message_4() -> Result<(), Box<dyn Error>> {
+    fn test_result_rows_message_4() -> Result<(), MyError> {
         let expected_result: ResultRowsMessage = ResultRowsMessage {
             rows_count: 3 as i32,
             rows_content: vec!["hola".to_string(), "chau".to_string()],
@@ -105,10 +105,9 @@ mod tests {
         let mut bytes: Vec<u8> = expected_result.to_bytes();
         bytes.pop();
         if let Err(e) = ResultRowsMessage::from_bytes(bytes) {
-            let error = e.to_string();
             return Ok(assert_eq!(
-                error,
-                "No hay suficientes bytes prar leer el <String>"
+               e,
+                MyError::TcpStreamError("No hay suficientes bytes prar leer el <String>".to_string())
             ));
         }
         Ok(())

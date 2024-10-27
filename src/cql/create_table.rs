@@ -192,7 +192,7 @@ impl CreateTable {
     }
 
     // Se ejecuta la query
-    pub fn execute_command(&mut self) -> Result<String, MyError> {
+    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         for i in 1..=RING_SIZE {
             // Creo nueva tabla por nodo
             let path = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
@@ -214,12 +214,16 @@ impl CreateTable {
             .map(|(k, v)| format!("{}:{}", k, v))
             .collect::<Vec<String>>()
             .join(",");
-        let display_columns: String = self
+        let display_columns: Result<String, MyError> = self
             .columns
             .iter()
-            .map(|col| format!("{}:{}", col, self.column_type.get(col).unwrap()))
-            .collect::<Vec<String>>()
-            .join(",");
+            .map(|col| {
+                self.column_type.get(col)
+                    .map(|col_type| format!("{}:{}", col, col_type))
+                    .ok_or_else(|| MyError::Error("Error".to_string()))
+            })    
+            .collect();
+        let display_columns = display_columns?;
 
         f_metadata
             .write_all(
@@ -234,7 +238,7 @@ impl CreateTable {
             )
             .map_err(|e| MyError::FileError(e.to_string()))?;
 
-        Ok("tabla creada".to_string())
+        Ok(vec!["tabla creada".to_string()])
     }
 }
 

@@ -31,7 +31,11 @@ impl Select {
     }
 
     pub fn parse_select(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
-        self.num_node = address_node.chars().last().unwrap().to_string();
+        let port = match address_node.chars().last() {
+            Some(c) => c,
+            None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
+        };
+        self.num_node = port.to_string();
 
         let mut parts: Vec<&str> = query.split_whitespace().collect();
         if parts.len() < 4 || parts[0] != "SELECT" || parts[1] == "FROM" {
@@ -102,20 +106,19 @@ impl Select {
         Ok(())
     }
 
-    pub fn execute_command(&mut self) -> Result<String, MyError> {
+    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         //cambiarlo a vec string
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let col_names = get_file_headers(&mut rdr)?;
 
-        let mut tabla: String = String::new();
+        let mut tabla: Vec<String> = Vec::new();
         let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
 
         for line in rdr.lines() {
             let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
             let split_line = line.split(",").collect::<Vec<&str>>();
             if filter.filter(split_line.into_iter().map(|s| s.to_string()).collect()) {
-                tabla.push_str(&line);
-                tabla.push_str("     "); //asi podes splitear y printear? no se que hacer para mejorar
+                tabla.push(line);
             }
         }
         Ok(tabla)

@@ -1,10 +1,9 @@
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::serverpacket::*;
+use crate::my_errors::MyError;
 use crate::nodo::Status;
-use std::error::Error;
-use std::net::Ipv4Addr;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct GossipMessage {
     pub ip: String,
     pub estado: Status,
@@ -13,11 +12,11 @@ pub struct GossipMessage {
 
 impl GossipMessage {
     pub fn decrease_ttl(&mut self) -> Option<bool> {
-        if self.ttl <= 0 {
+        if self.ttl == 0 {
             return Some(false);
         }
         self.ttl = self.ttl - 1;
-        return Some(self.ttl != 0);
+        Some(self.ttl != 0)
     }
 }
 
@@ -30,7 +29,7 @@ impl Serialize for GossipMessage {
         bytes
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>>
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), MyError>
     where
         Self: Sized,
     {
