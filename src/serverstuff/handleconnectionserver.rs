@@ -73,12 +73,12 @@ pub fn handle_connection_server(
                     }
                 }
             }
-            Err(e) => {
-                let _error = format!("Error al leer el packet: {:?}", e);
-                if show {
-                    println!("S   {:?}", _error);
-                }
-                return Err(MyError::ServerMessageError(_error))
+            Err(_e) => {
+                // let _error = format!("Error al leer el packet: {:?}", e);
+                // if show {
+                //     println!("S   {:?}", _error);
+                // }
+                // return Err(MyError::ServerMessageError(_error))
             }
         }
     }

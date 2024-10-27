@@ -1,6 +1,7 @@
 use fasthash::murmur;
 use std::collections::BTreeMap;
 use crate::NeighborNode;
+use crate::config::RING_SIZE;
 
 #[derive(Debug, Clone)]
 // Estructura que guarda los nodos miembros de un anillo y el factor de replicación.
@@ -16,8 +17,8 @@ impl ConsistentHash<NeighborNode> {
     pub fn new(rf: usize) -> Self {
         Self {
             ring: BTreeMap::new(),
-            rf,       // Replication Factor
-            total: 8, // Cantidad de nodos
+            rf,               // Replication Factor
+            total: RING_SIZE, // Cantidad de nodos
         }
     }
 
