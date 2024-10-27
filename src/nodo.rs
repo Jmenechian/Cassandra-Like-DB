@@ -1,16 +1,13 @@
 use crate::config::{self, PORTS_FILE};
 use crate::cql::query::Query;
-use crate::messagestuff::{
-    message::*,
-    message_server::gossipmessage::*,
-};
-use crate::serverstuff::{
-    handleconnectionserver::handle_connection_server,
-    handleconnectiongossip::handle_connection_gossip,
-    handleconnectiongossip::connect_to_random_gossip,
-    handleconnectionclient::handle_connection_client,
-};
+use crate::messagestuff::{message::*, message_server::gossipmessage::*};
 use crate::my_errors::*;
+use crate::serverstuff::{
+    handleconnectionclient::handle_connection_client,
+    handleconnectiongossip::connect_to_random_gossip,
+    handleconnectiongossip::handle_connection_gossip,
+    handleconnectionserver::handle_connection_server,
+};
 use crate::NeighborNode;
 use rand::seq::SliceRandom;
 use std::fs::File;
@@ -111,15 +108,15 @@ fn read_ports_from_file(filename: &str) -> Result<Vec<u16>, MyError> {
         Err(e) => return Err(MyError::FileError(e.to_string())),
     };
     let reader = BufReader::new(file);
-    reader 
+    reader
         .lines()
         .map(|l| {
             let l_string = l.map_err(|e| MyError::FileError(e.to_string()))?;
-            l_string.parse::<u16>()
+            l_string
+                .parse::<u16>()
                 .map_err(|e| MyError::FileError(e.to_string()))
         })
         .collect()
-    
 }
 
 pub fn try_connect(ip: String) -> Option<TcpStream> {
@@ -159,7 +156,6 @@ fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
     }
     known_nodes
 }
-
 
 // Le deberia mandar la query a los nodos correspondientes!
 pub fn handle_query(_query: Query) {
@@ -233,8 +229,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
                 Some(c) => c,
                 None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
             };
-            let new = current_node
-                .add_neighbor(NeighborNode::new(&port.to_string()));
+            let new = current_node.add_neighbor(NeighborNode::new(&port.to_string()));
             if show_g && new {
                 println!("G   Mis vecinos son: {:?}", current_node.neighbors);
             }
@@ -246,7 +241,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
     let client_ip = current_node.client_ip.clone();
     let gossip_ip = current_node.gossip_ip.clone();
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
-    
+
     // Seccion cliente-servidor
     listen(
         client_ip,
@@ -286,4 +281,3 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
         };
     }
 }
-

@@ -1,7 +1,7 @@
+use crate::config::RING_SIZE;
+use crate::NeighborNode;
 use fasthash::murmur;
 use std::collections::BTreeMap;
-use crate::NeighborNode;
-use crate::config::RING_SIZE;
 
 #[derive(Debug, Clone)]
 // Estructura que guarda los nodos miembros de un anillo y el factor de replicación.
@@ -28,7 +28,7 @@ impl ConsistentHash<NeighborNode> {
     pub fn hash(&self, key: &str) -> usize {
         let tocken: usize = match murmur::hash32(key).try_into() {
             Ok(u) => u,
-            Err(_) => {0}
+            Err(_) => 0,
         };
         tocken % self.total
     }

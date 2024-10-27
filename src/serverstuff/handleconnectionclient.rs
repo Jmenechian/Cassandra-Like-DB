@@ -1,29 +1,25 @@
-use crate::messagestuff::message_cql::querymessage::QueryMessage;
-use crate::nodo::Node;
-use crate::nodo::Status;
-use chrono::NaiveDate;
-use chrono::NaiveDateTime;
-use crate::config::RF;
 use crate::config;
+use crate::config::RF;
 use crate::cql::query::Query;
+use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::{
     message::*,
-    message_cql::{
-        cqlenvelope::*, errormessage::*, resultrowsmessage::*,
-        resultvoidmessage::*,
-    },
+    message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultvoidmessage::*},
     message_server::{
-        queryservermessage::QueryServerMessage,
-        resultservermessage::*, serverpacket::Packet,
+        queryservermessage::QueryServerMessage, resultservermessage::*, serverpacket::Packet,
         serverpacket::ServerMessage,
     },
 };
 use crate::my_errors::*;
+use crate::nodo::Node;
+use crate::nodo::Status;
 use crate::ConsistentHash;
+use chrono::NaiveDate;
+use chrono::NaiveDateTime;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
 
-fn handle_message_query (
+fn handle_message_query(
     node: RwLockReadGuard<'_, Node>,
     querymessage: QueryMessage,
     stream: &mut TcpStream,
@@ -37,7 +33,11 @@ fn handle_message_query (
     ) {
         Ok(r) => r,
         Err(e) => {
-            handle_message_error(stream, "Error: algo fallo en send_query_to_node".to_string(), show);
+            handle_message_error(
+                stream,
+                "Error: algo fallo en send_query_to_node".to_string(),
+                show,
+            );
             return Err(e);
         }
     };
@@ -50,8 +50,7 @@ fn handle_message_query (
             }
         }
     } else {
-        let content: Vec<String> = table
-            .clone();
+        let content: Vec<String> = table.clone();
         let rows_msg = ResultRowsMessage {
             rows_count: content.len() as i32,
             rows_content: content,
@@ -72,10 +71,7 @@ fn handle_message_error(stream: &mut TcpStream, _error: String, show: bool) {
     };
     if let Err(e) = msg.send_through(stream) {
         if show {
-            println!(
-                "C   Error al enviarle un ErrorMessage al cliente: {:?}",
-                e
-            );
+            println!("C   Error al enviarle un ErrorMessage al cliente: {:?}", e);
         }
     }
 }
@@ -106,7 +102,11 @@ pub fn handle_connection_client(
                         handle_message_query(node, querymessage, stream, show)?;
                     }
                     _ => {
-                        handle_message_error(stream, "Error: Solo me puede llegar un QueryMessage".to_string(), show);
+                        handle_message_error(
+                            stream,
+                            "Error: Solo me puede llegar un QueryMessage".to_string(),
+                            show,
+                        );
                     }
                 }
             }
@@ -140,13 +140,20 @@ pub fn look_newer(results: &Vec<Vec<String>>) -> usize {
     let mut index = 0;
     for (i, result) in results.iter().enumerate() {
         for row in result {
-            if let Some(timestamp ) = row.split(",").map(|s| s.to_string()).collect::<Vec<String>>().last() {
-                if let Ok(parsed_datetime) = NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d %H:%M:%S%.f %Z") {
+            if let Some(timestamp) = row
+                .split(",")
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>()
+                .last()
+            {
+                if let Ok(parsed_datetime) =
+                    NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d %H:%M:%S%.f %Z")
+                {
                     if parsed_datetime > newer {
                         newer = parsed_datetime.clone();
                         index = i;
                     }
-                };   
+                };
             }
         }
     }
@@ -166,9 +173,7 @@ pub fn send_query_to_nodes(
     // Si es un create table, lo ejecuto y devuelvo vacio
     if query.query.contains("CREATE TABLE") {
         match query.execute() {
-            Ok(_) => {
-                return Ok(vec![])
-            }
+            Ok(_) => return Ok(vec![]),
             Err(e) => {
                 let _error = format!("Error al procesar la query: {:?}", e);
                 if show {
@@ -234,15 +239,12 @@ pub fn send_query_to_nodes(
                         println!("C   El packet recibido es: {:?}", packet);
                     }
                     match packet.body {
-                        ServerMessage::Result(resultmessage) => {
-                            println!("{:?}", resultmessage.body);
-                            match resultmessage.body {
-                                ResultServerBody::Rows(r) => {
-                                    all_response.push(r.rows_content.clone());
-                                }
-                                ResultServerBody::Void(_) => {}
+                        ServerMessage::Result(resultmessage) => match resultmessage.body {
+                            ResultServerBody::Rows(r) => {
+                                all_response.push(r.rows_content.clone());
                             }
-                        }
+                            ResultServerBody::Void(_) => {}
+                        },
                         _ => {
                             if show {
                                 println!("C   Error entre server y servers");

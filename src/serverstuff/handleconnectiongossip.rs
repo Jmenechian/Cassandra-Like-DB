@@ -1,14 +1,11 @@
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
-use crate::nodo::Node;
-use crate::nodo::try_connect;
 use crate::messagestuff::{
     message::*,
-    message_server::{
-        serverpacket::Packet,
-        serverpacket::ServerMessage,
-    },
+    message_server::{serverpacket::Packet, serverpacket::ServerMessage},
 };
 use crate::my_errors::*;
+use crate::nodo::try_connect;
+use crate::nodo::Node;
 use crate::NeighborNode;
 use rand::seq::SliceRandom;
 use std::net::TcpStream;
@@ -44,7 +41,7 @@ fn handle_message_gossip(
                     println!("G   {:?}", _error);
                 }
                 // Desconectar el nodod de vecinos
-                return Err(MyError::TcpStreamError(_error))
+                return Err(MyError::TcpStreamError(_error));
             }
         }
     }
@@ -52,8 +49,7 @@ fn handle_message_gossip(
         Some(c) => c,
         None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
     };
-    let new = node
-        .add_neighbor(NeighborNode::new(&port.to_string()));
+    let new = node.add_neighbor(NeighborNode::new(&port.to_string()));
     if show && new {
         println!("G   Mis vecinos son: {:?}", node.neighbors);
     }
@@ -75,7 +71,7 @@ pub fn handle_connection_gossip(
             }
             match packet.body {
                 ServerMessage::Gossip(mut gossip) => {
-                    handle_message_gossip(node,& mut gossip, show)?;
+                    handle_message_gossip(node, &mut gossip, show)?;
                 }
                 _ => {
                     if show {

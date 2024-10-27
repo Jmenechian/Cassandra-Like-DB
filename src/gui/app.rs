@@ -69,10 +69,7 @@ impl MapApp {
         let height: usize = height.try_into().unwrap_or(0);
         let texture = ctx.load_texture(
             "plane",
-            egui::ColorImage::from_rgba_unmultiplied(
-                [width, height],
-                &image_rgba,
-            ),
+            egui::ColorImage::from_rgba_unmultiplied([width, height], &image_rgba),
             Default::default(),
         );
         self.plane_texture = Some(texture);
@@ -87,10 +84,7 @@ impl MapApp {
         let height: usize = height.try_into().unwrap_or(0);
         let texture = ctx.load_texture(
             "map",
-            egui::ColorImage::from_rgba_unmultiplied(
-                [width, height],
-                &image_rgba,
-            ),
+            egui::ColorImage::from_rgba_unmultiplied([width, height], &image_rgba),
             Default::default(),
         );
         self.map_texture = Some(texture)
@@ -304,8 +298,6 @@ impl eframe::App for MapApp {
 
                 let mut last_o: &Airport = &Airport::default_new();
                 let mut last_r: &Airport = &Airport::default_new();
-                println!("");
-                println!("\n\nconnections: {:?}\n\n", self.connections);
                 for (origin, destination, flight) in &self.connections {
                     let (screen_x_o, screen_y_o) =
                         get_coordinate_positioning_on_map(origin.coordinates, texture.size());

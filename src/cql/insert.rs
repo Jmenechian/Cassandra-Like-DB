@@ -137,7 +137,7 @@ impl Insert {
         println!("En execute_command de INSERT");
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let headers = get_file_headers(&mut rdr)?;
-        // self.values.push(Utc::now().to_string());
+
         // INSERT INTO VALUES (val1, val2)
         // values are inserted in the same order as the file headers
         if self.columns.is_empty() {
@@ -168,19 +168,19 @@ impl Insert {
 
     pub fn get_key(&self) -> String {
         //suponiendo que siempre se manda bien
-        println!("values = {:?}", self.values);
 
-        let index_col_airport = self.columns
-                    .iter()
-                    .position(|e| e == "airport")
-                    .unwrap_or(0);
+        let index_col_airport = self
+            .columns
+            .iter()
+            .position(|e| e == "airport")
+            .unwrap_or(0);
 
-        let index_col_date = self.columns
-                    .iter()
-                    .position(|e| e == "date")
-                    .unwrap_or(0);
+        let index_col_date = self.columns.iter().position(|e| e == "date").unwrap_or(0);
 
-        let res = format!("{},{}", self.values[index_col_airport], self.values[index_col_date]);
+        let res = format!(
+            "{},{}",
+            self.values[index_col_airport], self.values[index_col_date]
+        );
         res
     }
 
