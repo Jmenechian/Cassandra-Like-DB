@@ -72,7 +72,8 @@ impl ConsistentHash<NeighborNode> {
     // Para encontrar los nodos propietarios de una clave primero aplicamos un hash a esa clave para generar un token,
     // luego recorremos el anillo hasta que encontramos tres nodos distintos (si RF=3), momento en el cual hemos encontrado
     // todas las réplicas de esa clave.
-    pub fn get_nodes(&self, key: &str) -> Vec<NeighborNode> { //caso borde, solo 2 nodos conectados
+    pub fn get_nodes(&self, key: &str) -> Vec<NeighborNode> {
+        //caso borde, solo 2 nodos conectados
         let mut nodes: Vec<NeighborNode> = vec![];
 
         if self.ring.is_empty() {
@@ -85,7 +86,6 @@ impl ConsistentHash<NeighborNode> {
         let result = self.ring.range(hash..);
 
         for node in result {
-            
             nodes.push(node.1.clone());
 
             if nodes.len() == self.rf {

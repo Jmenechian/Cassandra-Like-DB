@@ -2,8 +2,8 @@
 // Aca se parsea la consulta y se ejecuta
 // To Do
 
-use std::collections::HashMap;
 use crate::my_errors::MyError;
+use std::collections::HashMap;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Update {

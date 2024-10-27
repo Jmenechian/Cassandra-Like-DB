@@ -4,7 +4,8 @@ use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_cql::resultmessage::ResultBody;
 use crate::my_errors::MyError;
-use std::io::{self, BufRead, Result};
+use bufstream::BufStream;
+use std::io::{self, BufRead, BufReader, Result, Write};
 use std::net::TcpStream;
 
 use std::thread;
@@ -29,7 +30,7 @@ impl Client {
         Ok(())
     }
 
-    pub fn connect(&mut self) -> Result<TcpStream>  {
+    pub fn connect(&mut self) -> Result<TcpStream> {
         if let Ok(stream) = TcpStream::connect(&self.server_ip) {
             Ok(stream)
         } else {
@@ -56,13 +57,15 @@ impl Client {
             let stdin = io::stdin();
             loop {
                 let mut input = String::new();
-                if stdin.lock().read_line(&mut input).is_ok() && !input.is_empty() {
-                    println!("Hola");
-                    let msg: QueryMessage = QueryMessage {
-                        query: input,
-                        consistency: config::ONE,
-                    };
-                    let _ = msg.send_through(&mut stream_clone);
+                if stdin.lock().read_line(&mut input).is_ok() {
+                    if !input.is_empty() {
+                        println!("Hola");
+                        let msg: QueryMessage = QueryMessage {
+                            query: input,
+                            consistency: config::ONE,
+                        };
+                        let _ = msg.send_through(&mut stream_clone);
+                    }
                 }
             }
         });
@@ -83,7 +86,10 @@ impl Client {
 
     pub fn send_message(stream: &mut TcpStream, message: String) -> Result<()> {
         if !message.is_empty() {
-            let msg: QueryMessage = QueryMessage{query: message, consistency: config::ONE};
+            let msg: QueryMessage = QueryMessage {
+                query: message,
+                consistency: config::ONE,
+            };
             let _ = msg.send_through(stream);
         }
         Ok(())
@@ -95,17 +101,17 @@ impl Client {
                 Ok(env) => {
                     println!("El env recibido es: {:?}", env);
                     match env.body {
-                        CqlMessage::Result(result) => {
-                            match result.body {
-                                ResultBody::Void(_) => {
-                                    return Ok(vec!["".to_string()]);
-                                },
-                                ResultBody::Rows(rows) => {
-                                    return Ok(rows.rows_content);
-                                }
+                        CqlMessage::Result(result) => match result.body {
+                            ResultBody::Void(_) => {
+                                return Ok(vec!["".to_string()]);
                             }
+                            ResultBody::Rows(rows) => {
+                                return Ok(rows.rows_content);
+                            }
+                        },
+                        _ => {
+                            continue;
                         }
-                        _ => {continue;}
                     }
                 }
                 Err(e) => {

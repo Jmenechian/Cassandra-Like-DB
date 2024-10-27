@@ -5,6 +5,7 @@ pub mod neighbor_node;
 pub mod nodo;
 pub mod utils;
 pub mod cql {
+    pub mod create_table;
     pub mod delete;
     pub mod filter;
     pub mod insert;
@@ -14,7 +15,6 @@ pub mod cql {
     pub mod relation;
     pub mod select;
     pub mod update;
-    pub mod create_table;
     pub mod where_clause;
 }
 pub mod clientstuff {
@@ -56,10 +56,9 @@ pub mod gui {
     pub mod painted {
         pub mod airport;
         pub mod airport_coordinates;
-        pub mod flight;
         pub mod draw_flights;
         pub mod draw_lines;
+        pub mod flight;
     }
 }
-//pub use gui::app::MapApp; 
-
+//pub use gui::app::MapApp;

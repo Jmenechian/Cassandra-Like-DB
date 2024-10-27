@@ -8,6 +8,7 @@ use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::{
     cqlenvelope::*, resultrowsmessage::ResultRowsMessage, resultvoidmessage::ResultVoidMessage,
 };
+use crate::messagestuff::message_server::serverpacket::*;
 use std::error::Error;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -77,9 +78,9 @@ impl IntoEnvelope for ResultMessage {
     fn into_envelope(self) -> Envelope {
         let _body = self.to_bytes();
         Envelope {
-            version: 0x85_u8,
-            flags: 0_u8,
-            stream: 0_u16,
+            version: 0x85 as u8,
+            flags: 0 as u8,
+            stream: 0 as u16,
             opcode: CqlOpcode::ResultMessage,
             length: _body.len() as i32,
             body: CqlMessage::Result(self),

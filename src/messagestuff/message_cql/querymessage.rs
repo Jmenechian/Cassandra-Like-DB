@@ -5,6 +5,7 @@
 
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::cqlenvelope::*;
+use crate::messagestuff::message_server::serverpacket::*;
 use std::error::Error;
 
 #[derive(Debug, PartialEq)]

@@ -2,6 +2,7 @@ use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::serverpacket::*;
 use crate::nodo::Status;
 use std::error::Error;
+use std::net::Ipv4Addr;
 
 #[derive(Debug, PartialEq)]
 pub struct GossipMessage {

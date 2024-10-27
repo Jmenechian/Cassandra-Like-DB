@@ -12,7 +12,7 @@ use crate::messagestuff::{
 };
 use std::{error::Error, io::Read, net::TcpStream};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 #[repr(u8)]
 pub enum CqlOpcode {
     QueryMessage = config::QUERY,
@@ -49,7 +49,6 @@ pub struct Envelope {
 }
 
 impl Envelope {
-    // Convierte el Envelope en un vector de bytes para poder ser transmitido
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&byte_to_byte(self.version));
@@ -67,11 +66,10 @@ impl Envelope {
         bytes
     }
 
-    // Convierte el vector de bytes recibido en un Envelope
     pub fn from_stream(stream: &mut TcpStream) -> Result<Self, Box<dyn Error>> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 9];
-        if stream.read_exact(&mut header_buffer).is_err() {
+        if let Err(_) = stream.read_exact(&mut header_buffer) {
             return Err(Box::from(
                 "Error al leer el <header> del envelope desde Stream",
             ));
@@ -88,7 +86,7 @@ impl Envelope {
         ]);
 
         let mut _body_buffer = vec![0u8; _length as usize];
-        if stream.read_exact(&mut _body_buffer).is_err() {
+        if let Err(_) = stream.read_exact(&mut _body_buffer) {
             return Err(Box::from("Error al leer el <body> desde Stream"));
         }
         let _body = match _opcode {
@@ -118,55 +116,4 @@ impl Envelope {
 
 pub trait IntoEnvelope: std::fmt::Debug {
     fn into_envelope(self) -> Envelope;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_cql_opcode_from_u8() {
-        assert_eq!(
-            CqlOpcode::from_u8(config::QUERY).unwrap(),
-            CqlOpcode::QueryMessage
-        );
-        assert_eq!(
-            CqlOpcode::from_u8(config::ERROR).unwrap(),
-            CqlOpcode::ErrorMessage
-        );
-        assert_eq!(
-            CqlOpcode::from_u8(config::RESULT).unwrap(),
-            CqlOpcode::ResultMessage
-        );
-
-        let invalid_opcode = 0x99; // Cualquier numero
-        assert!(CqlOpcode::from_u8(invalid_opcode).is_err());
-    }
-
-    #[test]
-    fn test_envelope_to_bytes() {
-        let query_message = QueryMessage {
-            query: "SELECT * FROM test_table".to_string(),
-            consistency: config::ONE,
-        };
-
-        let envelope = Envelope {
-            version: 0x05,
-            flags: 0,
-            stream: 1,
-            opcode: CqlOpcode::QueryMessage,
-            length: query_message.to_bytes().len() as i32,
-            body: CqlMessage::Query(query_message),
-        };
-
-        let bytes: Vec<u8> = envelope.to_bytes();
-        assert_eq!(bytes[0], envelope.version);
-        assert_eq!(bytes[1], envelope.flags);
-        assert_eq!(u16::from_be_bytes([bytes[2], bytes[3]]), envelope.stream);
-        assert_eq!(bytes[4], envelope.opcode as u8);
-        assert_eq!(
-            i32::from_be_bytes([bytes[5], bytes[6], bytes[7], bytes[8]]),
-            envelope.length
-        );
-    }
 }

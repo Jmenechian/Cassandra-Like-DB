@@ -1,6 +1,7 @@
 use crate::messagestuff::message_cql::cqlenvelope::IntoEnvelope;
 use crate::messagestuff::message_server::serverpacket::IntoPacket;
 use std::{error::Error, io::Write, net::TcpStream};
+
 pub trait Serialize: std::fmt::Debug {
     fn to_bytes(&self) -> Vec<u8>;
     fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>>

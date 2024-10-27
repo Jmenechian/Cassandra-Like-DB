@@ -1,8 +1,8 @@
+use crate::cql::create_table::CreateTable;
 use crate::cql::delete::Delete;
 use crate::cql::insert::Insert;
 use crate::cql::select::Select;
 use crate::cql::update::Update;
-use crate::cql::create_table::CreateTable;
 use crate::my_errors::MyError;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -52,7 +52,7 @@ impl Query {
             self.set_update();
         } else if q_upper.contains("INSERT") {
             self.set_insert();
-        } else if q_upper.contains("DELETE"){
+        } else if q_upper.contains("DELETE") {
             self.set_delete();
         } else {
             self.set_createtable();

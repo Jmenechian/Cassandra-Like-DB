@@ -1,6 +1,5 @@
 // Representa a una fila de la tabla de resultado
 // del tipo ResultMessage
-
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::{cqlenvelope::*, resultmessage::*};
 use std::error::Error;
