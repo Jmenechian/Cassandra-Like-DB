@@ -274,8 +274,8 @@ impl eframe::App for MapApp {
                                         );
                                     if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
                                         self.add_connection(
-                                            airport.clone(),
                                             flight_r.origin_airport.clone(),
+                                            flight_r.return_airport.clone(),
                                             flight_r,
                                         );
                                     }
@@ -290,7 +290,7 @@ impl eframe::App for MapApp {
                                         );
                                     if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
                                         self.add_connection(
-                                            airport.clone(),
+                                            flight_o.origin_airport.clone(),
                                             flight_o.return_airport.clone(),
                                             flight_o,
                                         );
@@ -304,6 +304,8 @@ impl eframe::App for MapApp {
 
                 let mut last_o: &Airport = &Airport::default_new();
                 let mut last_r: &Airport = &Airport::default_new();
+                println!("");
+                println!("\n\nconnections: {:?}\n\n", self.connections);
                 for (origin, destination, flight) in &self.connections {
                     let (screen_x_o, screen_y_o) =
                         get_coordinate_positioning_on_map(origin.coordinates, texture.size());
