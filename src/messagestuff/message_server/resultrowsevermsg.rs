@@ -1,6 +1,6 @@
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::{resultservermessage::*, serverpacket::*};
-use std::error::Error;
+use crate::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub struct ResultRowsServerMessage {
@@ -18,7 +18,7 @@ impl Serialize for ResultRowsServerMessage {
         bytes
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), MyError> {
         let (_rows_count, resto) = int_from_bytes(bytes)?;
         let mut _bytes = resto;
         let mut _rows_content: Vec<String> = Vec::new();

@@ -15,7 +15,6 @@ fn main() {
         Ok(result) => result,
         Err(e) => {
             eprintln!("{:?}", e);
-            exit(1);
         }
     };
 }

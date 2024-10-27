@@ -3,7 +3,8 @@ use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::{
     resultrowsevermsg::*, resultvoidservermsg::*, serverpacket::*,
 };
-use std::error::Error;
+use crate::my_errors::MyError;
+
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]
@@ -13,11 +14,11 @@ pub enum ResultServerKind {
 }
 
 impl ResultServerKind {
-    pub fn from_i32(value: i32) -> Result<Self, Box<dyn Error>> {
+    pub fn from_i32(value: i32) -> Result<Self, MyError> {
         match value {
             config::VOID => Ok(ResultServerKind::Void),
             config::ROWS => Ok(ResultServerKind::Rows),
-            _ => Err(Box::from("Invalid Result Kind")),
+            _ => Err(MyError::ServerMessageError("Invalid Result Kind".to_string())),
         }
     }
 }
@@ -47,7 +48,7 @@ impl Serialize for ResultServerMessage {
         bytes
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), MyError> {
         let (value, resto) = int_from_bytes(bytes)?;
         let _kind = ResultServerKind::from_i32(value)?;
         let (_body, resto) = match _kind {

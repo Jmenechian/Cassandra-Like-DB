@@ -20,6 +20,11 @@ pub mod cql {
 pub mod clientstuff {
     pub mod client_cql;
 }
+pub mod serverstuff {
+    pub mod handleconnectionserver;
+    pub mod handleconnectiongossip;
+    pub mod handleconnectionclient;
+}
 pub mod messagestuff {
     pub mod message;
     pub mod message_cql {

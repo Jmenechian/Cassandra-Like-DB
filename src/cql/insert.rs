@@ -133,7 +133,7 @@ impl Insert {
         Ok(())
     }
 
-    pub fn execute_command(&self) -> Result<String, MyError> {
+    pub fn execute_command(&self) -> Result<Vec<String>, MyError> {
         println!("En execute_command de INSERT");
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let headers = get_file_headers(&mut rdr)?;
@@ -143,7 +143,7 @@ impl Insert {
         if self.columns.is_empty() {
             if self.values.len() == headers.len() {
                 append_row(TABLE_PATH, &self.table, &self.values)?;
-                return Ok("linea fue agregada".to_string());
+                return Ok(vec!["linea fue agregada".to_string()]);
             }
             return Err(MyError::InvalidSyntax("Invalid INSERT syntax".to_string()));
         }
@@ -163,7 +163,7 @@ impl Insert {
         new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
         new_record.push(Utc::now().to_string()); // metes lo mas nuevo
         append_row(TABLE_PATH, &self.table, &new_record)?;
-        Ok("linea fue agregada".to_string())
+        Ok(vec!["linea fue agregada".to_string()])
     }
 
     pub fn get_key(&self) -> String {
