@@ -1,5 +1,6 @@
 use eframe::egui;
 use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureId};
+
 use image::GenericImageView;
 use std::{collections::HashMap, net::TcpStream};
 
@@ -25,6 +26,7 @@ pub struct MapApp {
     client: Client,
     stream_client: Option<TcpStream>,
     connections: Vec<(Airport, Airport, Flight)>,
+    date_selected: String,
 }
 
 impl MapApp {
@@ -36,6 +38,7 @@ impl MapApp {
         let client = Client::initialize(port);
         let stream_client = None;
         let connections = vec![];
+        let date_selected = "".to_string();
         Self {
             airports,
             map_texture,
@@ -43,6 +46,7 @@ impl MapApp {
             client,
             stream_client,
             connections,
+            date_selected,
         }
     }
 
@@ -203,7 +207,23 @@ impl eframe::App for MapApp {
             let texture = self.map_texture.clone();
             if let Some(texture) = &texture {
                 // Mostrar el mapa
+
                 ui.image(texture);
+
+                //print para ubicar en el mapa
+                // if ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary)) {
+                //     if let Some(pos) = ctx.pointer_interact_pos() {
+                //         println!("Se marcó en el mapa - post: {:?}", pos);
+                //     }
+                // }
+
+                ui.horizontal(|ui| {
+                    ..{
+                        ui.label("Enter date:");
+                        ui.text_edit_singleline(&mut self.date_selected);
+                        self.date_selected = self.date_selected.trim().to_string();
+                    }
+                });
                 let painter = ui.painter();
 
                 // Dibujar los aeropuertos
@@ -215,60 +235,65 @@ impl eframe::App for MapApp {
                     let button_rect =
                         self.draw_airports(painter, screen_x, screen_y, &airport.name);
 
-                    let date_selected = "24-12-12".to_string();
                     // Crear un botón en la posición del aeropuerto
                     if ui
                         .interact(button_rect, Id::new(&airport.name), egui::Sense::click())
                         .clicked()
                     {
                         println!("¡Aeropuerto {} presionado!", airport.name);
+
                         self.reset_connection();
 
-                        if let (Ok(origin_flights), Ok(return_flights)) = (
-                            airport.get_origin_flights_from(
-                                &mut self.stream_client,
-                                &date_selected,
-                                &self.airports,
-                            ),
-                            airport.get_flights_that_return_to(
-                                &mut self.stream_client,
-                                &date_selected,
-                                &self.airports,
-                            ),
-                        ) {
-                            if origin_flights.is_empty() && return_flights.is_empty() {
-                                continue;
-                            }
+                        if !self.date_selected.is_empty() {
+                            if let (Ok(origin_flights), Ok(return_flights)) = (
+                                airport.get_origin_flights_from(
+                                    &mut self.stream_client,
+                                    &self.date_selected,
+                                    &self.airports,
+                                ),
+                                airport.get_flights_that_return_to(
+                                    &mut self.stream_client,
+                                    &self.date_selected,
+                                    &self.airports,
+                                ),
+                            ) {
+                                if origin_flights.is_empty() && return_flights.is_empty() {
+                                    continue;
+                                }
 
-                            for flight_r in return_flights {
-                                //airport_o
-                                let (screen_x_o, screen_y_o) = get_coordinate_positioning_on_map(
-                                    flight_r.origin_airport.coordinates,
-                                    texture.size(),
-                                );
-                                if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
-                                    self.add_connection(
-                                        airport.clone(),
-                                        flight_r.origin_airport.clone(),
-                                        flight_r,
-                                    );
+                                for flight_r in return_flights {
+                                    //airport_o
+                                    let (screen_x_o, screen_y_o) =
+                                        get_coordinate_positioning_on_map(
+                                            flight_r.origin_airport.coordinates,
+                                            texture.size(),
+                                        );
+                                    if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
+                                        self.add_connection(
+                                            airport.clone(),
+                                            flight_r.origin_airport.clone(),
+                                            flight_r,
+                                        );
+                                    }
+                                }
+
+                                for flight_o in origin_flights {
+                                    // airport_r
+                                    let (screen_x_r, screen_y_r) =
+                                        get_coordinate_positioning_on_map(
+                                            flight_o.return_airport.coordinates,
+                                            texture.size(),
+                                        );
+                                    if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
+                                        self.add_connection(
+                                            airport.clone(),
+                                            flight_o.return_airport.clone(),
+                                            flight_o,
+                                        );
+                                    }
                                 }
                             }
-
-                            for flight_o in origin_flights {
-                                // airport_r
-                                let (screen_x_r, screen_y_r) = get_coordinate_positioning_on_map(
-                                    flight_o.return_airport.coordinates,
-                                    texture.size(),
-                                );
-                                if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
-                                    self.add_connection(
-                                        airport.clone(),
-                                        flight_o.return_airport.clone(),
-                                        flight_o,
-                                    );
-                                }
-                            }
+                            // self.date_selected.clear();
                         }
                     }
                 }
