@@ -167,13 +167,14 @@ fn listen<F>(
     ip: String,
     node: Arc<RwLock<Node>>,
     handler: F,
+    //threads_joins: &mut Vec<JoinHandle<()>>,
     show: bool,
 ) -> Result<JoinHandle<Result<(), MyError>>, MyError>
 where
     F: Fn(Arc<RwLock<Node>>, &mut TcpStream, bool) -> Result<(), MyError> + Send + 'static + Copy,
 {
     let current_node = Arc::clone(&node);
-    let t = thread::spawn(move || {
+    let t: JoinHandle<Result<(), MyError>> = thread::spawn(move || {
         let listener = match TcpListener::bind(ip) {
             Ok(j) => j,
             Err(_) => {
@@ -198,6 +199,7 @@ where
                     Err(e) => println!("Error: {:?}", e),
                 };
             });
+            //threads_joins.push(t);
         }
         Ok(())
     });
@@ -237,6 +239,8 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
         None => println!("tengo que ser el primer nodo porque no encontre otro"),
     };
 
+    //let mut threads_joins: Vec<JoinHandle<()>> = Vec::new();
+
     let server_ip = current_node.server_ip.clone();
     let client_ip = current_node.client_ip.clone();
     let gossip_ip = current_node.gossip_ip.clone();
@@ -249,7 +253,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
         handle_connection_client,
         show_c,
     )?;
-
+    
     // Seccion servidor-servidor
     listen(
         server_ip,
@@ -257,7 +261,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
         handle_connection_server,
         show_s,
     )?;
-
+    
     // Seccion Gossip
     listen(
         gossip_ip,
@@ -267,7 +271,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
     )?;
 
     loop {
-        thread::sleep(Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(20));
         match connect_to_random_gossip(ports.clone(), &port, show_g) {
             Some((mut s, _)) => {
                 let gossip_msg = GossipMessage {
@@ -279,5 +283,15 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
             }
             None => println!("tengo que ser el primer nodo porque no encontre otro"),
         };
+        //joinear(&mut threads_joins);
     }
+    
 }
+/*
+fn joinear (threads_joins: &mut Vec<JoinHandle<()>>) {
+    for j in threads_joins.into_iter() {
+        if j.is_finished() {
+            j.join().unwrap();
+        }
+    }
+}*/

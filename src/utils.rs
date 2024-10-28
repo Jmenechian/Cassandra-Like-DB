@@ -92,7 +92,7 @@ pub fn append_row(path: &str, table_name: &str, records: &[String]) -> Result<()
         .open(file_path)
         .map_err(|e| MyError::FileError(e.to_string()))?;
 
-    writeln!(file, "{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
+    write!(file, "\n{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }
 
