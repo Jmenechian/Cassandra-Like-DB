@@ -2,7 +2,7 @@
 
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::serverpacket::*;
-use std::error::Error;
+use crate::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub struct ErrorServerMessage {
@@ -18,7 +18,7 @@ impl Serialize for ErrorServerMessage {
         bytes
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), MyError> {
         let (_code, resto) = int_from_bytes(bytes)?;
         let (_error, resto) = string_from_bytes(resto)?;
 

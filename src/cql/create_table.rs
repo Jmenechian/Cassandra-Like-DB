@@ -112,7 +112,6 @@ impl CreateTable {
         column_type
     }
 
-    // No stoy haciendo chequeo de errores
     fn set_primary_key(&self, primary_key_str: String) -> (Vec<String>, Vec<String>) {
         //  WITH CLUSTERING ORDER BY
         let mut parts: Vec<&str> = primary_key_str.split_whitespace().collect();
@@ -191,8 +190,16 @@ impl CreateTable {
         Ok(orderby)
     }
 
+    fn get_display_columns(&self) -> String {
+        let mut format = String::new();
+        for col in &self.columns {
+            format.push_str(&format!("{} {},", col, self.column_type.get(col).unwrap()));
+        }
+        format
+    }
+
     // Se ejecuta la query
-    pub fn execute_command(&mut self) -> Result<String, MyError> {
+    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         for i in 1..=RING_SIZE {
             // Creo nueva tabla por nodo
             let path = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
@@ -211,20 +218,16 @@ impl CreateTable {
         let display_orderby: String = self
             .clustering_orderby
             .iter()
-            .map(|(k, v)| format!("{}:{}", k, v))
+            .map(|(k, v)| format!("{} {},", k, v))
             .collect::<Vec<String>>()
             .join(",");
-        let display_columns: String = self
-            .columns
-            .iter()
-            .map(|col| format!("{}:{}", col, self.column_type.get(col).unwrap()))
-            .collect::<Vec<String>>()
-            .join(",");
+
+        let display_columns = self.get_display_columns();
 
         f_metadata
             .write_all(
                 format!(
-                    "partition:{}\nclusters:{}\nclustering_orderby:{}\ncolumns:{}",
+                    "partition: {}\nclusters: {}\nclustering_orderby: {}\ncolumns: {}",
                     self.partition_keys.join(","),
                     self.clustering_keys.join(","),
                     display_orderby,
@@ -234,7 +237,7 @@ impl CreateTable {
             )
             .map_err(|e| MyError::FileError(e.to_string()))?;
 
-        Ok("tabla creada".to_string())
+        Ok(vec!["tabla creada".to_string()])
     }
 }
 

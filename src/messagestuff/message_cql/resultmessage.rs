@@ -8,8 +8,7 @@ use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::{
     cqlenvelope::*, resultrowsmessage::ResultRowsMessage, resultvoidmessage::ResultVoidMessage,
 };
-use crate::messagestuff::message_server::serverpacket::*;
-use std::error::Error;
+use crate::my_errors::MyError;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]
@@ -19,11 +18,13 @@ pub enum ResultKind {
 }
 
 impl ResultKind {
-    pub fn from_i32(value: i32) -> Result<Self, Box<dyn Error>> {
+    pub fn from_i32(value: i32) -> Result<Self, MyError> {
         match value {
             config::VOID => Ok(ResultKind::Void),
             config::ROWS => Ok(ResultKind::Rows),
-            _ => Err(Box::from("Invalid Result Kind")),
+            _ => Err(MyError::ServerMessageError(
+                "Invalid Result Kind".to_string(),
+            )),
         }
     }
 }
@@ -53,7 +54,7 @@ impl Serialize for ResultMessage {
         bytes
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), MyError> {
         let (value, resto) = int_from_bytes(bytes)?;
         let _kind = ResultKind::from_i32(value)?;
         let (_body, resto) = match _kind {
@@ -97,7 +98,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_result_rows_message() -> Result<(), Box<dyn Error>> {
+    fn test_result_rows_message() -> Result<(), MyError> {
         let expected_result: ResultMessage = ResultMessage {
             kind: ResultKind::Rows,
             body: ResultBody::Rows(ResultRowsMessage {
@@ -111,7 +112,7 @@ mod tests {
     }
 
     #[test]
-    fn test_result_rows_message_2() -> Result<(), Box<dyn Error>> {
+    fn test_result_rows_message_2() -> Result<(), MyError> {
         let expected_result: ResultMessage = ResultMessage {
             kind: ResultKind::Rows,
             body: ResultBody::Rows(ResultRowsMessage {
@@ -125,7 +126,7 @@ mod tests {
     }
 
     #[test]
-    fn test_result_rows_message_3() -> Result<(), Box<dyn Error>> {
+    fn test_result_rows_message_3() -> Result<(), MyError> {
         let expected_result: ResultMessage = ResultMessage {
             kind: ResultKind::Rows,
             body: ResultBody::Rows(ResultRowsMessage {
@@ -139,13 +140,13 @@ mod tests {
             let error = e.to_string();
             return Ok(assert_eq!(
                 error,
-                "No hay suficientes bytes prar leer el <String>"
+                "[TCP_STREAM_ERROR]: [No hay suficientes bytes prar leer el <String>]"
             ));
         }
         Ok(())
     }
     #[test]
-    fn test_result_rows_message_4() -> Result<(), Box<dyn Error>> {
+    fn test_result_rows_message_4() -> Result<(), MyError> {
         let expected_result: ResultMessage = ResultMessage {
             kind: ResultKind::Rows,
             body: ResultBody::Rows(ResultRowsMessage {
@@ -156,17 +157,18 @@ mod tests {
         let mut bytes: Vec<u8> = expected_result.to_bytes();
         bytes.pop();
         if let Err(e) = ResultMessage::from_bytes(bytes) {
-            let error = e.to_string();
             return Ok(assert_eq!(
-                error,
-                "No hay suficientes bytes prar leer el <String>"
+                e,
+                MyError::TcpStreamError(
+                    "No hay suficientes bytes prar leer el <String>".to_string()
+                )
             ));
         }
         Ok(())
     }
 
     #[test]
-    fn test_result_void_message() -> Result<(), Box<dyn Error>> {
+    fn test_result_void_message() -> Result<(), MyError> {
         let expected_result: ResultMessage = ResultMessage {
             kind: ResultKind::Void,
             body: ResultBody::Void(ResultVoidMessage),

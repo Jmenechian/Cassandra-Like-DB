@@ -4,8 +4,7 @@ use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_cql::resultmessage::ResultBody;
 use crate::my_errors::MyError;
-use bufstream::BufStream;
-use std::io::{self, BufRead, BufReader, Result, Write};
+use std::io::{self, BufRead, Result};
 use std::net::TcpStream;
 
 use std::thread;
@@ -58,14 +57,7 @@ impl Client {
             loop {
                 let mut input = String::new();
                 if stdin.lock().read_line(&mut input).is_ok() {
-                    if !input.is_empty() {
-                        println!("Hola");
-                        let msg: QueryMessage = QueryMessage {
-                            query: input,
-                            consistency: config::ONE,
-                        };
-                        let _ = msg.send_through(&mut stream_clone);
-                    }
+                    let _ = Client::send_message(&mut stream_clone, input);
                 }
             }
         });
@@ -84,11 +76,12 @@ impl Client {
         Ok(())
     }
 
+    ///
     pub fn send_message(stream: &mut TcpStream, message: String) -> Result<()> {
         if !message.is_empty() {
             let msg: QueryMessage = QueryMessage {
                 query: message,
-                consistency: config::ONE,
+                consistency: config::QUORUM,
             };
             let _ = msg.send_through(stream);
         }

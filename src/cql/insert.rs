@@ -32,7 +32,11 @@ impl Insert {
 
     // Parses the query for later execution
     pub fn parse_insert(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
-        self.num_node = address_node.chars().last().unwrap().to_string();
+        let port = match address_node.chars().last() {
+            Some(c) => c,
+            None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
+        };
+        self.num_node = port.to_string();
 
         let parts: Vec<&str> = query.split_whitespace().collect();
 
@@ -48,7 +52,6 @@ impl Insert {
         if parts[2].contains("'") {
             let name = get_full_quote(&parts, 2);
             let name_v: Vec<&str> = name.split_whitespace().collect();
-            println!("nameee {:?}", name_v);
             skip_index += name_v.len() - 1;
             self.table = name;
         } else {
@@ -73,7 +76,7 @@ impl Insert {
         Ok(())
     }
 
-    // Extrae los nombres de las columns y los valores a setear
+    // Extracts columns names and values to insert
     fn extract_values(&self, parts: &[&str], skip_index: usize) -> Vec<String> {
         let mut values: Vec<String> = Vec::new();
         let mut parts_iter = parts.iter().skip(skip_index).peekable();
@@ -102,7 +105,7 @@ impl Insert {
         values
     }
 
-    // Devuelve un HashMap de las columnas y sus valores
+    // Returns columns and values mapped into a HashMap
     fn get_mapped_values(&self) -> Result<HashMap<&str, &str>, MyError> {
         let mut map: HashMap<&str, &str> = HashMap::new();
         for (key, value) in self.columns.iter().zip(self.values.iter()) {
@@ -114,7 +117,7 @@ impl Insert {
         Ok(map)
     }
 
-    // Chequea que las columnas sean validas
+    // No se si es necesaria
     fn check_columns_are_valid(&self, file_headers: &[String]) -> Result<(), MyError> {
         for header in &self.columns {
             if !file_headers.contains(header) {
@@ -133,18 +136,17 @@ impl Insert {
         Ok(())
     }
 
-    // Ejecuta la consulta INSERT
-    pub fn execute_command(&self) -> Result<String, MyError> {
+    pub fn execute_command(&self) -> Result<Vec<String>, MyError> {
         println!("En execute_command de INSERT");
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let headers = get_file_headers(&mut rdr)?;
-        // self.values.push(Utc::now().to_string());
+
         // INSERT INTO VALUES (val1, val2)
         // values are inserted in the same order as the file headers
         if self.columns.is_empty() {
             if self.values.len() == headers.len() {
                 append_row(TABLE_PATH, &self.table, &self.values)?;
-                return Ok("linea fue agregada".to_string());
+                return Ok(vec!["linea fue agregada".to_string()]);
             }
             return Err(MyError::InvalidSyntax("Invalid INSERT syntax".to_string()));
         }
@@ -164,13 +166,24 @@ impl Insert {
         new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
         new_record.push(Utc::now().to_string()); // metes lo mas nuevo
         append_row(TABLE_PATH, &self.table, &new_record)?;
-        Ok("linea fue agregada".to_string())
+        Ok(vec!["linea fue agregada".to_string()])
     }
 
     pub fn get_key(&self) -> String {
         //suponiendo que siempre se manda bien
-        println!("values = {:?}", self.values);
-        let res = format!("{},{}", self.values[0], self.values[1]);
+
+        let index_col_airport = self
+            .columns
+            .iter()
+            .position(|e| e == "airport")
+            .unwrap_or(0);
+
+        let index_col_date = self.columns.iter().position(|e| e == "date").unwrap_or(0);
+
+        let res = format!(
+            "{},{}",
+            self.values[index_col_airport], self.values[index_col_date]
+        );
         res
     }
 
@@ -290,7 +303,7 @@ mod tests {
 
         // Execute the command
         let result = insert.execute_command().unwrap();
-        assert_eq!(result, "linea fue agregada");
+        assert_eq!(result, vec!["linea fue agregada".to_string()]);
 
         // Clean up
         std::fs::remove_file(file_path).unwrap();

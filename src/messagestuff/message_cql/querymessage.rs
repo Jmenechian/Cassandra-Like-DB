@@ -5,8 +5,7 @@
 
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::cqlenvelope::*;
-use crate::messagestuff::message_server::serverpacket::*;
-use std::error::Error;
+use crate::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub struct QueryMessage {
@@ -22,7 +21,7 @@ impl Serialize for QueryMessage {
         bytes
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), MyError> {
         let (_query, resto) = longstring_from_bytes(bytes)?;
         let (_consistency, resto) = short_from_bytes(resto)?;
         Ok((
@@ -55,7 +54,7 @@ mod tests {
     use crate::config;
 
     #[test]
-    fn test_query_message() -> Result<(), Box<dyn Error>> {
+    fn test_query_message() -> Result<(), MyError> {
         let expected_query: QueryMessage = QueryMessage {
             query: "Hola".to_string(),
             consistency: config::ONE,

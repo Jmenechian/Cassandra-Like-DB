@@ -11,7 +11,8 @@ use crate::messagestuff::{
     message_server::queryservermessage::QueryServerMessage,
     message_server::resultservermessage::ResultServerMessage,
 };
-use std::{error::Error, io::Read, net::TcpStream};
+use std::{ io::Read, net::TcpStream};
+use crate::my_errors::MyError;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -23,13 +24,13 @@ pub enum ServerOpcode {
 }
 
 impl ServerOpcode {
-    pub fn from_u8(value: u8) -> Result<Self, Box<dyn Error>> {
+    pub fn from_u8(value: u8) -> Result<Self, MyError> {
         match value {
             config::GOSSIP => Ok(ServerOpcode::GossipMessage),
             config::QUERY => Ok(ServerOpcode::QueryServerMessage),
             config::ERROR => Ok(ServerOpcode::ErrorServerMessage),
             config::RESULT => Ok(ServerOpcode::ResultServerMessage),
-            _ => Err(Box::from("Invalid Opcode")),
+            _ => Err(MyError::Error("Invalid Opcode".to_string())),
         }
     }
 }
@@ -41,6 +42,7 @@ pub enum ServerMessage {
     Result(ResultServerMessage),
     ErrorServer(ErrorServerMessage),
 }
+
 
 #[derive(Debug)]
 pub struct Packet {
@@ -66,11 +68,11 @@ impl Packet {
     }
 
     // Para deseriarlizar el mensaje
-    pub fn from_stream(stream: &mut TcpStream) -> Result<Self, Box<dyn Error>> {
+    pub fn from_stream(stream: &mut TcpStream) -> Result<Self, MyError> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 5];
         if let Err(e) = stream.read_exact(&mut header_buffer) {
-            return Err(Box::from(format!(
+            return Err(MyError::ServerMessageError(format!(
                 "Error al leer el <header> del packet desde Stream{:?}",
                 e
             )));
@@ -85,7 +87,9 @@ impl Packet {
 
         let mut body_buffer = vec![0u8; _length as usize];
         if let Err(_) = stream.read_exact(&mut body_buffer) {
-            return Err(Box::from("Error al leer el <body> desde Stream"));
+            return Err(MyError::ServerMessageError(
+                "Error al leer el <body> desde Stream".to_string(),
+            ));
         }
         let _body = match _opcode {
             ServerOpcode::GossipMessage => {

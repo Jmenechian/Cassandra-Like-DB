@@ -15,6 +15,7 @@ pub enum MyError {
     TcpStreamError(String),
     TcpListenerError(String),
     ServerMessageError(String),
+    CqlMessageError(String),
     SendingMessageError(String),
     LockingError(String),
     FileError(String),
@@ -32,6 +33,7 @@ impl fmt::Display for MyError {
             MyError::TcpStreamError(ref msg) => write!(f, "[TCP_STREAM_ERROR]: [{}]", msg),
             MyError::TcpListenerError(ref msg) => write!(f, "[TCP_LISTENER_ERROR]: [{}]", msg),
             MyError::ServerMessageError(ref msg) => write!(f, "[SERVER_MESSAGE_ERROR]: [{}]", msg),
+            MyError::CqlMessageError(ref msg) => write!(f, "[CQL_MESSAGE_ERROR]: [{}]", msg),
             MyError::SendingMessageError(ref msg) => {
                 write!(f, "[SENDING_MESSAGE_ERROR]: [{}]", msg)
             }
@@ -59,6 +61,7 @@ impl PartialEq for MyError {
             (MyError::TcpStreamError(a), MyError::TcpStreamError(b)) => a == b,
             (MyError::TcpListenerError(a), MyError::TcpListenerError(b)) => a == b,
             (MyError::ServerMessageError(a), MyError::ServerMessageError(b)) => a == b,
+            (MyError::CqlMessageError(a), MyError::CqlMessageError(b)) => a == b,
             (MyError::SendingMessageError(a), MyError::SendingMessageError(b)) => a == b,
             (MyError::LockingError(a), MyError::LockingError(b)) => a == b,
             (MyError::FileError(a), MyError::FileError(b)) => a == b,

@@ -1,6 +1,6 @@
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::cqlenvelope::*;
-use std::error::Error;
+use crate::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub struct ErrorMessage {
@@ -16,7 +16,7 @@ impl Serialize for ErrorMessage {
         bytes
     }
 
-    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), Box<dyn Error>> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), MyError> {
         let (_code, resto) = int_from_bytes(bytes)?;
         let (_error, resto) = string_from_bytes(resto)?;
 
@@ -49,7 +49,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_error_message() -> Result<(), Box<dyn Error>> {
+    fn test_error_message() -> Result<(), MyError> {
         let expected_error: ErrorMessage = ErrorMessage {
             error: "Hola".to_string(),
             code: 0 as i32,

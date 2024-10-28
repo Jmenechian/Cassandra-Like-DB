@@ -3,10 +3,10 @@
 //
 // El hashing consistente particiona los datos basándose en la clave de partición.
 
+use crate::config::RING_SIZE;
+use crate::NeighborNode;
 use fasthash::murmur;
 use std::collections::BTreeMap;
-
-use crate::NeighborNode;
 
 #[derive(Debug, Clone)]
 // Estructura que guarda los nodos miembros de un anillo y el factor de replicación.
@@ -22,8 +22,8 @@ impl ConsistentHash<NeighborNode> {
     pub fn new(rf: usize) -> Self {
         Self {
             ring: BTreeMap::new(),
-            rf,       // Replication Factor
-            total: 8, // Cantidad de nodos
+            rf,               // Replication Factor
+            total: RING_SIZE, // Cantidad de nodos
         }
     }
 
@@ -31,7 +31,10 @@ impl ConsistentHash<NeighborNode> {
     // Aplicamos el hash a la dirección del nodo y normalizamos este valor en el anillo de nodos.
     // Esto nos da la posicion del nodo en el anillo.
     pub fn hash(&self, key: &str) -> usize {
-        let tocken: usize = murmur::hash32(key).try_into().unwrap();
+        let tocken: usize = match murmur::hash32(key).try_into() {
+            Ok(u) => u,
+            Err(_) => 0,
+        };
         tocken % self.total
     }
 

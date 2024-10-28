@@ -8,14 +8,18 @@ use std::{collections::HashMap, fs::read_to_string};
 /// La clave será nombre de cada aeropuerto.
 pub fn get_airport_coordinates() -> HashMap<String, Airport> {
     let mut airports = HashMap::new();
-    for (index, line) in read_to_string(AIRPORTS_PATH).unwrap().lines().enumerate() {
+    let file_lines = match read_to_string(AIRPORTS_PATH) {
+        Ok(l) => l,
+        Err(_) => "".to_string(),
+    };
+    for (index, line) in file_lines.lines().enumerate() {
         if index == 0 {
             continue;
         }
         let airport_data: Vec<&str> = line.split(",").collect();
         let airport_name = airport_data[0].to_string();
-        let longitude: f32 = airport_data[2].parse::<f32>().unwrap();
-        let latitude: f32 = airport_data[3].parse::<f32>().unwrap();
+        let longitude: f32 = airport_data[2].parse::<f32>().unwrap_or(0.0);
+        let latitude: f32 = airport_data[3].parse::<f32>().unwrap_or(0.0);
         let airport: Airport = Airport::new(airport_name.clone(), (latitude, longitude));
         airports.insert(airport_name, airport);
     }

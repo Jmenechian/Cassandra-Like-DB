@@ -10,7 +10,8 @@ use crate::messagestuff::{
     message::*, message_cql::errormessage::ErrorMessage, message_cql::querymessage::QueryMessage,
     message_cql::resultmessage::ResultMessage,
 };
-use std::{error::Error, io::Read, net::TcpStream};
+use crate::my_errors::MyError;
+use std::{io::Read, net::TcpStream};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -21,12 +22,12 @@ pub enum CqlOpcode {
 }
 
 impl CqlOpcode {
-    pub fn from_u8(value: u8) -> Result<Self, Box<dyn Error>> {
+    pub fn from_u8(value: u8) -> Result<Self, MyError> {
         match value {
             config::QUERY => Ok(CqlOpcode::QueryMessage),
             config::ERROR => Ok(CqlOpcode::ErrorMessage),
             config::RESULT => Ok(CqlOpcode::ResultMessage),
-            _ => Err(Box::from("Invalid Opcode")),
+            _ => Err(MyError::CqlMessageError("Invalid Opcode".to_string())),
         }
     }
 }
@@ -66,13 +67,15 @@ impl Envelope {
         bytes
     }
 
-    pub fn from_stream(stream: &mut TcpStream) -> Result<Self, Box<dyn Error>> {
+    pub fn from_stream(stream: &mut TcpStream) -> Result<Self, MyError> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 9];
-        if let Err(_) = stream.read_exact(&mut header_buffer) {
-            return Err(Box::from(
-                "Error al leer el <header> del envelope desde Stream",
-            ));
+        if let Err(e) = stream.read_exact(&mut header_buffer) {
+            let _error = format!(
+                "Error al leer el <header> del envelope desde Stream: {:?}",
+                e
+            );
+            return Err(MyError::TcpStreamError(_error));
         }
         let _version = header_buffer[0];
         let _flags = header_buffer[1];
@@ -86,8 +89,9 @@ impl Envelope {
         ]);
 
         let mut _body_buffer = vec![0u8; _length as usize];
-        if let Err(_) = stream.read_exact(&mut _body_buffer) {
-            return Err(Box::from("Error al leer el <body> desde Stream"));
+        if let Err(e) = stream.read_exact(&mut _body_buffer) {
+            let _error = format!("Error al leer el <body> desde Stream: {:?}", e);
+            return Err(MyError::TcpStreamError(_error));
         }
         let _body = match _opcode {
             CqlOpcode::ErrorMessage => {
