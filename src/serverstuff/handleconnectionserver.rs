@@ -75,6 +75,6 @@ pub fn handle_connection_server(
                 }
             }
         }
-        Err(_e) => Err(_e)
+        Err(_e) => Err(_e),
     }
 }
