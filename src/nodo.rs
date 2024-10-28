@@ -38,7 +38,6 @@ impl Status {
 // Representa al nodo en el que estamos parados
 #[derive(Debug, Clone, PartialEq)]
 pub struct Node {
-    pub ip: String, //temp
     pub puerto: String,
     pub server_ip: String, // IP donde nodo se pone a escuchar conecciones de servidores
     pub client_ip: String, // IP donde nodo se pone a escuchar conecciones de cliente
@@ -51,8 +50,7 @@ pub struct Node {
 impl Node {
     pub fn new(port: &str) -> Self {
         Self {
-            ip: format!("127.0.0.1:{}", port),
-            puerto: format!("{}", port),
+            puerto: port.to_string(),
             server_ip: format!("127.0.0.1:700{}", port),
             client_ip: format!("127.0.0.1:800{}", port),
             gossip_ip: format!("127.0.0.1:900{}", port),
@@ -126,37 +124,6 @@ pub fn try_connect(ip: String) -> Option<TcpStream> {
     }
 }
 
-// Se guarda a TODOS los nodos vecinos
-// Tiene guardado el estado de cada nodo
-fn connect_to_ports(ports: Vec<u16>, my_port: &String) -> Vec<NeighborNode> {
-    let mut known_nodes: Vec<NeighborNode> = Vec::new();
-
-    for &port in &ports {
-        if &port.to_string() == my_port {
-            continue;
-        }
-        let status: Status;
-        if try_connect(format! {"127.0.0.1:700{}", port}).is_some() {
-            status = Status::Connected;
-            println!("Conectado exitosamente al nodo en el puerto {}", port);
-            // Avisar al nodo que me conecte??
-            // Hacerlo por Gossip....
-        } else {
-            status = Status::Connected; ///////// DEBERIA EMPEZAR DESCONECTADO Y ACTUALIZARSE CON GOSSIP
-                                        // status = Status::Disconnected;
-            println!("No se pudo conectar al nodo en el puerto {}", port);
-        }
-
-        let mut neighbor_node = NeighborNode::new(&port.to_string());
-        if status == Status::Connected {
-            neighbor_node.connect_node();
-        }
-
-        known_nodes.push(neighbor_node);
-    }
-    known_nodes
-}
-
 // Le deberia mandar la query a los nodos correspondientes!
 pub fn handle_query(_query: Query) {
     // TO DO
@@ -222,7 +189,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
             let gossip_msg = GossipMessage {
                 ip: my_ip.clone(),
                 estado: Status::Connected,
-                ttl: 5 as u8,
+                ttl: 5_u8,
             };
             let _ = gossip_msg.send_server_through(&mut s);
             let port = match addr.chars().last() {
@@ -273,7 +240,7 @@ pub fn initialize_2(port: String) -> Result<(), MyError> {
                 let gossip_msg = GossipMessage {
                     ip: my_ip.clone(),
                     estado: Status::Connected,
-                    ttl: 5 as u8,
+                    ttl: 5_u8,
                 };
                 let _ = gossip_msg.send_server_through(&mut s);
             }

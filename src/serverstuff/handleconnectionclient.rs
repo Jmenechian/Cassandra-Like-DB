@@ -45,8 +45,7 @@ fn handle_message_query(
             return Err(e);
         }
     };
-    if table.len() == 0 {
-        //es un string ahora entonces ???
+    if table.is_empty() {
         let void_msg = ResultVoidMessage;
         if let Err(e) = void_msg.send_through(stream) {
             if show {
@@ -71,7 +70,7 @@ fn handle_message_query(
 fn handle_message_error(stream: &mut TcpStream, _error: String, show: bool) {
     let msg = ErrorMessage {
         error: _error,
-        code: 0 as i32,
+        code: 0_i32,
     };
     if let Err(e) = msg.send_through(stream) {
         if show {

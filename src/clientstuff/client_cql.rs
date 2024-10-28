@@ -76,7 +76,6 @@ impl Client {
         Ok(())
     }
 
-    ///
     pub fn send_message(stream: &mut TcpStream, message: String) -> Result<()> {
         if !message.is_empty() {
             let msg: QueryMessage = QueryMessage {

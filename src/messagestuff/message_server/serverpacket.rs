@@ -86,7 +86,7 @@ impl Packet {
         ]);
 
         let mut body_buffer = vec![0u8; _length as usize];
-        if let Err(_) = stream.read_exact(&mut body_buffer) {
+        if stream.read_exact(&mut body_buffer).is_err() {
             return Err(MyError::ServerMessageError(
                 "Error al leer el <body> desde Stream".to_string(),
             ));

@@ -131,13 +131,11 @@ impl Select {
         let aeropuerto = if let Some(aeropuerto) = self.whereclause.find_value_for_key("airport") {
             aeropuerto
         } else {
-            println!("\n\nERRRORRRRRRRRRRRRRR AEROPUERTO KEY SELECT\n\n");
             "".to_string() // algun error
         };
         let date = if let Some(date) = self.whereclause.find_value_for_key("date") {
             date
         } else {
-            println!("\n\nERRRORRRRRRRRRRRRRR DATE KEY SELECT\n\n");
             "".to_string()
         };
         let res = format!("{},{}", aeropuerto, date);
@@ -148,9 +146,6 @@ impl Select {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::my_errors::MyError;
-    use std::fs::File;
-    use std::io::Write;
 
     #[test]
     fn test_parse_select_valid_query() {
@@ -202,50 +197,4 @@ mod tests {
             ]
         );
     }
-
-    // #[test]
-    // fn test_execute_command() {
-    //     // Create a mock CSV file
-    //     let file_path = format!("{}/test_table_1.csv", TABLE_PATH);
-    //     let mut file = File::create(&file_path).unwrap();
-    //     writeln!(file, "id,name,age").unwrap();
-    //     writeln!(file, "1,Alice,31").unwrap();
-    //     writeln!(file, "2,Bob,29").unwrap();
-
-    //     // Create and parse a valid query
-    //     let mut select = Select::new();
-    //     select
-    //         .parse_select("SELECT id, name FROM 'test_table' WHERE age > 30", "node_1")
-    //         .unwrap();
-
-    //     // Execute the command and verify the output
-    //     let result = select.execute_command().unwrap();
-    //     assert_eq!(result, "1,Alice,31     ");
-
-    //     // Clean up
-    //     std::fs::remove_file(file_path).unwrap();
-    // }
-
-    // #[test]
-    // fn test_execute_command_no_matching_rows() {
-    //     // Create a mock CSV file
-    //     let file_path = format!("{}/test_table_2.csv", TABLE_PATH);
-    //     let mut file = File::create(&file_path).unwrap();
-    //     writeln!(file, "id,name,age").unwrap();
-    //     writeln!(file, "1,Alice,31").unwrap();
-    //     writeln!(file, "2,Bob,29").unwrap();
-
-    //     // Create and parse a query with no matching rows
-    //     let mut select = Select::new();
-    //     select
-    //         .parse_select("SELECT id, name FROM 'test_table' WHERE age > 40", "node_1")
-    //         .unwrap();
-
-    //     // Execute the command and verify the output
-    //     let result = select.execute_command().unwrap();
-    //     assert_eq!(result, ""); // No rows should match
-
-    //     // Clean up
-    //     std::fs::remove_file(file_path).unwrap();
-    // }
 }
