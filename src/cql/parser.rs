@@ -1,3 +1,6 @@
+// Logica detras del parseo de las condiciones WHERE
+// en las consultas del tipo CQL
+
 use crate::cql::lexer::*;
 use crate::cql::relation::Relation;
 use crate::cql::where_clause::WhereClause;
@@ -129,11 +132,7 @@ impl Parser {
                         ))
                     }
                     Token::EOF => Ok(WhereClause::Relation(rela)),
-                    _last => Ok(WhereClause::Relation(rela)), // _ => {
-                                                              //     Err(Box::new(MyError::InvalidSyntax(
-                                                              //         "Invalid Sysntax: <where_clause> 1",
-                                                              //     )))
-                                                              // }
+                    _last => Ok(WhereClause::Relation(rela)),
                 }
             }
             _ => Err(MyError::InvalidSyntax(

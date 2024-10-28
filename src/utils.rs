@@ -1,6 +1,9 @@
+// Funciones auxiliares para el manejo de archivos y strings
+
 use crate::my_errors::MyError;
 use std::{fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write, iter::Peekable};
 
+// Returns the full quote inside ' 'S
 pub fn get_full_quote(parts: &[&str], index: usize) -> String {
     let mut name = String::new();
 

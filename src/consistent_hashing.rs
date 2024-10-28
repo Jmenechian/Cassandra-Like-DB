@@ -1,3 +1,8 @@
+// El hashing consistente permite la distribución de datos en un clúster,
+// minimizando la reorganización cuando se añaden o eliminan nodos.
+//
+// El hashing consistente particiona los datos basándose en la clave de partición.
+
 use crate::config::RING_SIZE;
 use crate::NeighborNode;
 use fasthash::murmur;
@@ -26,10 +31,7 @@ impl ConsistentHash<NeighborNode> {
     // Aplicamos el hash a la dirección del nodo y normalizamos este valor en el anillo de nodos.
     // Esto nos da la posicion del nodo en el anillo.
     pub fn hash(&self, key: &str) -> usize {
-        let tocken: usize = match murmur::hash32(key).try_into() {
-            Ok(u) => u,
-            Err(_) => 0,
-        };
+        let tocken: usize = murmur::hash32(key).try_into().unwrap_or(0);
         tocken % self.total
     }
 

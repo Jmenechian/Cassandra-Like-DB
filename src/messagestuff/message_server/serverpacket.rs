@@ -1,3 +1,9 @@
+// Los nodos del servidor se hablan entre si utlizando Packets:
+//   - Packet cumple con el protocolo de Cassandra.
+//   - Packet guarda por dentro el tipo de OpCode y el mensaje de tipo ServerMessage.
+//   - ServerMessage es un enum que contiene los diferentes tipos de mensajes que se pueden enviar.
+//   - Para enviar el packet y leerlo por stream estan las funciones to_bytes() y from_stream().
+
 use crate::config;
 use crate::messagestuff::{
     message::*, message_server::errorservermessage::ErrorServerMessage,
@@ -6,7 +12,7 @@ use crate::messagestuff::{
     message_server::resultservermessage::ResultServerMessage,
 };
 use crate::my_errors::MyError;
-use std::{error::Error, io::Read, net::TcpStream};
+use std::{io::Read, net::TcpStream};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -45,6 +51,7 @@ pub struct Packet {
 }
 
 impl Packet {
+    // Para serializar el mensaje
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&byte_to_byte(self.opcode as u8));
@@ -59,6 +66,7 @@ impl Packet {
         bytes
     }
 
+    // Para deseriarlizar el mensaje
     pub fn from_stream(stream: &mut TcpStream) -> Result<Self, MyError> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 5];
@@ -77,7 +85,7 @@ impl Packet {
         ]);
 
         let mut body_buffer = vec![0u8; _length as usize];
-        if let Err(_) = stream.read_exact(&mut body_buffer) {
+        if stream.read_exact(&mut body_buffer).is_err() {
             return Err(MyError::ServerMessageError(
                 "Error al leer el <body> desde Stream".to_string(),
             ));

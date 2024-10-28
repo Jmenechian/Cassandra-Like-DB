@@ -1,7 +1,7 @@
-const EQUAL: i32 = 0;
-const GREATER_THAN: i32 = 1;
-const LESS_THAN: i32 = 2;
-const NOT_NUMBER: i32 = 3;
+// Aca se hacen las comparaciones de las condiciones WHERE de la consulta
+// 'Relation': Representa la operacion en su nivel atomico, ie: 'val1 op val2'
+
+use crate::config::{EQUAL, GREATER_THAN, LESS_THAN, NOT_NUMBER};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Column {

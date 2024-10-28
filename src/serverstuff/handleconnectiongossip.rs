@@ -1,3 +1,8 @@
+// Handler que se encarga de manejar el servidor cuando se comunica por Gossip.
+//
+// La funcion principal es `handle_connection_gossip` que recibe un nodo, un stream y un booleano.
+// El resto son funciones auxiliares.
+
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
 use crate::messagestuff::{
     message::*,

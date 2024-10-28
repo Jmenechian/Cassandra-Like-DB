@@ -1,3 +1,8 @@
+// Aca se encuentra la logica para serializar y
+// deserializar los mensajes del tipo ResultMessage
+//
+// Estos son los mensajes que se envian como respuesta a una consulta
+
 use crate::config;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::{
@@ -74,9 +79,9 @@ impl IntoEnvelope for ResultMessage {
     fn into_envelope(self) -> Envelope {
         let _body = self.to_bytes();
         Envelope {
-            version: 0x85 as u8,
-            flags: 0 as u8,
-            stream: 0 as u16,
+            version: 0x85_u8,
+            flags: 0_u8,
+            stream: 0_u16,
             opcode: CqlOpcode::ResultMessage,
             length: _body.len() as i32,
             body: CqlMessage::Result(self),

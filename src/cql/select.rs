@@ -1,10 +1,12 @@
-use crate::my_errors::MyError;
-use crate::utils::*;
-use std::io::BufRead;
+// Representa las consultas del tipo SELECT
+// Aca se parsea la consulta y se ejecuta
 
 use crate::config::TABLE_PATH;
 use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
+use crate::my_errors::MyError;
+use crate::utils::*;
+use std::io::BufRead;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Select {
@@ -49,8 +51,8 @@ impl Select {
         }
 
         let x = self.columns.join(" ");
-        let whitespaces: Vec<&str> = x.split_whitespace().collect(); // makes sure to count columns with whistespaces inside
-        let index = whitespaces.len() + 2; // skip SELECT, FROM and columns
+        let whitespaces: Vec<&str> = x.split_whitespace().collect();
+        let index = whitespaces.len() + 2; // skip SELECT, FROM y columnas
 
         self.parse_table(&parts, index);
 
@@ -59,8 +61,8 @@ impl Select {
         Ok(())
     }
 
-    // sets list of columns
-    // columns between quotes stay between quotes for the Tokenizer
+    // Setea lista de columnas
+    // Columnas entre comillas, quedan entre comillas
     fn parse_columns(&mut self, parts: &[&str]) {
         let joined_parts = parts.join(" ");
         let comma_separated: Vec<&str> = joined_parts.split(",").collect();
@@ -82,8 +84,8 @@ impl Select {
         self.columns = columns
     }
 
-    // sets table name
-    // if table name between quotes, removes quotes
+    // Setea el nombre de la tabla con el numero de nodo
+    // Si el nombre de la tabla tiene comillas, se las saca
     fn parse_table(&mut self, parts: &[&str], index: usize) {
         if parts[index].contains("'") {
             self.table = get_full_quote(parts, index);
@@ -94,8 +96,8 @@ impl Select {
         println!("SELECT en tabla: {}", self.table);
     }
 
-    // sets WHERE condition
-    // returns error if condition query is not valid
+    // Setea condicion WHERE
+    // Devuelve error si la condicion no es valida
     fn parse_where_condition(&mut self, parts: &mut [&str]) -> Result<(), MyError> {
         if let Some(where_index) = parts.iter().position(|&x| x == "WHERE") {
             let (_, right) = parts.split_at(where_index);
@@ -129,16 +131,70 @@ impl Select {
         let aeropuerto = if let Some(aeropuerto) = self.whereclause.find_value_for_key("airport") {
             aeropuerto
         } else {
-            println!("\n\nERRRORRRRRRRRRRRRRR AEROPUERTO KEY SELECT\n\n");
             "".to_string() // algun error
         };
         let date = if let Some(date) = self.whereclause.find_value_for_key("date") {
             date
         } else {
-            println!("\n\nERRRORRRRRRRRRRRRRR DATE KEY SELECT\n\n");
             "".to_string()
         };
         let res = format!("{},{}", aeropuerto, date);
         res
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_select_valid_query() {
+        let mut select = Select::new();
+        let query = "SELECT id, name FROM 'users' WHERE age > 30";
+        let result = select.parse_select(query, "node_1");
+
+        assert!(result.is_ok());
+        assert_eq!(select.columns, vec!["id".to_string(), "name".to_string()]);
+        assert_eq!(select.table, "users_1".to_string());
+        assert_eq!(select.num_node, "1".to_string());
+    }
+
+    #[test]
+    fn test_parse_select_invalid_query() {
+        let mut s1 = Select::new();
+        let q1 = "SELECT FROM 'users' WHERE age > 30";
+        let r1 = s1.parse_select(q1, "node_1");
+        assert!(matches!(r1, Err(MyError::InvalidSyntax(_))));
+
+        let mut s2 = Select::new();
+        let q2 = "SELECT id, name WHERE age > 30";
+        let r2 = s2.parse_select(q2, "node_1");
+
+        assert!(matches!(r2, Err(MyError::InvalidSyntax(_))));
+    }
+
+    #[test]
+    fn test_parse_table() {
+        let mut select = Select::new();
+        let query = "SELECT id, name FROM 'users'";
+        let parts = query.split_whitespace().collect::<Vec<&str>>();
+        select.parse_table(&parts, 4);
+        assert_eq!(select.num_node, "0".to_string());
+        assert_eq!(select.table, "users_0".to_string());
+    }
+
+    #[test]
+    fn test_parse_columns() {
+        let mut select = Select::new();
+        let parts = vec!["'columna", "1',", "'columna2',", "'columna", "3'"];
+        select.parse_columns(&parts);
+        assert_eq!(
+            select.columns,
+            vec![
+                "'columna 1'".to_string(),
+                "'columna2'".to_string(),
+                "'columna 3'".to_string()
+            ]
+        );
     }
 }

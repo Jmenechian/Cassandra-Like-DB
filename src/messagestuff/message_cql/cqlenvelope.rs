@@ -1,3 +1,10 @@
+// Aca esta la logica de la mensajeria entre Cliente y Servidor
+// Cumple con el protocolo de comunicacion nativo de Cassandra.
+//
+// - 'Envelope`: Contiene al mensaje y a toda su metadata
+// - `CqlOpcode`: Enumeracion de los tipos de mensajes
+// - `CqlMessage`: Contiene al mensaje en si
+
 use crate::config;
 use crate::messagestuff::{
     message::*, message_cql::errormessage::ErrorMessage, message_cql::querymessage::QueryMessage,

@@ -11,12 +11,20 @@
 A continuacion se detallan los pasos para compilar y ejecutar el programa.
 
 ### Compilacion
-`cargo build`
+```cargo build```
 
 ### Como correr
+<<<<<<< HEAD
+Para correr el sevidor, con <n> siendo el numero de puerto --> `cargo run --bin server <n>`
+
+Para correr el cliente --> `cargo run --bin client <n>`
+
+Para correr la ui --> `cargo run --bin gui <n>`
+=======
 - para correr servidor -> `cargo run --bin server <n>`
 - para correr cliente -> `cargo run --bin client <n>`
 - para correr ui -> `cargo run --bin gui <n>`
+>>>>>>> main
 
 ## Como testear
-`cargo test`
+```cargo test```
