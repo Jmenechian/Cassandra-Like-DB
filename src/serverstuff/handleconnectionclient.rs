@@ -1,3 +1,8 @@
+// Handler que se encarga de manejar la conexion del servidor con el cliente.
+//
+// La funcion principal es `handle_connection_client` que recibe un nodo, un stream y un booleano.
+// El resto son funciones auxiliares.
+
 use crate::config;
 use crate::config::RF;
 use crate::cql::query::Query;
@@ -14,7 +19,6 @@ use crate::my_errors::*;
 use crate::nodo::Node;
 use crate::nodo::Status;
 use crate::ConsistentHash;
-use chrono::NaiveDate;
 use chrono::NaiveDateTime;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
@@ -41,8 +45,7 @@ fn handle_message_query(
             return Err(e);
         }
     };
-    if table.len() == 0 {
-        //es un string ahora entonces ???
+    if table.is_empty() {
         let void_msg = ResultVoidMessage;
         if let Err(e) = void_msg.send_through(stream) {
             if show {
@@ -67,7 +70,7 @@ fn handle_message_query(
 fn handle_message_error(stream: &mut TcpStream, _error: String, show: bool) {
     let msg = ErrorMessage {
         error: _error,
-        code: 0 as i32,
+        code: 0_i32,
     };
     if let Err(e) = msg.send_through(stream) {
         if show {
@@ -134,7 +137,7 @@ fn process_results(results: &Vec<Vec<String>>) -> Vec<String> {
     }
 }
 
-pub fn look_newer(results: &Vec<Vec<String>>) -> usize {
+pub fn look_newer(results: &[Vec<String>]) -> usize {
     //falta testear en process results
     let mut newer = NaiveDateTime::MIN;
     let mut index = 0;
@@ -150,7 +153,7 @@ pub fn look_newer(results: &Vec<Vec<String>>) -> usize {
                     NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d %H:%M:%S%.f %Z")
                 {
                     if parsed_datetime > newer {
-                        newer = parsed_datetime.clone();
+                        newer = parsed_datetime;
                         index = i;
                     }
                 };
@@ -208,16 +211,12 @@ pub fn send_query_to_nodes(
                     neighbor.server_ip
                 );
             }
-            match node.process_query(&mut query) {
-                Ok(result) => {
-                    all_response.push(result);
+            if let Ok(result) = node.process_query(&mut query) {
+                all_response.push(result);
 
-                    if consistency_level == config::ONE && all_response.len() == 1 {
-                        println!("alfjvnajinvaijnpaincaidjsnckd");
-                        return Ok(process_results(&all_response));
-                    }
+                if consistency_level == config::ONE && all_response.len() == 1 {
+                    return Ok(process_results(&all_response));
                 }
-                Err(_) => {}
             }
             continue;
         } else if neighbor.status == Status::Disconnected {
@@ -260,8 +259,5 @@ pub fn send_query_to_nodes(
             }
         }
     }
-    // if consistency_level != 1 && all_response.len() == 1 { //ver como se cambia eso
-    //     return Ok(process_results(&all_response));
-    // }
     Ok(process_results(&all_response))
 }

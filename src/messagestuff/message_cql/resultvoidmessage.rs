@@ -1,3 +1,5 @@
+// Representa un resultado vacio a una consulta
+
 use crate::messagestuff::message_cql::{cqlenvelope::*, resultmessage::*};
 
 #[derive(Debug, PartialEq)]

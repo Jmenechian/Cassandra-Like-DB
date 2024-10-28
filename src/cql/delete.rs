@@ -1,3 +1,6 @@
+// Representa las consultas del tipo DELETE
+// Aca se parsea la consulta y se ejecuta
+// To Do
 use crate::my_errors::MyError;
 
 #[derive(Debug, Eq, PartialEq)]

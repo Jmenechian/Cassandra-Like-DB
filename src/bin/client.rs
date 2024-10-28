@@ -1,3 +1,6 @@
+// Binario que va a correr el cliente para conectarse al servidor
+// Por ahora solo se conecta al ultimo nodo creado en el servidor
+
 use aerolineas_rusticas::clientstuff::client_cql::Client;
 use std::env;
 use std::io::Result;

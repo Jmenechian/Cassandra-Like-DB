@@ -65,7 +65,23 @@ impl Client {
         loop {
             match Envelope::from_stream(&mut stream) {
                 Ok(env) => {
-                    println!("El env recibido es: {:?}", env);
+                    //println!("El env recibido es: {:?}", env);
+                    match env.body {
+                        CqlMessage::Result(r) => match r.body {
+                            ResultBody::Rows(r) => {
+                                for row in r.rows_content {
+                                    println!("{}", row);
+                                }
+                            }
+                            ResultBody::Void(_) => {
+                                println!("Error: Paso algo inesperado");
+                            }
+                        },
+                        CqlMessage::Error(_) => {
+                            println!("Error: Paso algo inesperado");
+                        }
+                        _ => {}
+                    }
                 }
                 Err(e) => {
                     println!("Error al leer el env: {:?}", e);
@@ -76,7 +92,6 @@ impl Client {
         Ok(())
     }
 
-    ///
     pub fn send_message(stream: &mut TcpStream, message: String) -> Result<()> {
         if !message.is_empty() {
             let msg: QueryMessage = QueryMessage {

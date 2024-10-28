@@ -1,35 +1,4 @@
-// OPCODE
-// 0x00    ERROR
-// 0x01    STARTUP
-// 0x02    READY
-// 0x03    AUTHENTICATE
-// 0x05    OPTIONS
-// 0x06    SUPPORTED
-// 0x07    QUERY
-// 0x08    RESULT
-// 0x09    PREPARE
-// 0x0A    EXECUTE
-// 0x0B    REGISTER
-// 0x0C    EVENT
-// 0x0D    BATCH
-// 0x0E    AUTH_CHALLENGE
-// 0x0F    AUTH_RESPONSE
-// 0x10    AUTH_SUCCESS
-
-// [consistency]  A consistency level specification. This is a [short]
-// representing a consistency level with the following
-// correspondance:
-//   0x0000    ANY
-//   0x0001    ONE
-//   0x0002    TWO
-//   0x0003    THREE
-//   0x0004    QUORUM
-//   0x0005    ALL
-//   0x0006    LOCAL_QUORUM
-//   0x0007    EACH_QUORUM
-//   0x0008    SERIAL
-//   0x0009    LOCAL_SERIAL
-//   0x000A    LOCAL_ONE
+// Coleccion de traits y funciones que usan los otros modulos de mensajeria.
 
 use crate::messagestuff::message_cql::cqlenvelope::IntoEnvelope;
 use crate::messagestuff::message_server::serverpacket::IntoPacket;
@@ -49,12 +18,12 @@ pub trait Sendable: std::fmt::Debug + IntoEnvelope {
     {
         let env = self.into_envelope();
         let bytes = env.to_bytes();
-        if let Err(_) = stream.write_all(&bytes) {
+        if stream.write_all(&bytes).is_err() {
             return Err(MyError::TcpStreamError(
                 "Error al escribir en el stream".to_string(),
             ));
         };
-        if let Err(_) = stream.flush() {
+        if stream.flush().is_err() {
             return Err(MyError::TcpStreamError(
                 "Error al vecial es stream".to_string(),
             ));
@@ -87,12 +56,12 @@ pub trait ServerSendable: std::fmt::Debug + IntoPacket {
     {
         let packet = self.into_packet();
         let bytes = packet.to_bytes();
-        if let Err(_) = stream.write_all(&bytes) {
+        if stream.write_all(&bytes).is_err() {
             return Err(MyError::TcpStreamError(
                 "Error al escribir en el stream".to_string(),
             ));
         };
-        if let Err(_) = stream.flush() {
+        if stream.flush().is_err() {
             return Err(MyError::TcpStreamError(
                 "Error al vaciar el stream".to_string(),
             ));
@@ -125,7 +94,7 @@ pub fn byte_to_byte(s: u8) -> Vec<u8> {
 }
 
 pub fn byte_from_bytes(bytes: Vec<u8>) -> Result<(u8, Vec<u8>), MyError> {
-    if bytes.len() < 1 {
+    if bytes.is_empty() {
         return Err(MyError::TcpStreamError(
             "No hay suficientes bytes para leer un <byte>".to_string(),
         ));
@@ -181,7 +150,7 @@ pub fn long_from_bytes(bytes: Vec<u8>) -> Result<(i64, Vec<u8>), MyError> {
     Ok((value, bytes[8..].to_vec()))
 }
 
-//[sring]: [short] n, followed by n bytes representing an UFT-8 string
+//[string]: [short] n, followed by n bytes representing an UFT-8 string
 pub fn string_to_bytes(s: String) -> Vec<u8> {
     let mut bytes = Vec::new();
     let length = s.len() as u16;

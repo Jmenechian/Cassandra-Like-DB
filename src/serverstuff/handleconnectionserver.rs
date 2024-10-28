@@ -1,3 +1,8 @@
+// Handler que se encarga de manejar la conexion del servidor con si mismo.
+//
+// La funcion principal es `handle_connection_server` que recibe un nodo, un stream y un booleano.
+// El resto son funciones auxiliares.
+
 use crate::cql::query::Query;
 use crate::messagestuff::message_server::resultservermessage::IntoResultServerMessage;
 use crate::messagestuff::message_server::resultvoidservermsg::ResultVoidServerMessage;

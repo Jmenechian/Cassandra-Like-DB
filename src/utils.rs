@@ -1,6 +1,9 @@
+// Funciones auxiliares para el manejo de archivos y strings
+
 use crate::my_errors::MyError;
 use std::{fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write, iter::Peekable};
 
+// Returns the full quote inside ' 'S
 pub fn get_full_quote(parts: &[&str], index: usize) -> String {
     let mut name = String::new();
 
@@ -92,7 +95,7 @@ pub fn append_row(path: &str, table_name: &str, records: &[String]) -> Result<()
         .open(file_path)
         .map_err(|e| MyError::FileError(e.to_string()))?;
 
-    writeln!(file, "{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
+    write!(file, "\n{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }
 

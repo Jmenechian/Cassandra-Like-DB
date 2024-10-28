@@ -1,3 +1,5 @@
+// Si hay algun tipo de error se manda este mensaje por Paquete
+
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::serverpacket::*;
 use crate::my_errors::MyError;

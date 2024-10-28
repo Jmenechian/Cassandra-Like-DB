@@ -15,7 +15,7 @@ impl GossipMessage {
         if self.ttl == 0 {
             return Some(false);
         }
-        self.ttl = self.ttl - 1;
+        self.ttl -= 1;
         Some(self.ttl != 0)
     }
 }

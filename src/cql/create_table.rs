@@ -112,7 +112,6 @@ impl CreateTable {
         column_type
     }
 
-    // No stoy haciendo chequeo de errores
     fn set_primary_key(&self, primary_key_str: String) -> (Vec<String>, Vec<String>) {
         //  WITH CLUSTERING ORDER BY
         let mut parts: Vec<&str> = primary_key_str.split_whitespace().collect();
@@ -191,6 +190,14 @@ impl CreateTable {
         Ok(orderby)
     }
 
+    fn get_display_columns(&self) -> String {
+        let mut format = String::new();
+        for col in &self.columns {
+            format.push_str(&format!("{} {},", col, self.column_type.get(col).unwrap()));
+        }
+        format
+    }
+
     // Se ejecuta la query
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         for i in 1..=RING_SIZE {
@@ -211,25 +218,16 @@ impl CreateTable {
         let display_orderby: String = self
             .clustering_orderby
             .iter()
-            .map(|(k, v)| format!("{}:{}", k, v))
+            .map(|(k, v)| format!("{} {},", k, v))
             .collect::<Vec<String>>()
             .join(",");
-        let display_columns: Result<String, MyError> = self
-            .columns
-            .iter()
-            .map(|col| {
-                self.column_type
-                    .get(col)
-                    .map(|col_type| format!("{}:{}", col, col_type))
-                    .ok_or_else(|| MyError::Error("Error".to_string()))
-            })
-            .collect();
-        let display_columns = display_columns?;
+
+        let display_columns = self.get_display_columns();
 
         f_metadata
             .write_all(
                 format!(
-                    "partition:{}\nclusters:{}\nclustering_orderby:{}\ncolumns:{}",
+                    "partition: {}\nclusters: {}\nclustering_orderby: {}\ncolumns: {}",
                     self.partition_keys.join(","),
                     self.clustering_keys.join(","),
                     display_orderby,
