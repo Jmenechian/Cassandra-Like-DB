@@ -1,4 +1,0 @@
-airport,origin,date,flight,status,timestamp
-AEP,MEX,24-12-24,1,scheduled,2024-10-28 16:36:52.329385909 UTC
-DEL,MEX,24-12-24,4,scheduled,2024-10-28 16:38:48.325836492 UTC
-COR,DEL,24-12-24,11,scheduled,2024-10-28 16:40:46.482659974 UTC
