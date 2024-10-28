@@ -49,6 +49,7 @@ fn handle_message_query(
         Err(_) => ResultVoidServerMessage.into_result_server_message(),
     };
     let _ = msg.send_server_through(stream);
+    
     Ok(())
 }
 
