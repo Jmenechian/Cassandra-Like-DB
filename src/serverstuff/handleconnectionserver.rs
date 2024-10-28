@@ -49,6 +49,7 @@ fn handle_message_query(
         Err(_) => ResultVoidServerMessage.into_result_server_message(),
     };
     let _ = msg.send_server_through(stream);
+    
     Ok(())
 }
 
@@ -57,26 +58,24 @@ pub fn handle_connection_server(
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
-    loop {
-        match Packet::from_stream(stream) {
-            Ok(packet) => {
-                if show {
-                    println!("S   El packet recibido es: {:?}", packet);
+    match Packet::from_stream(stream) {
+        Ok(packet) => {
+            if show {
+                println!("S   El packet recibido es: {:?}", packet);
+            }
+            match packet.body {
+                ServerMessage::Query(query) => {
+                    handle_message_query(node.clone(), query, stream, show)
                 }
-                match packet.body {
-                    ServerMessage::Query(query) => {
-                        handle_message_query(node.clone(), query, stream, show)?;
+                _ => {
+                    let _error = "Error entre server y servers".to_string();
+                    if show {
+                        println!("S   {:?}", _error);
                     }
-                    _ => {
-                        let _error = "Error entre server y servers".to_string();
-                        if show {
-                            println!("S   {:?}", _error);
-                        }
-                        return Err(MyError::ServerMessageError(_error));
-                    }
+                    return Err(MyError::ServerMessageError(_error));
                 }
             }
-            Err(_e) => {}
         }
+        Err(_e) => Err(_e),
     }
 }

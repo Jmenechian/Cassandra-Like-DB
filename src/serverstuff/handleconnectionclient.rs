@@ -176,7 +176,7 @@ pub fn send_query_to_nodes(
     // Si es un create table, lo ejecuto y devuelvo vacio
     if query.query.contains("CREATE TABLE") {
         match query.execute() {
-            Ok(_) => return Ok(vec![]),
+            Ok(_) => return Ok(vec!["Se crean las tablas.".to_string()]),
             Err(e) => {
                 let _error = format!("Error al procesar la query: {:?}", e);
                 if show {
