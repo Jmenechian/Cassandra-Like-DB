@@ -74,7 +74,7 @@ impl Client {
                                 }
                             }
                             ResultBody::Void(_) => {
-                                println!("Error: Error en la consulta ingresada.");
+                                println!("Error: Error en la consulta ingresada");
                             }
                         },
                         CqlMessage::Error(_) => {
