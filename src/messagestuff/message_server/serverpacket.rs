@@ -11,8 +11,8 @@ use crate::messagestuff::{
     message_server::queryservermessage::QueryServerMessage,
     message_server::resultservermessage::ResultServerMessage,
 };
-use std::{ io::Read, net::TcpStream};
 use crate::my_errors::MyError;
+use std::{io::Read, net::TcpStream};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -42,7 +42,6 @@ pub enum ServerMessage {
     Result(ResultServerMessage),
     ErrorServer(ErrorServerMessage),
 }
-
 
 #[derive(Debug)]
 pub struct Packet {

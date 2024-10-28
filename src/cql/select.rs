@@ -51,8 +51,8 @@ impl Select {
         }
 
         let x = self.columns.join(" ");
-        let whitespaces: Vec<&str> = x.split_whitespace().collect(); // makes sure to count columns with whistespaces inside
-        let index = whitespaces.len() + 2; // skip SELECT, FROM and columns
+        let whitespaces: Vec<&str> = x.split_whitespace().collect();
+        let index = whitespaces.len() + 2; // skip SELECT, FROM y columnas
 
         self.parse_table(&parts, index);
 

@@ -71,20 +71,3 @@ impl PartialEq for MyError {
 }
 
 impl Error for MyError {}
-
-// Para joinear threads y convertir sus errores
-pub fn join_thread(thread: std::thread::JoinHandle<()>) -> Result<(), MyError> {
-    match thread.join() {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            let err = if let Some(s) = e.downcast_ref::<&str>() {
-                MyError::ThreadError(s.to_string())
-            } else if let Some(s) = e.downcast_ref::<String>() {
-                MyError::ThreadError(s.clone())
-            } else {
-                MyError::ThreadError("Thread panicked with unknown error".to_string())
-            };
-            Err(err)
-        }
-    }
-}

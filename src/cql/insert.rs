@@ -219,15 +219,6 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_parse_insert_invalid_syntax() {
-    //     let mut insert = Insert::new();
-    //     let query = "INSERT INTO users id, name VALUES (1, 'Alice')";
-    //     let result = insert.parse_insert(query, "node_1");
-
-    //     assert!(matches!(result, Err(MyError::InvalidSyntax(_))));
-    // }
-
     #[test]
     fn test_parse_insert_missing_values() {
         let mut insert = Insert::new();
@@ -301,21 +292,9 @@ mod tests {
             )
             .unwrap();
 
-        // Execute the command
         let result = insert.execute_command().unwrap();
         assert_eq!(result, vec!["linea fue agregada".to_string()]);
 
-        // Clean up
         std::fs::remove_file(file_path).unwrap();
     }
-
-    // #[test]
-    // fn test_execute_command_invalid_syntax() {
-    //     let mut insert = Insert::new();
-    //     insert.columns = vec!["id".to_string(), "name".to_string()];
-    //     insert.values = vec!["1".to_string()]; // Missing values
-    //     let result = insert.execute_command();
-
-    //     assert!(matches!(result, Err(MyError::InvalidSyntax(_))));
-    // }
 }

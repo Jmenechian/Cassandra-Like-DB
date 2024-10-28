@@ -124,12 +124,6 @@ pub fn try_connect(ip: String) -> Option<TcpStream> {
     }
 }
 
-// Le deberia mandar la query a los nodos correspondientes!
-pub fn handle_query(_query: Query) {
-    // TO DO
-    // println!("Llego la query: {}", query.query);
-}
-
 fn listen<F>(
     ip: String,
     node: Arc<RwLock<Node>>,
@@ -171,7 +165,7 @@ where
     Ok(t)
 }
 
-pub fn initialize_2(port: String) -> Result<(), MyError> {
+pub fn initialize(port: String) -> Result<(), MyError> {
     let show_g: bool = false;
     let show_s: bool = false;
     let show_c: bool = true;
