@@ -222,7 +222,11 @@ impl eframe::App for MapApp {
                         self.date_selected = self.date_selected.trim().to_string();
                     }
                 });
+
+
+
                 let painter = ui.painter();
+                let mut flights_to_display = Vec::new();
 
                 // Dibujar los aeropuertos
                 let airports = self.airports.clone();
@@ -260,6 +264,14 @@ impl eframe::App for MapApp {
                                 }
 
                                 for flight_r in return_flights {
+
+                                    flights_to_display.push((
+                                        flight_r.name.clone(),
+                                        flight_r.origin_airport.name.clone(),
+                                        flight_r.return_airport.name.clone(),
+                                        flight_r.status.clone(),
+                                    ));
+
                                     //airport_o
                                     let (screen_x_o, screen_y_o) =
                                         get_coordinate_positioning_on_map(
@@ -273,9 +285,18 @@ impl eframe::App for MapApp {
                                             flight_r,
                                         );
                                     }
+                                    
                                 }
 
                                 for flight_o in origin_flights {
+
+                                    flights_to_display.push((
+                                        flight_o.name.clone(),
+                                        flight_o.origin_airport.name.clone(),
+                                        flight_o.return_airport.name.clone(),
+                                        flight_o.status.clone(),
+                                    ));
+
                                     // airport_r
                                     let (screen_x_r, screen_y_r) =
                                         get_coordinate_positioning_on_map(
@@ -291,10 +312,33 @@ impl eframe::App for MapApp {
                                     }
                                 }
                             }
-                            // self.date_selected.clear();
                         }
                     }
+
+                    // La tabla de vuelos
+                    // No anda por lo de la ui, reemplazar por algo que use painter?
+                    if !flights_to_display.is_empty() {
+                        ui.separator();
+                        ui.label("Flight Information:");
+
+                        egui::Grid::new("flight_info_table").show(ui, |ui| {
+                            ui.label("Flight");
+                            ui.label("Origin");
+                            ui.label("Destination");
+                            ui.label("Status");
+                            ui.end_row();
+
+                            for (name, origin, destination, status) in flights_to_display {
+                                ui.label(name);
+                                ui.label(origin);
+                                ui.label(destination);
+                                ui.label(status);
+                                ui.end_row();
+                            }
+                        });
+                    }
                 }
+
 
                 let mut last_o: &Airport = &Airport::default_new();
                 let mut last_r: &Airport = &Airport::default_new();

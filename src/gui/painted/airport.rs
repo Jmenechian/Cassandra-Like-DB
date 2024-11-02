@@ -49,6 +49,8 @@ impl Airport {
                 if line.is_empty() {
                     continue;
                 }
+                
+                // [origin, destination, date, flight, status, timestamp]
                 let values: Vec<String> = line.split(",").map(|f| f.to_string()).collect();
 
                 let mut coordinates = (0.0, 0.0);
@@ -63,7 +65,7 @@ impl Airport {
                 }
                 let airport_r = Airport::new(values[1].clone(), coordinates);
 
-                flights.push(Flight::new(values[3].clone(), airport_o, airport_r));
+                flights.push(Flight::new(values[3].clone(), airport_o, airport_r, values[4].clone()));  
             }
             println!("origin_flights: {:?}", flights);
             return Ok(flights);
@@ -114,7 +116,7 @@ impl Airport {
                 }
                 let airport_r = Airport::new(values[0].clone(), coordinates);
 
-                flights.push(Flight::new(values[3].clone(), airport_o, airport_r));
+                flights.push(Flight::new(values[3].clone(), airport_o, airport_r, values[4].clone()));
             }
             println!("flights_that_return: {:?}", flights);
             return Ok(flights);
