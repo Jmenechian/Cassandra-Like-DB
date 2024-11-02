@@ -1,4 +1,4 @@
-use eframe::{egui, glow::Texture};
+use eframe::egui;
 use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureHandle, TextureId, Ui};
 
 use image::GenericImageView;
@@ -17,7 +17,6 @@ use crate::{
     },
 };
 
-use super::painted::airport;
 
 /// Estructura que representa la interfaz de usuario.
 /// Mapa con aeropuestos y vuelos que conectan a los aeropuestos.
