@@ -1,13 +1,12 @@
 // Representa las consultas del tipo UPDATE
 // Aca se parsea la consulta y se ejecuta
-
 use crate::config::TABLE_PATH;
-use crate::my_errors::MyError;
-use std::collections::HashMap;
-use crate::cql::where_clause::WhereClause;
-use crate::utils::*;
-use std::io::BufRead;
 use crate::cql::filter::Filter;
+use crate::cql::where_clause::WhereClause;
+use crate::my_errors::MyError;
+use crate::utils::*;
+use std::collections::HashMap;
+use std::io::BufRead;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Update {
@@ -41,13 +40,10 @@ impl Update {
         };
         self.num_node = port.to_string();
 
-
         let parts: Vec<&str> = query.split_whitespace().collect();
 
         if parts.len() < 6 || parts[0] != "UPDATE" || parts[1] == "SET" {
-            return Err(MyError::InvalidSyntax(
-                "UPDATE query not valid".to_string(),
-            ));
+            return Err(MyError::InvalidSyntax("UPDATE query not valid".to_string()));
         }
 
         let name = if parts[1].starts_with("'") {
@@ -61,9 +57,7 @@ impl Update {
         if let Some(set_index) = parts.iter().position(|&part| part == "SET") {
             self.get_set_values(&parts[set_index + 1..])?;
         } else {
-            return Err(MyError::InvalidSyntax(
-                "UPDATE query not valid".to_string(),
-            ));
+            return Err(MyError::InvalidSyntax("UPDATE query not valid".to_string()));
         }
 
         if let Some(where_index) = parts.iter().position(|&part| part == "WHERE") {
@@ -142,15 +136,12 @@ impl Update {
 
     // Executes the query
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
-
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let col_names = get_file_headers(&mut rdr)?;
-
         self.check_columns_are_valid(&col_names)?;
 
-        let temporary_file = create_temporary_file(TABLE_PATH, &self.table)?;
-
-        append_row(TABLE_PATH, &temporary_file, &col_names)?;
+        let (mut temp_file, temp_file_name) = create_temporary_file(TABLE_PATH, &self.table)?;
+        append_row_with_file(&mut temp_file, &col_names)?;
 
         // Save old rows and updated rows
         let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
@@ -161,11 +152,11 @@ impl Update {
                 .split(",")
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
-            
+
             if !filter.filter(&row) {
-                append_row(TABLE_PATH, &temporary_file, &row)?;
+                append_row_with_file(&mut temp_file, &row)?;
                 continue;
-            } 
+            }
 
             let mut updated_row: Vec<String> = Vec::new();
 
@@ -173,18 +164,17 @@ impl Update {
             for (header_index, value) in row.iter_mut().enumerate() {
                 if let Some(header_name) = col_names.get(header_index) {
                     if let Some(new_value) = self.set.get(header_name) {
-                        // if column is in hashmap, value needs to be updated
                         updated_row.push(new_value.to_string());
                     } else {
                         updated_row.push(value.to_string());
                     }
                 }
             }
-
-            append_row(TABLE_PATH, &temporary_file, &updated_row)?;
+            append_row_with_file(&mut temp_file, &updated_row)?;
         }
-        write_temporary_to_original(TABLE_PATH, &temporary_file, &self.table)?;
-        delete_file(&temporary_file, TABLE_PATH)?;
+
+        write_temporary_to_original(TABLE_PATH, &temp_file_name, &self.table)?;
+        delete_file(&temp_file_name, TABLE_PATH)?;
         Ok(vec!["Se updateo la tabla".to_string()])
     }
 
@@ -207,3 +197,4 @@ impl Update {
 
 // UPDATE origin SET airport = AAAAA, date = 02-12-02, destination = BBBBBBB WHERE airport = MEX AND date = 24-12-24 AND destination = AEP
 // SELECT * FROM origin WHERE airport = MEX AND date = 24-12-24 AND destination = AEP
+// INSERT INTO origin (airport, destination, date, flight, status) VALUES (MEX, AEP, 24-12-24, 123, scheduled)

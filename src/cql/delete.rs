@@ -69,15 +69,12 @@ impl Delete {
         // Vacia archivo completo si no hay condicion
         if self.whereclause == WhereClause::True {
             let _ = File::create(full_path).map_err(|e| MyError::FileError(e.to_string()))?;
-            // append_row_with_reader(&mut rdr, &col_names)?;
             append_row(TABLE_PATH, &self.table, &col_names)?;
             return Ok(vec!["Se elimino la tabla completa".to_string()]);
         }
 
-        let temporary_file = create_temporary_file(TABLE_PATH, &self.table)?;
-        // let mut rdr_temp = get_reader(TABLE_PATH, &self.table)?;
-        // append_row_with_reader(&mut rdr_temp, &col_names)?;
-        append_row(TABLE_PATH, &temporary_file, &col_names)?;
+        let (mut temp_file, temp_file_name) = create_temporary_file(TABLE_PATH, &self.table)?;
+        append_row_with_file(&mut temp_file, &col_names)?;
 
         let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
 
@@ -88,14 +85,12 @@ impl Delete {
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
             if !filter.filter(&row) {
-                // append_row_with_reader(&mut rdr_temp, &row)?;
-                append_row(TABLE_PATH, &temporary_file, &row)?;
+                append_row_with_file(&mut temp_file, &row)?;
             }
         }
 
-        write_temporary_to_original(TABLE_PATH, &temporary_file, &self.table)?;
-        delete_file(&temporary_file, TABLE_PATH)?;
-
+        write_temporary_to_original(TABLE_PATH, &temp_file_name, &self.table)?;
+        delete_file(&temp_file_name, TABLE_PATH)?;
         Ok(vec!["Se eliminaron las filas".to_string()])
     }
 
