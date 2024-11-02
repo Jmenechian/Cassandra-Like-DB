@@ -118,8 +118,11 @@ impl Select {
 
         for line in rdr.lines() {
             let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
-            let split_line = line.split(",").collect::<Vec<&str>>();
-            if filter.filter(split_line.into_iter().map(|s| s.to_string()).collect()) {
+            let row: Vec<String> = line
+                .split(",")
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>();
+            if filter.filter(&row) {
                 tabla.push(line);
             }
         }

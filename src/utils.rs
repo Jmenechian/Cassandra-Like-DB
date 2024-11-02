@@ -1,7 +1,10 @@
 // Funciones auxiliares para el manejo de archivos y strings
 
 use crate::my_errors::MyError;
-use std::{fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write, iter::Peekable};
+use std::{
+    fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Seek, io::SeekFrom, io::Write,
+    iter::Peekable,
+};
 
 // Returns the full quote inside ' 'S
 pub fn get_full_quote(parts: &[&str], index: usize) -> String {
@@ -86,7 +89,6 @@ pub fn write_rows(path: &str, table_name: &str, records: &Vec<Vec<String>>) -> R
 }
 
 // Appends row to file in given path
-// Expects file to end with with a newline
 pub fn append_row(path: &str, table_name: &str, records: &[String]) -> Result<(), MyError> {
     let file_path = get_file_path(path, table_name);
 
@@ -99,6 +101,18 @@ pub fn append_row(path: &str, table_name: &str, records: &[String]) -> Result<()
     Ok(())
 }
 
+// Apppends row to already opened file
+pub fn append_row_with_reader(rdr: &mut BufReader<File>, row: &[String]) -> Result<(), MyError> {
+    rdr.get_mut()
+        .seek(SeekFrom::End(0))
+        .map_err(|e| MyError::FileError(e.to_string()))?;
+
+    write!(rdr.get_mut(), "\n{}", row.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
+    Ok(())
+}
+
+// Create a temporary file with the same headers as the original file
+// Returns the temporary file name
 pub fn create_temporary_file(path: &str, original_table: &str) -> Result<String, MyError> {
     let mut temporary_table: String = String::from(original_table);
     temporary_table.push_str("_temp");

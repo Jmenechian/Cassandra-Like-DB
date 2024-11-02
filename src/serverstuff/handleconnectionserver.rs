@@ -46,10 +46,13 @@ fn handle_message_query(
             }
             .into_result_server_message()
         }
-        Err(_) => ResultVoidServerMessage.into_result_server_message(),
+        Err(e) => {
+            println!("Error en query: {:?}", e);
+            ResultVoidServerMessage.into_result_server_message()
+        }
     };
     let _ = msg.send_server_through(stream);
-    
+
     Ok(())
 }
 

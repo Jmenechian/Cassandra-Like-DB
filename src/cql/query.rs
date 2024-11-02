@@ -20,7 +20,6 @@ pub struct Query {
     pub query: String, //SELECT * FROM table WHERE id = 1
     pub sender_node_ip: String,
     pub qtype: QType,
-    // pub client_ip: String, // de alguna forma hay que conseguir el IP del cliente que mando la request
 }
 
 impl Query {
@@ -127,20 +126,21 @@ impl Query {
         match &mut self.qtype {
             QType::Select(select) => {
                 let _ = select.parse_select(self.query.as_str(), address_node);
-                select.get_key()
+                let res = select.get_key();
+                println!("\n\nKey = {}!!!!!!!!!!!!!!!!!!!!!!\n\n", res);
+                res
             }
             QType::Insert(insert) => {
                 let _ = insert.parse_insert(self.query.as_str(), address_node);
                 insert.get_key()
             }
+            QType::Delete(delete) => {
+                let _ = delete.parse_delete(self.query.as_str(), address_node);
+                let res = delete.get_key();
+                println!("\n\nKey = {}!!!!!!!!!!!!!!!!!!!!!!\n\n", res);
+                res
+            }
             _ => "BBBBBBBBBBBB".to_string(),
         }
     }
 }
-//INSERT: Suponiendo que no se puede insertar filas incompletas:
-//te traers self.values[0] y self.values[1]
-
-//SELECT: aeropuerto = ...
-// date = ...
-//pueden estar por separado
-//pueden no estar ninguno en el where?

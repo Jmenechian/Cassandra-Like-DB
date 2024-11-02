@@ -1,0 +1,4 @@
+partition: airport,date,flight
+clusters: 
+clustering_orderby: timestamp ASC,
+columns: airport STR,destination STR,date DATETIME,flight STR,status STR,timestamp TIMESTAMP,
