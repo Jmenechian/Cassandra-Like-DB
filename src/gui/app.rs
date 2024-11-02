@@ -1,5 +1,5 @@
-use eframe::egui;
-use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureId};
+use eframe::{egui, glow::Texture};
+use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureHandle, TextureId, Ui};
 
 use image::GenericImageView;
 use std::{collections::HashMap, net::TcpStream};
@@ -16,6 +16,8 @@ use crate::{
         flight::Flight,
     },
 };
+
+use super::painted::airport;
 
 /// Estructura que representa la interfaz de usuario.
 /// Mapa con aeropuestos y vuelos que conectan a los aeropuestos.
@@ -82,6 +84,9 @@ impl MapApp {
         let image_rgba = map_image.to_rgba8();
         let width: usize = width.try_into().unwrap_or(0);
         let height: usize = height.try_into().unwrap_or(0);
+        println!("width: {}", width);
+        println!("height: {}", height);
+
         let texture = ctx.load_texture(
             "map",
             egui::ColorImage::from_rgba_unmultiplied([width, height], &image_rgba),
@@ -98,6 +103,59 @@ impl MapApp {
     /// Se resetean las conecciones entre aeropuesto. Se desconectan todos los aeropuestos.
     fn reset_connection(&mut self) {
         self.connections = vec![];
+    }
+
+    /// Se agrega las conecciones que tiene el aeropuesto con los demás por los aviones que salen o regresan de este.
+    fn add_all_connections(&mut self, airport: &Airport, texture: &TextureHandle, screen_x: f32, screen_y: f32) {
+        if let (Ok(origin_flights), Ok(return_flights)) = (
+            airport.get_origin_flights_from(
+                &mut self.stream_client,
+                &self.date_selected,
+                &self.airports,
+            ),
+            airport.get_flights_that_return_to(
+                &mut self.stream_client,
+                &self.date_selected,
+                &self.airports,
+            ),
+        ) {
+            if origin_flights.is_empty() && return_flights.is_empty() {
+                return;
+            }
+
+            for flight_r in return_flights {
+                //airport_o
+                let (screen_x_o, screen_y_o) =
+                    get_coordinate_positioning_on_map(
+                        flight_r.origin_airport.coordinates,
+                        texture.size(),
+                    );
+                if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
+                    self.add_connection(
+                        flight_r.origin_airport.clone(),
+                        flight_r.return_airport.clone(),
+                        flight_r,
+                    );
+                }
+                
+            }
+
+            for flight_o in origin_flights {
+                // airport_r
+                let (screen_x_r, screen_y_r) =
+                    get_coordinate_positioning_on_map(
+                        flight_o.return_airport.coordinates,
+                        texture.size(),
+                    );
+                if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
+                    self.add_connection(
+                        flight_o.origin_airport.clone(),
+                        flight_o.return_airport.clone(),
+                        flight_o,
+                    );
+                }
+            }
+        }
     }
 
     fn initialize_fields(&mut self, ctx: &Context) {
@@ -192,6 +250,89 @@ impl MapApp {
             Color32::WHITE,
         );
     }
+
+    /// Se dibuja las conecciones entre aeropuestos y su avion con el numero de avion.
+    fn draw_connections_with_flight(&self, texture: &TextureHandle, ui: &mut Ui) {
+        let mut last_o: &Airport = &Airport::default_new();
+        let mut last_r: &Airport = &Airport::default_new();
+        for (origin, destination, flight) in &self.connections {
+            let (screen_x_o, screen_y_o) =
+                get_coordinate_positioning_on_map(origin.coordinates, texture.size());
+            let (screen_x_d, screen_y_d) =
+                get_coordinate_positioning_on_map(destination.coordinates, texture.size());
+
+            self.draw_line(ui.painter(), screen_x_o, screen_y_o, screen_x_d, screen_y_d);
+
+            // Posición media para el avión
+            let (mut mid_x, mut mid_y) =
+                obtain_middle_position(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
+
+            if last_o == origin && last_r == destination {
+                (mid_x, mid_y) = (mid_x + 25.0, mid_y + 25.0);
+            }
+
+            // Ángulo de rotación
+            let angle = get_angle(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
+
+            // Dibujar el avión
+            let plane_texture = self.plane_texture.clone();
+            if let Some(plane_texture) = plane_texture {
+                self.draw_plane(
+                    ui.painter(),
+                    mid_x,
+                    mid_y,
+                    plane_texture.id(),
+                    &flight.name,
+                    angle,
+                );
+            }
+
+            last_o = origin;
+            last_r = destination;
+        }
+    }
+
+    /// Se dibuja la tabla con los detalles del avión.
+    fn draw_flight_table(&self, ui: &mut Ui) {
+        // Tabla de vuelos
+        // Usar un layout vertical para mantener el contenido en la parte superior
+        ui.vertical(|ui| {
+            ui.set_min_width(200.0); // Ancho mínimo para la tabla
+                if !self.connections.is_empty() {
+                    ui.separator();
+                    ui.label("Flight Information:");
+                    egui::Grid::new("flight_info_table")
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.label("Flight");
+                            ui.label("Origin");
+                            ui.label("Destination");
+                            ui.label("Status");
+                            ui.end_row();
+                            for (origin, destination, flight) in &self.connections {
+                                ui.label(flight.name.clone());
+                                ui.label(origin.name.clone());
+                                ui.label(destination.name.clone());
+                                ui.label(flight.status.clone());
+                                ui.end_row();
+                            }
+                    });
+                    ui.separator();
+                }
+        });
+    }
+
+    /// Se dibuja el box para engresar la fecha.
+    fn draw_date_box(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ..{
+                ui.label("Enter date:");
+                ui.text_edit_singleline(&mut self.date_selected);
+                self.date_selected = self.date_selected.trim().to_string();
+            }
+        });
+    }
+
 }
 
 impl eframe::App for MapApp {
@@ -204,180 +345,42 @@ impl eframe::App for MapApp {
 
             let texture = self.map_texture.clone();
             if let Some(texture) = &texture {
-                // Mostrar el mapa
-
-                ui.image(texture);
-
-                //print para ubicar en el mapa
-                // if ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Primary)) {
-                //     if let Some(pos) = ctx.pointer_interact_pos() {
-                //         println!("Se marcó en el mapa - post: {:?}", pos);
-                //     }
-                // }
-
                 ui.horizontal(|ui| {
-                    ..{
-                        ui.label("Enter date:");
-                        ui.text_edit_singleline(&mut self.date_selected);
-                        self.date_selected = self.date_selected.trim().to_string();
-                    }
-                });
+                    // Mostrar el mapa
+                    ui.image(texture);
 
+                    // Dibujar los aeropuertos
+                    let airports = self.airports.clone();
+                    for airport in airports.values() {
+                        let (screen_x, screen_y) =
+                            get_coordinate_positioning_on_map(airport.coordinates, texture.size());
 
+                        let button_rect =
+                            self.draw_airports(ui.painter(), screen_x, screen_y, &airport.name);
 
-                let painter = ui.painter();
-                let mut flights_to_display = Vec::new();
+                        // Botón en la posición del aeropuerto
+                        if ui
+                            .interact(button_rect, Id::new(&airport.name), egui::Sense::click())
+                            .clicked()
+                        {
+                            println!("¡Aeropuerto {} presionado!", airport.name);
 
-                // Dibujar los aeropuertos
-                let airports = self.airports.clone();
-                for airport in airports.values() {
-                    let (screen_x, screen_y) =
-                        get_coordinate_positioning_on_map(airport.coordinates, texture.size());
+                            self.reset_connection();
 
-                    let button_rect =
-                        self.draw_airports(painter, screen_x, screen_y, &airport.name);
-
-                    // Crear un botón en la posición del aeropuerto
-                    if ui
-                        .interact(button_rect, Id::new(&airport.name), egui::Sense::click())
-                        .clicked()
-                    {
-                        println!("¡Aeropuerto {} presionado!", airport.name);
-
-                        self.reset_connection();
-
-                        if !self.date_selected.is_empty() {
-                            if let (Ok(origin_flights), Ok(return_flights)) = (
-                                airport.get_origin_flights_from(
-                                    &mut self.stream_client,
-                                    &self.date_selected,
-                                    &self.airports,
-                                ),
-                                airport.get_flights_that_return_to(
-                                    &mut self.stream_client,
-                                    &self.date_selected,
-                                    &self.airports,
-                                ),
-                            ) {
-                                if origin_flights.is_empty() && return_flights.is_empty() {
-                                    continue;
-                                }
-
-                                for flight_r in return_flights {
-
-                                    flights_to_display.push((
-                                        flight_r.name.clone(),
-                                        flight_r.origin_airport.name.clone(),
-                                        flight_r.return_airport.name.clone(),
-                                        flight_r.status.clone(),
-                                    ));
-
-                                    //airport_o
-                                    let (screen_x_o, screen_y_o) =
-                                        get_coordinate_positioning_on_map(
-                                            flight_r.origin_airport.coordinates,
-                                            texture.size(),
-                                        );
-                                    if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
-                                        self.add_connection(
-                                            flight_r.origin_airport.clone(),
-                                            flight_r.return_airport.clone(),
-                                            flight_r,
-                                        );
-                                    }
-                                    
-                                }
-
-                                for flight_o in origin_flights {
-
-                                    flights_to_display.push((
-                                        flight_o.name.clone(),
-                                        flight_o.origin_airport.name.clone(),
-                                        flight_o.return_airport.name.clone(),
-                                        flight_o.status.clone(),
-                                    ));
-
-                                    // airport_r
-                                    let (screen_x_r, screen_y_r) =
-                                        get_coordinate_positioning_on_map(
-                                            flight_o.return_airport.coordinates,
-                                            texture.size(),
-                                        );
-                                    if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
-                                        self.add_connection(
-                                            flight_o.origin_airport.clone(),
-                                            flight_o.return_airport.clone(),
-                                            flight_o,
-                                        );
-                                    }
-                                }
+                            if !self.date_selected.is_empty() {
+                                self.add_all_connections(airport, texture, screen_x, screen_y);
                             }
                         }
                     }
 
-                    // La tabla de vuelos
-                    // No anda por lo de la ui, reemplazar por algo que use painter?
-                    if !flights_to_display.is_empty() {
-                        ui.separator();
-                        ui.label("Flight Information:");
+                    self.draw_connections_with_flight(texture, ui);
 
-                        egui::Grid::new("flight_info_table").show(ui, |ui| {
-                            ui.label("Flight");
-                            ui.label("Origin");
-                            ui.label("Destination");
-                            ui.label("Status");
-                            ui.end_row();
+                    self.draw_flight_table(ui);
+                });
 
-                            for (name, origin, destination, status) in flights_to_display {
-                                ui.label(name);
-                                ui.label(origin);
-                                ui.label(destination);
-                                ui.label(status);
-                                ui.end_row();
-                            }
-                        });
-                    }
-                }
-
-
-                let mut last_o: &Airport = &Airport::default_new();
-                let mut last_r: &Airport = &Airport::default_new();
-                for (origin, destination, flight) in &self.connections {
-                    let (screen_x_o, screen_y_o) =
-                        get_coordinate_positioning_on_map(origin.coordinates, texture.size());
-                    let (screen_x_d, screen_y_d) =
-                        get_coordinate_positioning_on_map(destination.coordinates, texture.size());
-
-                    self.draw_line(painter, screen_x_o, screen_y_o, screen_x_d, screen_y_d);
-
-                    // Posición media para el avión
-                    let (mut mid_x, mut mid_y) =
-                        obtain_middle_position(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
-
-                    if last_o == origin && last_r == destination {
-                        (mid_x, mid_y) = (mid_x + 25.0, mid_y + 25.0);
-                    }
-
-                    // Ángulo de rotación
-                    let angle = get_angle(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
-
-                    // Dibujar el avión
-                    let plane_texture = self.plane_texture.clone();
-                    if let Some(plane_texture) = plane_texture {
-                        self.draw_plane(
-                            painter,
-                            mid_x,
-                            mid_y,
-                            plane_texture.id(),
-                            &flight.name,
-                            angle,
-                        );
-                    }
-
-                    last_o = origin;
-                    last_r = destination;
-                }
+                self.draw_date_box(ui);
             }
         });
+
     }
 }
