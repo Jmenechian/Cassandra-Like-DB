@@ -120,15 +120,12 @@ impl Query {
     // Debe devolver de la query los valores de los campos de las columnas que pertenecen a la partición de esa tabla.
     pub fn get_key_representing_partition(&mut self, address_node: &str) -> String {
         //devolveme el nombre del aeropuerto
-        // self.query.clone()
         self.get_type();
         println!("type: {:?}", self.qtype);
         match &mut self.qtype {
             QType::Select(select) => {
                 let _ = select.parse_select(self.query.as_str(), address_node);
-                let res = select.get_key();
-                println!("\n\nKey = {}!!!!!!!!!!!!!!!!!!!!!!\n\n", res);
-                res
+                select.get_key()
             }
             QType::Insert(insert) => {
                 let _ = insert.parse_insert(self.query.as_str(), address_node);
@@ -136,9 +133,11 @@ impl Query {
             }
             QType::Delete(delete) => {
                 let _ = delete.parse_delete(self.query.as_str(), address_node);
-                let res = delete.get_key();
-                println!("\n\nKey = {}!!!!!!!!!!!!!!!!!!!!!!\n\n", res);
-                res
+                delete.get_key()
+            }
+            QType::Update(update) => {
+                let _ = update.parse_update(self.query.as_str(), address_node);
+                update.get_key()
             }
             _ => "BBBBBBBBBBBB".to_string(),
         }

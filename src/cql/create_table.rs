@@ -208,6 +208,7 @@ impl CreateTable {
             println!("columns:{:?}", self.columns);
             f.write_all(self.columns.join(",").as_bytes())
                 .map_err(|e| MyError::FileError(e.to_string()))?;
+            writeln!(f,"").map_err(|e| MyError::FileError(e.to_string()))?;
         }
 
         // Creo un solo archivo de metadata

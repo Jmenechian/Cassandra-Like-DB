@@ -89,6 +89,7 @@ pub fn write_rows(path: &str, table_name: &str, records: &Vec<Vec<String>>) -> R
 }
 
 // Appends row to file in given path
+// Expects file to end with a newline
 pub fn append_row(path: &str, table_name: &str, records: &[String]) -> Result<(), MyError> {
     let file_path = get_file_path(path, table_name);
 
@@ -97,17 +98,18 @@ pub fn append_row(path: &str, table_name: &str, records: &[String]) -> Result<()
         .open(file_path)
         .map_err(|e| MyError::FileError(e.to_string()))?;
 
-    write!(file, "\n{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
+    writeln!(file, "{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }
 
 // Apppends row to already opened file
+// Expects file to end with a newline
 pub fn append_row_with_reader(rdr: &mut BufReader<File>, row: &[String]) -> Result<(), MyError> {
     rdr.get_mut()
         .seek(SeekFrom::End(0))
         .map_err(|e| MyError::FileError(e.to_string()))?;
 
-    write!(rdr.get_mut(), "\n{}", row.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
+    writeln!(rdr.get_mut(), "{}", row.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }
 
