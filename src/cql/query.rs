@@ -20,7 +20,6 @@ pub struct Query {
     pub query: String, //SELECT * FROM table WHERE id = 1
     pub sender_node_ip: String,
     pub qtype: QType,
-    // pub client_ip: String, // de alguna forma hay que conseguir el IP del cliente que mando la request
 }
 
 impl Query {
@@ -121,7 +120,6 @@ impl Query {
     // Debe devolver de la query los valores de los campos de las columnas que pertenecen a la partición de esa tabla.
     pub fn get_key_representing_partition(&mut self, address_node: &str) -> String {
         //devolveme el nombre del aeropuerto
-        // self.query.clone()
         self.get_type();
         println!("type: {:?}", self.qtype);
         match &mut self.qtype {
@@ -133,14 +131,15 @@ impl Query {
                 let _ = insert.parse_insert(self.query.as_str(), address_node);
                 insert.get_key()
             }
+            QType::Delete(delete) => {
+                let _ = delete.parse_delete(self.query.as_str(), address_node);
+                delete.get_key()
+            }
+            QType::Update(update) => {
+                let _ = update.parse_update(self.query.as_str(), address_node);
+                update.get_key()
+            }
             _ => "BBBBBBBBBBBB".to_string(),
         }
     }
 }
-//INSERT: Suponiendo que no se puede insertar filas incompletas:
-//te traers self.values[0] y self.values[1]
-
-//SELECT: aeropuerto = ...
-// date = ...
-//pueden estar por separado
-//pueden no estar ninguno en el where?

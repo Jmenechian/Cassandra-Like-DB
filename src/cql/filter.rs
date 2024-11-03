@@ -14,7 +14,7 @@ impl Filter {
         })
     }
 
-    pub fn filter(&self, vals: Vec<String>) -> bool {
-        self.expr.relate(&self.columns, &vals)
+    pub fn filter(&self, vals: &Vec<String>) -> bool {
+        self.expr.relate(&self.columns, vals)
     }
 }

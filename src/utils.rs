@@ -1,7 +1,10 @@
 // Funciones auxiliares para el manejo de archivos y strings
 
 use crate::my_errors::MyError;
-use std::{fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Write, iter::Peekable};
+use std::{
+    fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Seek, io::SeekFrom, io::Write,
+    iter::Peekable,
+};
 
 // Returns the full quote inside ' 'S
 pub fn get_full_quote(parts: &[&str], index: usize) -> String {
@@ -40,13 +43,13 @@ where
 // Gets the complete file path, returns it as String
 pub fn get_file_path(path: &str, file_name: &str) -> String {
     let file_path = format!("{}/{}.csv", path, file_name);
-    println!("Se abrirá el archivo en FILE PATH: {}", file_path);
     file_path
 }
 
 // Open file in given path, returns an iterable reader
 pub fn get_reader(path: &str, table_name: &str) -> Result<BufReader<File>, MyError> {
     let file_path = get_file_path(path, table_name);
+    println!("Se abrirá el archivo en FILE PATH: {}", file_path);
     let file = File::open(file_path).map_err(|e| MyError::FileError(e.to_string()))?;
     let rdr = BufReader::new(file);
     Ok(rdr)
@@ -72,7 +75,7 @@ pub fn get_file_headers<R: std::io::BufRead>(rdr: &mut R) -> Result<Vec<String>,
     Ok(cleaned_headers)
 }
 
-// Writes row to file in given path
+// Writes rows to file in given path
 pub fn write_rows(path: &str, table_name: &str, records: &Vec<Vec<String>>) -> Result<(), MyError> {
     let file_path = get_file_path(path, table_name);
     let mut file = File::create(file_path).map_err(|e| MyError::FileError(e.to_string()))?;
@@ -86,7 +89,7 @@ pub fn write_rows(path: &str, table_name: &str, records: &Vec<Vec<String>>) -> R
 }
 
 // Appends row to file in given path
-// Expects file to end with with a newline
+// Expects file to end with a newline
 pub fn append_row(path: &str, table_name: &str, records: &[String]) -> Result<(), MyError> {
     let file_path = get_file_path(path, table_name);
 
@@ -95,17 +98,31 @@ pub fn append_row(path: &str, table_name: &str, records: &[String]) -> Result<()
         .open(file_path)
         .map_err(|e| MyError::FileError(e.to_string()))?;
 
-    write!(file, "\n{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
+    writeln!(file, "{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }
 
-pub fn create_temporary_file(path: &str, original_table: &str) -> Result<String, MyError> {
-    let mut temporary_table: String = String::from(original_table);
-    temporary_table.push_str("_temp");
+// Apppends row to already opened file
+// Expects file to end with a newline
+pub fn append_row_with_file(file: &mut File, row: &[String]) -> Result<(), MyError> {
+    file.seek(SeekFrom::End(0))
+        .map_err(|e| MyError::FileError(e.to_string()))?;
+    writeln!(file, "{}", row.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
+    Ok(())
+}
 
-    let file_path = get_file_path(path, &temporary_table);
-    let _ = File::create(file_path).map_err(|e| MyError::FileError(e.to_string()))?;
-    Ok(temporary_table)
+// Creates a temporary file
+// Returns the opened File and it's name
+pub fn create_temporary_file(path: &str, original_table: &str) -> Result<(File, String), MyError> {
+    let temp_file_name = format!("{}_temp", original_table);
+    let file_path = get_file_path(path, &temp_file_name);
+    let _ = File::create(&file_path).map_err(|e| MyError::FileError(e.to_string()))?;
+
+    let temp_file = File::options()
+        .append(true)
+        .open(file_path)
+        .map_err(|e| MyError::FileError(e.to_string()))?;
+    Ok((temp_file, temp_file_name))
 }
 
 pub fn delete_file(file_name: &str, path: &str) -> Result<(), MyError> {
