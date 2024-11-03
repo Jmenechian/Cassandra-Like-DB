@@ -197,4 +197,3 @@ impl Update {
 
 // UPDATE origin SET airport = AAAAA, date = 02-12-02, destination = BBBBBBB WHERE airport = MEX AND date = 24-12-24 AND destination = AEP
 // SELECT * FROM origin WHERE airport = MEX AND date = 24-12-24 AND destination = AEP
-// INSERT INTO origin (airport, destination, date, flight, status) VALUES (MEX, AEP, 24-12-24, 123, scheduled)
