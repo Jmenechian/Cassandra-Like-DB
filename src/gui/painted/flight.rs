@@ -11,7 +11,12 @@ pub struct Flight {
 
 impl Flight {
     /// Se crea un nuevo vuelo con los datos indicados.
-    pub fn new(name: String, origin_airport: Airport, return_airport: Airport, status: String) -> Self {
+    pub fn new(
+        name: String,
+        origin_airport: Airport,
+        return_airport: Airport,
+        status: String,
+    ) -> Self {
         Self {
             name,
             origin_airport,

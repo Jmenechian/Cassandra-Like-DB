@@ -75,7 +75,7 @@ pub fn handle_connection_server(
                     if show {
                         println!("S   {:?}", _error);
                     }
-                    return Err(MyError::ServerMessageError(_error));
+                    Err(MyError::ServerMessageError(_error))
                 }
             }
         }

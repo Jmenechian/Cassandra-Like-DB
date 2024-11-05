@@ -55,7 +55,6 @@ pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
 pub use consistent_hashing::ConsistentHash;
 pub use neighbor_node::NeighborNode;
 
-//GUI
 pub mod gui {
     pub mod app;
     pub mod painted {
@@ -66,4 +65,12 @@ pub mod gui {
         pub mod flight;
     }
 }
-//pub use gui::app::MapApp;
+
+pub mod simulators {
+    pub mod flight;
+    pub mod flight_simulator;
+}
+
+pub mod errors {
+    pub mod airport_errors;
+}
