@@ -1,12 +1,13 @@
+use super::flight_status::FlightStatus;
 use crate::gui::painted::{airport::Airport, airport_coordinates::obtain_middle_position};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Estructura que representa un vuelo, con su nombre, el aeropuesto de origen y el de destino, y otras variables del recorrido que hace.
 pub struct Flight {
-    pub name: String,
+    pub number: String,
     pub origin_airport: Airport,
     pub return_airport: Airport,
-    pub status: String,
+    pub status: FlightStatus,
     pub departure_date: String,
     pub speed: f32,
     pub latitude: f32,
@@ -18,12 +19,13 @@ pub struct Flight {
 impl Flight {
     /// Se crea un nuevo vuelo con los datos indicados.
     pub fn new(
-        name: String,
+        number: String,
         origin_airport: Airport,
         return_airport: Airport,
         status: String,
         departure_date: String,
     ) -> Self {
+        let status = FlightStatus::match_status(status);
         let speed = 0.0;
         let latitude = origin_airport.coordinates.0;
         let longitude = origin_airport.coordinates.1;
@@ -36,7 +38,7 @@ impl Flight {
         );
 
         Self {
-            name,
+            number,
             origin_airport,
             return_airport,
             status,
