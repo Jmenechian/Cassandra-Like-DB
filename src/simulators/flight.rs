@@ -90,6 +90,11 @@ impl Flight {
 
     }
 
+    // TODO: similar a velocidad 
+    pub fn update_height(&mut self) {
+
+    }
+
     fn get_flight_step_x(x1: f32, x2: f32) -> f32 {
         let distance = (x2 - x1).abs(); // longitud de la recta que unuria el punto de origen del avion y el punto medio del recorrido.
         distance / FLIGHT_STEP
