@@ -4,8 +4,9 @@ pub enum FlightStatus {
     Scheduled,
     Delayed,
     Cancelled,
-    Boarding,
-    Landed,
+    Boarding, // En origen
+    Airborne, // En viaje a destino
+    Landed, // En destino
 }
 
 impl FlightStatus {
@@ -16,6 +17,7 @@ impl FlightStatus {
             "delayed" => FlightStatus::Delayed,
             "cancelled" => FlightStatus::Cancelled,
             "boarding" => FlightStatus::Boarding,
+            "airborne" => FlightStatus::Airborne,
             "landed" => FlightStatus::Landed,
             _ => FlightStatus::Cancelled,
         }
@@ -27,6 +29,7 @@ impl FlightStatus {
             FlightStatus::Delayed => "delayed",
             FlightStatus::Cancelled => "cancelled",
             FlightStatus::Boarding => "boarding",
+            FlightStatus::Airborne => "airborne",
             FlightStatus::Landed => "landed",
         }
     }

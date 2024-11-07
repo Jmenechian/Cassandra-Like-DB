@@ -50,4 +50,8 @@ impl Flight {
             midpoint,
         }
     }
+
+    pub fn set_status(&mut self, new_status: FlightStatus) {
+        self.status = new_status;
+    }
 }
