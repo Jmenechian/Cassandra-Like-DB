@@ -3,7 +3,7 @@ use crate::{
     client_cql::Client,
     config::{N_WORKERS, TABLE_PATH},
     errors::airport_errors::AirportErrors,
-    gui::painted::{airport::Airport, airport_coordinates::get_airport_coordinates},
+    gui::painted::{airport::{self, Airport}, airport_coordinates::get_airport_coordinates},
     my_errors::MyError,
     simulators::flight_status::FlightStatus,
 };
@@ -102,27 +102,33 @@ impl FlightSimulator {
 
             // Si vuelo en scheduled -> 3 UPDATE: actualizamos el estado del vuelo a 'Boarding', y en sus corresponientes tablas de origen y destino.
             if flight.status == FlightStatus::Scheduled {
-                flight.set_status(FlightStatus::Boarding);
                 FlightSimulator::update_status(&flight, FlightStatus::Boarding, &mut stream, "flights_in_progress")?;
                 FlightSimulator::update_status(&flight, FlightStatus::Boarding, &mut stream, "origin")?;
                 FlightSimulator::update_status(&flight, FlightStatus::Boarding, &mut stream, "destination")?;
+                flight.set_status(FlightStatus::Boarding);
             }
 
-            // Si status es boarding -> actualizamos a 
+            // Si status es boarding -> actualizamos a Airborne
+            if flight.status == FlightStatus::Boarding {
+                FlightSimulator::update_status(&flight, FlightStatus::Airborne, &mut stream, "flights_in_progress")?;
+                FlightSimulator::update_status(&flight, FlightStatus::Airborne, &mut stream, "origin")?;
+                FlightSimulator::update_status(&flight, FlightStatus::Airborne, &mut stream, "destination")?;
+                flight.set_status(FlightStatus::Airborne);
+            }
 
             // Si no se llego al punto medio: aumentamos la velocidad , en punto medio tiene que llegar a  los 840 km/h (velocidad crucero)
 
             // Si pasamos el punto medio: disminuimos la velocidad
 
             // Si el avion llego a destino:
-
-            // velocidad = 0
-
-            // buscamos este vuelo en las tablas de estados origen y destino, y actualizamos su estado a 'Landed'
             if flight.latitude == flight.return_airport.coordinates.0 && flight.longitude == flight.return_airport.coordinates.1 {
-                FlightSimulator::update_status(&flight, FlightStatus::Boarding, &mut stream, "flights_in_progress")?;
-                FlightSimulator::update_status(&flight, FlightStatus::Boarding, &mut stream, "origin")?;
-                FlightSimulator::update_status(&flight, FlightStatus::Boarding, &mut stream, "destination")?;
+                // velocidad = 0
+
+                // buscamos este vuelo en las tablas de estados origen y destino, y actualizamos su estado a 'Landed'
+                FlightSimulator::update_status(&flight, FlightStatus::Landed, &mut stream, "flights_in_progress")?;
+                FlightSimulator::update_status(&flight, FlightStatus::Landed, &mut stream, "origin")?;
+                FlightSimulator::update_status(&flight, FlightStatus::Landed, &mut stream, "destination")?;
+                flight.set_status(FlightStatus::Landed);
             }
 
             // Aumentamos su posicion
@@ -150,8 +156,14 @@ impl FlightSimulator {
     }
 
     fn update_status(flight: &Flight, status: FlightStatus, stream: &mut RwLockWriteGuard<'_, TcpStream>, table: &str) -> Result<(), MyError> {
+        let airport;
+        if table == "destination" {
+            airport = flight.return_airport.name.clone();
+        } else {
+            airport = flight.origin_airport.name.clone();
+        }
         let query = format!("UPDATE {} SET status = {} WHERE flight = {} AND airport = {} AND date = {}", 
-            table, status.to_str(), flight.number, flight.origin_airport.name, flight.departure_date);
+            table, status.to_str(), flight.number, airport, flight.departure_date);
 
         Client::send_message(stream, query)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
