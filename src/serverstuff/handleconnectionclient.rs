@@ -21,7 +21,7 @@ use crate::nodo::Status;
 use crate::ConsistentHash;
 use chrono::NaiveDateTime;
 use std::net::TcpStream;
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::{Arc, RwLock, RwLockWriteGuard};
 
 fn handle_message_query(
     node: &Arc<RwLock<Node>>,
@@ -160,7 +160,7 @@ pub fn send_query_to_nodes(
     consistency_level: u16,
     show: bool,
 ) -> Result<Vec<String>, MyError> {
-    let node: RwLockReadGuard<'_, Node> = match node.read() {
+    let node: RwLockWriteGuard<'_, Node> = match node.write() {
         Ok(n) => n,
         Err(e) => {
             let _error = format!("Error al tratar de usar el nodo: {:?}", e);

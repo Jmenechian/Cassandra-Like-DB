@@ -53,7 +53,7 @@ impl FlightSimulator {
                 }
             );
 
-            thread::sleep(Duration::from_secs(20));
+            thread::sleep(Duration::from_secs(5));
         }
         // Borrar tabla flights_in_progress.
     }
@@ -86,7 +86,7 @@ impl FlightSimulator {
         }
     }
 
-        /// Obtenemos un vuelo de una tabla random de origen_<n> que no este en estado "Cancelled".
+    /// Obtenemos un vuelo de una tabla random de origen_<n> que no este en estado "Cancelled".
     /// Lo inicializamos con velocidad 0 y en la posicion del aeropuesto de origen.
     fn get_random_flight(stream_server: &Arc<RwLock<TcpStream>>) -> Result<Flight, MyError> {
         let mut found_plane = false;
@@ -212,22 +212,20 @@ impl FlightSimulator {
         println!("Se insertaron los valores correctamente.");
 
         while flight.status != FlightStatus::Landed {
-            println!("\n\nflight: {:?}", flight);
-
             // Se hacen los siguientes UPDATES:
 
             // Si vuelo en scheduled -> 3 UPDATE: actualizamos el estado del vuelo a 'Boarding', y en sus corresponientes tablas de origen y destino.
             if flight.status == FlightStatus::Scheduled {
                 flight.set_status(FlightStatus::Boarding);
-                println!("Se actualizo el status a {} correctamente.",  flight.status.to_str());
                 FlightSimulator::update_flight(&flight, stream)?;
+                println!("El vuelo {:?} está por salir.",  flight);
                 continue;
             }
 
             // Si status es boarding -> actualizamos a Airborne
             if flight.status == FlightStatus::Boarding {
                 flight.set_status(FlightStatus::Airborne);
-                println!("Se actualizo el status a {} correctamente.",  flight.status.to_str());
+                println!("El vuelo {:?} despego.",  flight);
             }
 
             flight.update_position();
@@ -239,14 +237,15 @@ impl FlightSimulator {
             // Si el avion llego a destino:
             if flight.latitude == flight.return_airport.coordinates.0 && flight.longitude == flight.return_airport.coordinates.1 {
                 flight.set_status(FlightStatus::Landed);
-                println!("Se actualizo el status a {} correctamente.",  flight.status.to_str());
                 FlightSimulator::update_flight(&flight, &mut stream)?;
+                println!("El vuelo {:?} llegó a destino.", flight);
                 break;
             }
 
             FlightSimulator::update_flight(&flight, &mut stream)?;
+            println!("Se actualizo el vuelo en todas las tablas.");
 
-            thread::sleep(Duration::from_secs(5));
+            thread::sleep(Duration::from_secs(2));
         }
         Ok(())
     }

@@ -1,5 +1,5 @@
 use crate::config::AIRPORTS_PATH;
-use std::{collections::HashMap, fs::read_to_string};
+use std::{collections::HashMap, f32::consts::PI, fs::read_to_string};
 
 use super::{airport::Airport, flight::Flight};
 
@@ -19,7 +19,7 @@ pub fn get_airport_coordinates() -> HashMap<String, Airport> {
         let airport_name = airport_data[0].to_string();
         let longitude: f32 = airport_data[2].parse::<f32>().unwrap_or(0.0);
         let latitude: f32 = airport_data[3].parse::<f32>().unwrap_or(0.0);
-        let airport: Airport = Airport::new(airport_name.clone(), (latitude, longitude));
+        let airport: Airport = Airport::new(airport_name.clone(), (longitude, latitude));
         airports.insert(airport_name, airport);
     }
     airports
@@ -55,7 +55,7 @@ pub fn get_return_airport_of(
 
 /// Dada una coordenada (x,y) se posiciona en el mapa, dependiendo de la texture de la imagen del mapa.
 pub fn get_coordinate_positioning_on_map(
-    (lat, lon): (f32, f32),
+    (lon, lat): (f32, f32),
     [width, height]: [usize; 2],
 ) -> (f32, f32) {
     let screen_x = (lon + 180.0) * (width as f32 / 360.0);
@@ -76,9 +76,17 @@ pub fn obtain_middle_position(
     (mid_x, mid_y)
 }
 
-/// Dado dos coordenadas (x,y) se obtiene el ángulo que forman, expresado en radianes.
+/// Dado dos coordenadas (x,y) se obtiene el ángulo que forman, expresado en grados.
 pub fn get_angle(screen_x_o: f32, screen_x_d: f32, screen_y_o: f32, screen_y_d: f32) -> f32 {
     let delta_x = screen_x_d - screen_x_o;
     let delta_y = screen_y_d - screen_y_o;
-    delta_y.atan2(delta_x)
+    let angle_radians = delta_y.atan2(delta_x);
+
+    let angle_degrees = angle_radians * 180.0 / PI;
+
+    // Ajustamos el angulo para que este en el rango 0 (incluido) a 360 (sin incluir) grados
+    if angle_degrees < 0.0 {
+        return angle_degrees + 360.0;
+    }
+    angle_degrees
 }

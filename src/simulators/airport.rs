@@ -7,7 +7,7 @@ use crate::{clientstuff::client_cql::Client, my_errors::MyError};
 /// Estructura que representa un aeropuesto, con su nombre y coordenadas "geográficas" (en el mapa de la interfaz).
 pub struct Airport {
     pub name: String,
-    pub coordinates: (f32, f32), // (latitud, longitud)
+    pub coordinates: (f32, f32), // (logitud, latitud) = (x,y)
 }
 
 impl Airport {

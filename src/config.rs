@@ -22,6 +22,8 @@ pub static STEPS_AT_CRUISING_SPEED: f32 = 2.0; // Mitad de pasos en los que el a
 
 pub static SPEED_ALMOST_0: f32 = 10.0; // Velocidad max que redondeamos a 0.
 
+pub static CRUISING_HEIGHT: f32 = 10000.0; // Altura crucero de 10mil metros.
+
 
 //GUI
 
