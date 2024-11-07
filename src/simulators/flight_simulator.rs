@@ -32,7 +32,6 @@ impl FlightSimulator {
         };
         println!("Se creo la tabla flights_in_progress correctamente.");
 
-
         let pool = ThreadPool::new(N_WORKERS);
 
         loop {
@@ -45,8 +44,6 @@ impl FlightSimulator {
             };
             let stream_server: Arc<RwLock<TcpStream>> = Arc::new(RwLock::new(stream_server));
 
-            thread::sleep(Duration::from_secs(20));
-
             pool.execute(move || 
                 match FlightSimulator::obtain_flight_and_simulate_it(stream_server) {
                     Ok(_) => {},
@@ -55,6 +52,8 @@ impl FlightSimulator {
                     }
                 }
             );
+
+            thread::sleep(Duration::from_secs(20));
         }
         // Borrar tabla flights_in_progress.
     }
