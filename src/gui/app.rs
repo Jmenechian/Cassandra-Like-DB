@@ -7,7 +7,7 @@ use std::{collections::HashMap, net::TcpStream};
 use crate::{
     clientstuff::client_cql::Client,
     config::{MAP_PATH, PLANE_PATH, PLANE_SIZE, RADIUS_CLICK_AIRPORT, RADIUS_PAINT_AIRPORT},
-    gui::painted::{
+    simulators::{
         airport::Airport,
         airport_coordinates::{
             get_airport_coordinates, get_angle, get_coordinate_positioning_on_map,
@@ -283,7 +283,7 @@ impl MapApp {
                     mid_x,
                     mid_y,
                     plane_texture.id(),
-                    &flight.name,
+                    &flight.number,
                     angle,
                 );
             }
@@ -311,10 +311,10 @@ impl MapApp {
                         ui.label("Status");
                         ui.end_row();
                         for (origin, destination, flight) in &self.connections {
-                            ui.label(flight.name.clone());
+                            ui.label(flight.number.clone());
                             ui.label(origin.name.clone());
                             ui.label(destination.name.clone());
-                            ui.label(flight.status.clone());
+                            ui.label(flight.status.to_str());
                             ui.end_row();
                         }
                     });

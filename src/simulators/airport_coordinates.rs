@@ -1,8 +1,7 @@
-use crate::{
-    config::AIRPORTS_PATH,
-    gui::painted::{airport::Airport, flight::Flight},
-};
+use crate::config::AIRPORTS_PATH;
 use std::{collections::HashMap, fs::read_to_string};
+
+use super::{airport::Airport, flight::Flight};
 
 /// Se devuelve un Hash de los aeropuestos del archivo ubicado en AIRPORTS_PATH.
 /// La clave será nombre de cada aeropuerto.

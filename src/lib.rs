@@ -57,19 +57,14 @@ pub use neighbor_node::NeighborNode;
 
 pub mod gui {
     pub mod app;
-    pub mod painted {
-        pub mod airport;
-        pub mod airport_coordinates;
-        pub mod draw_flights;
-        pub mod draw_lines;
-        pub mod flight;
-    }
 }
 
 pub mod simulators {
     pub mod flight;
     pub mod flight_simulator;
     pub mod flight_status;
+    pub mod airport;
+    pub mod airport_coordinates;
 }
 
 pub mod errors {
