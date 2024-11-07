@@ -1,7 +1,7 @@
 use super::flight::Flight;
 use crate::{
     client_cql::Client,
-    config::{N_WORKERS, RING_SIZE, TABLE_PATH},
+    config::{N_WORKERS, TABLE_PATH},
     errors::airport_errors::AirportErrors,
     gui::painted::{airport::Airport, airport_coordinates::get_airport_coordinates},
     my_errors::MyError,
@@ -14,7 +14,7 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     net::TcpStream,
-    sync::{Arc, RwLock},
+    sync::{Arc, RwLock}, thread, time::Duration,
 };
 use threadpool::ThreadPool;
 
@@ -42,6 +42,8 @@ impl FlightSimulator {
                 return;
             };
             let stream_server: Arc<RwLock<TcpStream>> = Arc::new(RwLock::new(stream_server));
+
+            thread::sleep(Duration::from_secs(20));
 
             pool.execute(move || match FlightSimulator::get_random_flight() {
                 Ok(flight) => match FlightSimulator::update_flights(flight, stream_server) {
@@ -122,7 +124,7 @@ impl FlightSimulator {
             .write()
             .map_err(|_| MyError::LockingError("Error adquiriendo el write lock".to_string()))?;
 
-        let query = format!("INSERT INTO origin (number, airport, destination, status, date, speed, latitude, longitude, height) 
+        let query = format!("INSERT INTO flights_in_progress (number, airport, destination, status, date, speed, latitude, longitude, height) 
         VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {})", flight.number, flight.origin_airport.name, 
         flight.return_airport.name, flight.status.to_str(), flight.departure_date, flight.speed, flight.latitude, 
         flight.longitude, flight.height);
