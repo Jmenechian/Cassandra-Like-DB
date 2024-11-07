@@ -14,6 +14,15 @@ pub static N_WORKERS: usize = 10; //Nos dijeron que usemos 10.
 
 pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 
+pub static FLIGHT_STEP: f32 = 10.0; // Cantidad de pasos que da un avión hasta la mitad del vuelo.
+
+pub static CRUISING_SPEED: f32 = 840.0; // Velocidad crucero de un avion, en km/h
+
+pub static STEPS_AT_CRUISING_SPEED: f32 = 2.0; // Mitad de pasos en los que el avion viajara a la velocidad crucero.
+
+pub static SPEED_ALMOST_0: f32 = 10.0; // Velocidad max que redondeamos a 0.
+
+
 //GUI
 
 pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";

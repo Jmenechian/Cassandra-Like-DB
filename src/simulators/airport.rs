@@ -70,6 +70,7 @@ impl Airport {
                     airport_o,
                     airport_r,
                     values[4].clone(),
+                    values[2].clone(),
                 ));
             }
             println!("origin_flights: {:?}", flights);
@@ -126,6 +127,7 @@ impl Airport {
                     airport_o,
                     airport_r,
                     values[4].clone(),
+                    values[2].clone(),
                 ));
             }
             println!("flights_that_return: {:?}", flights);
