@@ -22,6 +22,7 @@ use threadpool::ThreadPool;
 /// Estructura que creará y simulará un vuelo desde su programación, pasando por su despegue hasta su llegada a destino.
 pub struct FlightSimulator {}
 
+
 impl FlightSimulator {
     /// Pone en marcha la creación de vuelos y su simulación de despegue y llegada a destino.
     /// Se utilizan thread pool.
@@ -72,7 +73,7 @@ impl FlightSimulator {
             ));
         };
 
-        let query = "CREATE TABLE flights_in_progress (number STR, airport STR, destination STR, status STR, date DATETIME, 
+        let query = "CREATE TABLE flights_in_progress (flight STR, airport STR, destination STR, status STR, date DATETIME, 
             speed STR, latitude STR, longitude STR, height STR, timestamp TIMESTAMP, PRIMARY KEY (number, origin, date) 
             WITH CLUSTERING ORDER BY (timestamp ASC)".to_string();
         Client::send_message(&mut stream_server, query)
@@ -138,7 +139,7 @@ impl FlightSimulator {
         stream: &mut RwLockWriteGuard<'_, TcpStream>,
     ) -> Result<(), MyError> {
 
-        let query = format!("INSERT INTO flights_in_progress (number, airport, destination, status, date, speed, latitude, longitude, height) 
+        let query = format!("INSERT INTO flights_in_progress (flight, airport, destination, status, date, speed, latitude, longitude, height) 
         VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {})", flight.number, flight.origin_airport.name, 
         flight.return_airport.name, flight.status.to_str(), flight.departure_date, flight.speed, flight.latitude, 
         flight.longitude, flight.height);
@@ -153,6 +154,7 @@ impl FlightSimulator {
         let query = format!("UPDATE {} SET status = {} WHERE flight = {} AND airport = {} AND date = {}", 
             table, status.to_str(), flight.number, flight.origin_airport.name, flight.departure_date);
 
+        println!("queryyy: {:?}\n", query);
         Client::send_message(stream, query)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
         println!("Se actualizo el status en {} correctamente.", table);
@@ -175,6 +177,8 @@ impl FlightSimulator {
                 found_plane = true;
                 println!("found_plane: {}", found_plane);
             }
+
+            // hacer el select
         }
         println!("line_flight: {:?}", line_flight);
         if let Ok((airport_origin, airport_return)) = FlightSimulator::get_airports(&line_flight) {

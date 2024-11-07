@@ -1,0 +1,6 @@
+flight,airport,destination,status,date,speed,latitude,longitude,height,timestamp
+3,MEX,JNB,boarding,24-12-24,0,-10.5,-115,0,2024-11-07 15:51:42.150946243 UTC
+2,MEX,AEP,boarding,25-12-24,0,-10.5,-115,0,2024-11-07 15:52:02.116950555 UTC
+16,SVO,ZRH,boarding,25-12-24,0,40,50,0,2024-11-07 15:52:22.116272491 UTC
+7,AEP,JNB,boarding,25-12-24,0,-69,-68,0,2024-11-07 15:52:42.116430188 UTC
+6,AEP,YZF,boarding,25-12-24,0,-69,-68,0,2024-11-07 15:53:02.117740689 UTC

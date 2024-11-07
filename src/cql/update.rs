@@ -136,12 +136,14 @@ impl Update {
 
     // Executes the query
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
+        println!("{:?}",self);
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let col_names = get_file_headers(&mut rdr)?;
         self.check_columns_are_valid(&col_names)?;
 
         let (mut temp_file, temp_file_name) = create_temporary_file(TABLE_PATH, &self.table)?;
         append_row_with_file(&mut temp_file, &col_names)?;
+        println!("se creo archuvo tmeporal y se agregaron headers");
 
         // Save old rows and updated rows
         let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
@@ -154,6 +156,7 @@ impl Update {
                 .collect::<Vec<String>>();
 
             if !filter.filter(&row) {
+                println!("row no cumple: {:?}", row);
                 append_row_with_file(&mut temp_file, &row)?;
                 continue;
             }
@@ -170,6 +173,7 @@ impl Update {
                     }
                 }
             }
+            println!("row updatead: {:?}", updated_row);
             append_row_with_file(&mut temp_file, &updated_row)?;
         }
 
