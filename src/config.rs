@@ -29,6 +29,18 @@ pub static RADIUS_CLICK_AIRPORT: f32 = 15.0; // Radio del botón
 pub static RADIUS_PAINT_AIRPORT: f32 = 5.0; //
 pub static PLANE_SIZE: f32 = 50.0;
 
+//GUI OPTIONAL
+pub static AIRPORT: i8 = 0;
+pub static ORIGINDESTINATION: i8 = 1;
+pub static AIRPORT2: i8 = 2;
+pub static DATE: i8 = 3;
+pub static FLIGHT: i8 = 4;
+pub static STATUS: i8 = 5;
+pub static SELECT: i8 = 6;
+pub static UPDATE: i8 = 7;
+pub static INSERT: i8 = 8;
+pub static DELETE: i8 = 9;
+
 // OPCODE
 pub const QUERY: u8 = 0x07;
 pub const ERROR: u8 = 0x00;

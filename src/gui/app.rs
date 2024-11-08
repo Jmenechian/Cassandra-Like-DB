@@ -1,3 +1,4 @@
+use chrono::offset;
 use eframe::egui;
 use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureHandle, TextureId, Ui};
 
@@ -6,7 +7,7 @@ use std::{collections::HashMap, net::TcpStream};
 
 use crate::{
     clientstuff::client_cql::Client,
-    config::{MAP_PATH, PLANE_PATH, PLANE_SIZE, RADIUS_CLICK_AIRPORT, RADIUS_PAINT_AIRPORT},
+    config::*,
     simulators::{
         airport::Airport,
         airport_coordinates::{
@@ -26,6 +27,13 @@ pub struct MapApp {
     client: Client,
     stream_client: Option<TcpStream>,
     connections: Vec<(Airport, Airport, Flight)>,
+
+    //botones
+    airport_selected: String,
+    airport2_selected: String,
+    origin_destination_selected: String,
+    status_selected: String,
+    flight_selected: String,
     date_selected: String,
 }
 
@@ -38,7 +46,14 @@ impl MapApp {
         let client = Client::initialize(port);
         let stream_client = None;
         let connections = vec![];
-        let date_selected = "".to_string();
+
+        //botones
+        let airport_selected = "".to_string();
+        let airport2_selected= "".to_string();
+        let origin_destination_selected= "".to_string();
+        let status_selected= "".to_string();
+        let flight_selected= "".to_string();
+        let date_selected= "".to_string();
         Self {
             airports,
             map_texture,
@@ -46,7 +61,14 @@ impl MapApp {
             client,
             stream_client,
             connections,
-            date_selected,
+
+            //botones
+            airport_selected,
+            airport2_selected,
+            origin_destination_selected,
+            status_selected,
+            flight_selected,
+            date_selected,    
         }
     }
 
@@ -333,6 +355,128 @@ impl MapApp {
             }
         });
     }
+
+    fn draw_other_box(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var_number: i8) { //caja de input con input keyboard
+        let var = match var_number {
+            0 => &mut self.airport_selected,
+            2 => &mut self.airport2_selected,
+            3 => &mut self.date_selected,
+            _ => &mut self.flight_selected, 
+        };
+        egui::Area::new(Id::new(tag))
+            .fixed_pos(egui::pos2(x, y)) 
+            .show(ui.ctx(), |ui| {
+                ui.horizontal(|ui| {
+                    let label = format!("Enter {}:", tag);
+                    ui.label(label);
+                    ui.text_edit_singleline(var);
+                    *var = var.trim().to_string();
+                });
+            });
+    }
+
+    fn draw_other_box2(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var: i8) { // caja de input con dropdown
+
+        egui::Area::new(Id::new(tag))
+            .fixed_pos(egui::pos2(x, y)) // Position at (100, 200)
+            .show(ui.ctx(), |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Select date:");
+                    
+                    // Dropdown for selecting options
+                    egui::ComboBox::from_label("")
+                        .selected_text(&self.date_selected)
+                        .show_ui(ui, |ui| {
+                            if ui.selectable_value(&mut self.date_selected, "2024-01-01".to_string(), "2024-01-01").clicked() {}
+                            if ui.selectable_value(&mut self.date_selected, "2024-02-01".to_string(), "2024-02-01").clicked() {}
+                            if ui.selectable_value(&mut self.date_selected, "2024-03-01".to_string(), "2024-03-01").clicked() {}
+                            // Add more dates as options as needed
+                        });
+
+                    if ui.add(egui::Button::new("Submit")
+                        .fill(Color32::from_rgb(120, 66, 114)) 
+                    ).clicked() {
+                        println!("Date selected: {}", self.date_selected);
+                    }
+                });
+            });
+    }
+
+    fn draw_origin_destination_box(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str) {
+        egui::Area::new(Id::new(tag))
+            .fixed_pos(egui::pos2(x, y))
+            .show(ui.ctx(), |ui| {
+                ui.horizontal(|ui| {
+                    let label = format!("Enter {}:", tag);
+                    ui.label(label);
+                    
+                    egui::ComboBox::from_label("")
+                        .selected_text(&self.origin_destination_selected)
+                        .show_ui(ui, |ui| {
+                            if ui.selectable_value(&mut self.origin_destination_selected, "origin".to_string(), "origin").clicked() {}
+                            if ui.selectable_value(&mut self.origin_destination_selected, "destination".to_string(), "destination").clicked() {}
+                        });
+                });
+            });
+    }
+
+    fn draw_status_box(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str) {
+        egui::Area::new(Id::new(tag))
+            .fixed_pos(egui::pos2(x, y))
+            .show(ui.ctx(), |ui| {
+                ui.horizontal(|ui| {
+                    let label = format!("Enter {}:", tag);
+                    ui.label(label);
+                    
+                    egui::ComboBox::from_label("")
+                        .selected_text(&self.status_selected)
+                        .show_ui(ui, |ui| {
+                            if ui.selectable_value(&mut self.status_selected, "scheduled".to_string(), "scheduled").clicked() {}
+                            if ui.selectable_value(&mut self.status_selected, "on-time".to_string(), "on-time").clicked() {}
+                            if ui.selectable_value(&mut self.status_selected, "delayed".to_string(), "delayed").clicked() {}
+                            if ui.selectable_value(&mut self.status_selected, "cancelled".to_string(), "cancelled").clicked() {}
+                            if ui.selectable_value(&mut self.status_selected, "boarding".to_string(), "boarding").clicked() {}
+                            if ui.selectable_value(&mut self.status_selected, "landed".to_string(), "landed").clicked() {}
+                        });
+                });
+            });
+    }
+    fn draw_fixed_button(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var: i8) {
+        egui::Area::new(Id::new(tag))
+            .fixed_pos(egui::pos2(x, y))
+            .show(ui.ctx(), |ui| {
+                if ui.add(
+                    egui::Button::new(tag)
+                    .fill(Color32::from_rgb(120, 66, 114)) 
+                ).clicked() {
+                    // logica aca
+                }
+            });
+    }
+
+    fn super_function(&mut self, ui: &mut Ui) {
+        let mut y= 660.0;
+        let mut x = 10.0;
+        self.draw_other_box(ui, x, y, "airport", AIRPORT); //aeropuerto
+        y = offset_y(y);
+        self.draw_origin_destination_box(ui, x, y, "origin/destination"); //origin/destination //se puede hacer una funcion generica tambien pasando array
+        y = offset_y(y);
+        self.draw_other_box(ui, x, y, "airport2", AIRPORT2); //aeropuerto2
+        y = offset_y(y);
+        self.draw_other_box(ui, x, y, "date", DATE); //date
+        y = offset_y(y);
+        self.draw_other_box(ui, x, y, "flight", FLIGHT); //flight
+        y = offset_y(y);
+        self.draw_status_box(ui, x, y, "status"); //status
+        y = offset_y(y);
+        self.draw_fixed_button(ui, x, y, "SELECT", SELECT); //SELECT
+        x = offset_x(x);
+        self.draw_fixed_button(ui, x, y, "INSERT", INSERT); //INSERT
+        x = offset_x(x);
+        self.draw_fixed_button(ui, x, y, "DELETE", DELETE); //DELETE
+        x = offset_x(x);
+        self.draw_fixed_button(ui, x, y, "UPDATE", UPDATE); //UPDATE
+    }
 }
 
 impl eframe::App for MapApp {
@@ -354,7 +498,7 @@ impl eframe::App for MapApp {
                     for airport in airports.values() {
                         let (screen_x, screen_y) =
                             get_coordinate_positioning_on_map(airport.coordinates, texture.size());
-
+                            
                         let button_rect =
                             self.draw_airports(ui.painter(), screen_x, screen_y, &airport.name);
 
@@ -364,12 +508,21 @@ impl eframe::App for MapApp {
                             .clicked()
                         {
                             println!("¡Aeropuerto {} presionado!", airport.name);
-
+                            self.airport_selected = airport.name.clone();
                             self.reset_connection();
 
                             if !self.date_selected.is_empty() {
                                 self.add_all_connections(airport, texture, screen_x, screen_y);
                             }
+                        }
+
+                        if ui
+                            .interact(button_rect, Id::new(&airport.name), egui::Sense::click())
+                            .secondary_clicked()
+                        {
+                            println!("¡Aeropuerto {} presionado!", airport.name);
+                            self.airport2_selected = airport.name.clone();
+                            self.reset_connection();
                         }
                     }
 
@@ -378,8 +531,16 @@ impl eframe::App for MapApp {
                     self.draw_flight_table(ui);
                 });
 
-                self.draw_date_box(ui);
+                self.super_function(ui);
             }
         });
     }
+}
+
+fn offset_y(y: f32) -> f32 {
+    y + 30.0
+}
+
+fn offset_x(x: f32) -> f32 {
+    x + 100.0
 }
