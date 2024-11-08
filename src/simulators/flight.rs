@@ -1,5 +1,11 @@
-use super::{airport::Airport, airport_coordinates::{get_angle, obtain_middle_position}, flight_status::FlightStatus};
-use crate::config::{CRUISING_HEIGHT, CRUISING_SPEED, FLIGHT_STEP, SPEED_ALMOST_0, STEPS_AT_CRUISING_SPEED};
+use super::{
+    airport::Airport,
+    airport_coordinates::{get_angle, obtain_middle_position},
+    flight_status::FlightStatus,
+};
+use crate::config::{
+    CRUISING_HEIGHT, CRUISING_SPEED, FLIGHT_STEP, SPEED_ALMOST_0, STEPS_AT_CRUISING_SPEED,
+};
 
 #[derive(Debug)]
 /// Estructura que representa un vuelo, con su número, el aeropuesto de origen y el de destino, y otras variables que varian durante recorrido que hace.
@@ -10,11 +16,11 @@ pub struct Flight {
     pub status: FlightStatus,
     pub departure_date: String,
     pub speed: f32,
-    pub latitude: f32, // Eje y
+    pub latitude: f32,  // Eje y
     pub longitude: f32, // Eje x
     pub height: f32,
     pub midpoint: (f32, f32), // punto medio entre origen y destino: (longitud, latitud)
-    pub step: (f32, f32), // paso en el que avanzará el avion en longitud y latitud
+    pub step: (f32, f32),     // paso en el que avanzará el avion en longitud y latitud
 }
 
 impl Flight {
@@ -37,7 +43,10 @@ impl Flight {
             origin_airport.coordinates.1,
             return_airport.coordinates.1,
         );
-        let step = (Flight::get_flight_step(longitude, midpoint.0), Flight::get_flight_step(latitude, midpoint.1));
+        let step = (
+            Flight::get_flight_step(longitude, midpoint.0),
+            Flight::get_flight_step(latitude, midpoint.1),
+        );
 
         Self {
             number,
@@ -59,23 +68,25 @@ impl Flight {
         self.status = new_status;
     }
 
-    /// Si no se llego a la cercania del punto medio (rango medio): aumentamos la velocidad, 
+    /// Si no se llego a la cercania del punto medio (rango medio): aumentamos la velocidad,
     /// en punto medio tiene que llegar a los 840 km/h (velocidad crucero).
     /// Tomamos el rango medio como la mitad de la recta que une origen y destino +- 2 step de vuelo.
     /// Tenemos FLIGHT_STEP - STEPS_AT_CRUISING_SPEED pasos para llegar a la velocidad crucero.
     /// Si pasamos el rango medio donde viajamos a velocidad crucero: disminuimos la velocidad.
     /// Tenemos FLIGHT_STEP - STEPS_AT_CRUISING_SPEED pasos para llegar a velocidad 0km/h.
     pub fn update_speed(&mut self) {
-        if self.longitude < (self.return_airport.coordinates.0 - (STEPS_AT_CRUISING_SPEED * self.step.0)) 
-            && self.latitude < (self.return_airport.coordinates.1 - (STEPS_AT_CRUISING_SPEED * self.step.1)) {
-            
-            self.speed += CRUISING_SPEED / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);  
-
-        } else if self.longitude > (self.return_airport.coordinates.0 + (STEPS_AT_CRUISING_SPEED * self.step.0)) 
-        && self.latitude > (self.return_airport.coordinates.1 + (STEPS_AT_CRUISING_SPEED * self.step.1)) {
-
+        if self.longitude
+            < (self.return_airport.coordinates.0 - (STEPS_AT_CRUISING_SPEED * self.step.0))
+            && self.latitude
+                < (self.return_airport.coordinates.1 - (STEPS_AT_CRUISING_SPEED * self.step.1))
+        {
+            self.speed += CRUISING_SPEED / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);
+        } else if self.longitude
+            > (self.return_airport.coordinates.0 + (STEPS_AT_CRUISING_SPEED * self.step.0))
+            && self.latitude
+                > (self.return_airport.coordinates.1 + (STEPS_AT_CRUISING_SPEED * self.step.1))
+        {
             self.speed -= CRUISING_SPEED / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);
-
         }
 
         if self.speed <= SPEED_ALMOST_0 || self.flight_in_destination() {
@@ -88,10 +99,13 @@ impl Flight {
     /// Hemisferio SUR -> latitud negativa (y<0)            Hemisferio NORTE -> latitud positiva (y>0)
     /// Hemisferio OESTE -> longitud negativa (x<0)         Hemisferio ESTE -> longitud positiva (x>0)
     pub fn update_position(&mut self) {
-       
-        let angle = get_angle(self.origin_airport.coordinates.0, self.return_airport.coordinates.0, 
-            self.origin_airport.coordinates.0, self.return_airport.coordinates.1);
-        
+        let angle = get_angle(
+            self.origin_airport.coordinates.0,
+            self.return_airport.coordinates.0,
+            self.origin_airport.coordinates.0,
+            self.return_airport.coordinates.1,
+        );
+
         // step.0: paso en que se avanza en el eje x - Longitud eje x
         // step.1: paso en el que se avanza en el eje y - Latitud eje y
         if angle == 0.0 {
@@ -132,21 +146,26 @@ impl Flight {
 
     /// Similar a velocidad.
     pub fn update_height(&mut self) {
-        if self.longitude < (self.return_airport.coordinates.0 - (STEPS_AT_CRUISING_SPEED * self.step.0)) 
-            && self.latitude < (self.return_airport.coordinates.1 - (STEPS_AT_CRUISING_SPEED * self.step.1)) {
-            // Si no se llego a la cercania del punto medio (rango medio): aumentamos la altura, 
+        if self.longitude
+            < (self.return_airport.coordinates.0 - (STEPS_AT_CRUISING_SPEED * self.step.0))
+            && self.latitude
+                < (self.return_airport.coordinates.1 - (STEPS_AT_CRUISING_SPEED * self.step.1))
+        {
+            // Si no se llego a la cercania del punto medio (rango medio): aumentamos la altura,
             // en punto medio tiene que llegar a los 10mil metros (altura crucero).
             // Tomamos el rango medio como la mitad de la recta que une origen y destino +- 2 step de vuelo.
-            
-            self.height += CRUISING_HEIGHT / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);  
-            // Tenemos FLIGHT_STEP - STEPS_AT_CRUISING_SPEED pasos para llegar a la altura crucero.
 
-        } else if self.longitude > (self.return_airport.coordinates.0 + (STEPS_AT_CRUISING_SPEED * self.step.0)) 
-        && self.latitude > (self.return_airport.coordinates.1 + (STEPS_AT_CRUISING_SPEED * self.step.1)) {
+            self.height += CRUISING_HEIGHT / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);
+            // Tenemos FLIGHT_STEP - STEPS_AT_CRUISING_SPEED pasos para llegar a la altura crucero.
+        } else if self.longitude
+            > (self.return_airport.coordinates.0 + (STEPS_AT_CRUISING_SPEED * self.step.0))
+            && self.latitude
+                > (self.return_airport.coordinates.1 + (STEPS_AT_CRUISING_SPEED * self.step.1))
+        {
             // Si pasamos el rango medio donde viajamos a altura crucero: disminuimos la altura.
-            self.height -= CRUISING_SPEED / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);  
+            self.height -= CRUISING_SPEED / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);
             // Tenemos FLIGHT_STEP - STEPS_AT_CRUISING_SPEED pasos para llegar a la altura de 0 metros.
-        } 
+        }
 
         if self.speed <= SPEED_ALMOST_0 || self.flight_in_destination() {
             self.height = 0.0;
@@ -159,13 +178,18 @@ impl Flight {
 
         // Calcula la distancia entre dos puntos (x1, y1) y (x2, y2)
         // Entre el aeropuesto de origen y el de destino:
-        let distance_origin_and_dest = ((self.return_airport.coordinates.0 - self.longitude).powi(2) + (self.return_airport.coordinates.1 - self.latitude).powi(2)).sqrt(); 
+        let distance_origin_and_dest = ((self.return_airport.coordinates.0 - self.longitude)
+            .powi(2)
+            + (self.return_airport.coordinates.1 - self.latitude).powi(2))
+        .sqrt();
         // Calculo la distancia máxima para considerar que llegó a destino:
         let upper_bound = distance_origin_and_dest * percentage;
 
         // Distancia entre la posición del vuelo y el aeropuesto de destino:
-        let distance_f_and_dest = ((self.return_airport.coordinates.0 - self.longitude).powi(2) + (self.return_airport.coordinates.1 - self.latitude).powi(2)).sqrt(); 
-        
+        let distance_f_and_dest = ((self.return_airport.coordinates.0 - self.longitude).powi(2)
+            + (self.return_airport.coordinates.1 - self.latitude).powi(2))
+        .sqrt();
+
         if distance_f_and_dest <= upper_bound {
             self.longitude = self.return_airport.coordinates.0;
             self.latitude = self.return_airport.coordinates.1;
@@ -175,7 +199,7 @@ impl Flight {
         false
     }
 
-    /// Devolvemos el tamaño de los pasos que hara el avion para que en total haya FLIGHT_STEP cantidad de pasos entre el origen y el punto medio, 
+    /// Devolvemos el tamaño de los pasos que hara el avion para que en total haya FLIGHT_STEP cantidad de pasos entre el origen y el punto medio,
     /// y la misma cantidad entre el punto medio y el destino.
     /// Es decir, en total el avion hara 2*FLIGHT_STEP pasos.
     fn get_flight_step(z1: f32, z2: f32) -> f32 {

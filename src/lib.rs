@@ -60,11 +60,11 @@ pub mod gui {
 }
 
 pub mod simulators {
+    pub mod airport;
+    pub mod airport_coordinates;
     pub mod flight;
     pub mod flight_simulator;
     pub mod flight_status;
-    pub mod airport;
-    pub mod airport_coordinates;
 }
 
 pub mod errors {

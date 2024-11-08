@@ -87,7 +87,6 @@ pub fn handle_connection_client(
     loop {
         match Envelope::from_stream(stream) {
             Ok(env) => {
-                
                 if show {
                     println!("C   El env recibido es: {:?}", env);
                 }

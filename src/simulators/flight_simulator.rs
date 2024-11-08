@@ -13,14 +13,15 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     net::TcpStream,
-    sync::{Arc, RwLock}, thread, time::Duration,
+    sync::{Arc, RwLock},
+    thread,
+    time::Duration,
 };
 use threadpool::ThreadPool;
 
 #[derive(Debug, Clone)]
 /// Estructura que creará y simulará un vuelo desde su programación, pasando por su despegue hasta su llegada a destino.
 pub struct FlightSimulator {}
-
 
 impl FlightSimulator {
     /// Pone en marcha la creación de vuelos y su simulación de despegue y llegada a destino.
@@ -44,14 +45,14 @@ impl FlightSimulator {
             };
             let stream_server: Arc<RwLock<TcpStream>> = Arc::new(RwLock::new(stream_server));
 
-            pool.execute(move || 
+            pool.execute(move || {
                 match FlightSimulator::obtain_flight_and_simulate_it(stream_server) {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(e) => {
                         print!("{}", e);
                     }
                 }
-            );
+            });
 
             thread::sleep(Duration::from_secs(5));
         }
@@ -79,10 +80,9 @@ impl FlightSimulator {
     }
 
     fn obtain_flight_and_simulate_it(stream_server: Arc<RwLock<TcpStream>>) -> Result<(), MyError> {
-
         match FlightSimulator::get_random_flight(&stream_server) {
             Ok(flight) => FlightSimulator::simulate_flight(flight, &stream_server),
-            Err(e) => Err(MyError::Error(e.to_string()))
+            Err(e) => Err(MyError::Error(e.to_string())),
         }
     }
 
@@ -107,7 +107,7 @@ impl FlightSimulator {
                         if exists {
                             found_plane = false;
                         }
-                    },
+                    }
                     Err(e) => {
                         return Err(e);
                     }
@@ -126,7 +126,9 @@ impl FlightSimulator {
             return Ok(flight);
         }
 
-        Err(MyError::Error("No se pudo crear el vuelo de simulación".to_string()))
+        Err(MyError::Error(
+            "No se pudo crear el vuelo de simulación".to_string(),
+        ))
     }
 
     /// Se retorna los valores de un vuelo de la tabla origin: [airport,destination,date,flight,status,timestamp].
@@ -157,11 +159,13 @@ impl FlightSimulator {
         Ok(values.clone())
     }
 
-    fn flight_is_already_simulated(line_flight: &Vec<String>, stream: &Arc<RwLock<TcpStream>>) -> Result<bool, MyError> {
-
-        let date = line_flight[4].clone(); 
+    fn flight_is_already_simulated(
+        line_flight: &Vec<String>,
+        stream: &Arc<RwLock<TcpStream>>,
+    ) -> Result<bool, MyError> {
+        let date = line_flight[4].clone();
         let airport = line_flight[1].clone();
-        let flight = line_flight[0].clone(); 
+        let flight = line_flight[0].clone();
 
         let query = format!(
             "SELECT * FROM flights_in_progress WHERE date = {} AND airport = {} AND flight = {}",
@@ -206,7 +210,6 @@ impl FlightSimulator {
         mut flight: Flight,
         mut stream: &Arc<RwLock<TcpStream>>,
     ) -> Result<(), MyError> {
-
         // Escribimos el vuelo en la tabla flights_in_progress.csv -> hacemos INSERT como Client
         FlightSimulator::insert_flight(&flight, stream)?;
         println!("Se insertaron los valores correctamente.");
@@ -218,14 +221,14 @@ impl FlightSimulator {
             if flight.status == FlightStatus::Scheduled {
                 flight.set_status(FlightStatus::Boarding);
                 FlightSimulator::update_flight(&flight, stream)?;
-                println!("El vuelo {:?} está por salir.",  flight);
+                println!("El vuelo {:?} está por salir.", flight);
                 continue;
             }
 
             // Si status es boarding -> actualizamos a Airborne
             if flight.status == FlightStatus::Boarding {
                 flight.set_status(FlightStatus::Airborne);
-                println!("El vuelo {:?} despego.",  flight);
+                println!("El vuelo {:?} despego.", flight);
             }
 
             flight.update_position();
@@ -235,7 +238,9 @@ impl FlightSimulator {
             flight.update_height();
 
             // Si el avion llego a destino:
-            if flight.latitude == flight.return_airport.coordinates.0 && flight.longitude == flight.return_airport.coordinates.1 {
+            if flight.latitude == flight.return_airport.coordinates.0
+                && flight.longitude == flight.return_airport.coordinates.1
+            {
                 flight.set_status(FlightStatus::Landed);
                 FlightSimulator::update_flight(&flight, &mut stream)?;
                 println!("El vuelo {:?} llegó a destino.", flight);
@@ -250,11 +255,7 @@ impl FlightSimulator {
         Ok(())
     }
 
-    fn insert_flight(
-        flight: &Flight,
-        stream: &Arc<RwLock<TcpStream>>,
-    ) -> Result<(), MyError> {
-
+    fn insert_flight(flight: &Flight, stream: &Arc<RwLock<TcpStream>>) -> Result<(), MyError> {
         let mut stream = stream
             .write()
             .map_err(|_| MyError::LockingError("Error adquiriendo el write lock".to_string()))?;
@@ -266,7 +267,7 @@ impl FlightSimulator {
 
         Client::send_message(&mut stream, query)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-        
+
         Ok(())
     }
 
@@ -289,7 +290,7 @@ impl FlightSimulator {
             Client::send_message(&mut stream, query)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
         }
-        
+
         Ok(())
     }
 }

@@ -49,11 +49,11 @@ impl MapApp {
 
         //botones
         let airport_selected = "".to_string();
-        let airport2_selected= "".to_string();
-        let origin_destination_selected= "".to_string();
-        let status_selected= "".to_string();
-        let flight_selected= "".to_string();
-        let date_selected= "".to_string();
+        let airport2_selected = "".to_string();
+        let origin_destination_selected = "".to_string();
+        let status_selected = "".to_string();
+        let flight_selected = "".to_string();
+        let date_selected = "".to_string();
         Self {
             airports,
             map_texture,
@@ -68,7 +68,7 @@ impl MapApp {
             origin_destination_selected,
             status_selected,
             flight_selected,
-            date_selected,    
+            date_selected,
         }
     }
 
@@ -356,15 +356,16 @@ impl MapApp {
         });
     }
 
-    fn draw_other_box(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var_number: i8) { //caja de input con input keyboard
+    fn draw_other_box(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var_number: i8) {
+        //caja de input con input keyboard
         let var = match var_number {
             0 => &mut self.airport_selected,
             2 => &mut self.airport2_selected,
             3 => &mut self.date_selected,
-            _ => &mut self.flight_selected, 
+            _ => &mut self.flight_selected,
         };
         egui::Area::new(Id::new(tag))
-            .fixed_pos(egui::pos2(x, y)) 
+            .fixed_pos(egui::pos2(x, y))
             .show(ui.ctx(), |ui| {
                 ui.horizontal(|ui| {
                     let label = format!("Enter {}:", tag);
@@ -375,27 +376,50 @@ impl MapApp {
             });
     }
 
-    fn draw_other_box2(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var: i8) { // caja de input con dropdown
+    fn draw_other_box2(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var: i8) {
+        // caja de input con dropdown
 
         egui::Area::new(Id::new(tag))
             .fixed_pos(egui::pos2(x, y)) // Position at (100, 200)
             .show(ui.ctx(), |ui| {
                 ui.horizontal(|ui| {
                     ui.label("Select date:");
-                    
+
                     // Dropdown for selecting options
                     egui::ComboBox::from_label("")
                         .selected_text(&self.date_selected)
                         .show_ui(ui, |ui| {
-                            if ui.selectable_value(&mut self.date_selected, "2024-01-01".to_string(), "2024-01-01").clicked() {}
-                            if ui.selectable_value(&mut self.date_selected, "2024-02-01".to_string(), "2024-02-01").clicked() {}
-                            if ui.selectable_value(&mut self.date_selected, "2024-03-01".to_string(), "2024-03-01").clicked() {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.date_selected,
+                                    "2024-01-01".to_string(),
+                                    "2024-01-01",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.date_selected,
+                                    "2024-02-01".to_string(),
+                                    "2024-02-01",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.date_selected,
+                                    "2024-03-01".to_string(),
+                                    "2024-03-01",
+                                )
+                                .clicked()
+                            {}
                             // Add more dates as options as needed
                         });
 
-                    if ui.add(egui::Button::new("Submit")
-                        .fill(Color32::from_rgb(120, 66, 114)) 
-                    ).clicked() {
+                    if ui
+                        .add(egui::Button::new("Submit").fill(Color32::from_rgb(120, 66, 114)))
+                        .clicked()
+                    {
                         println!("Date selected: {}", self.date_selected);
                     }
                 });
@@ -409,12 +433,26 @@ impl MapApp {
                 ui.horizontal(|ui| {
                     let label = format!("Enter {}:", tag);
                     ui.label(label);
-                    
+
                     egui::ComboBox::from_label("")
                         .selected_text(&self.origin_destination_selected)
                         .show_ui(ui, |ui| {
-                            if ui.selectable_value(&mut self.origin_destination_selected, "origin".to_string(), "origin").clicked() {}
-                            if ui.selectable_value(&mut self.origin_destination_selected, "destination".to_string(), "destination").clicked() {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.origin_destination_selected,
+                                    "origin".to_string(),
+                                    "origin",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.origin_destination_selected,
+                                    "destination".to_string(),
+                                    "destination",
+                                )
+                                .clicked()
+                            {}
                         });
                 });
             });
@@ -427,16 +465,58 @@ impl MapApp {
                 ui.horizontal(|ui| {
                     let label = format!("Enter {}:", tag);
                     ui.label(label);
-                    
+
                     egui::ComboBox::from_label("")
                         .selected_text(&self.status_selected)
                         .show_ui(ui, |ui| {
-                            if ui.selectable_value(&mut self.status_selected, "scheduled".to_string(), "scheduled").clicked() {}
-                            if ui.selectable_value(&mut self.status_selected, "on-time".to_string(), "on-time").clicked() {}
-                            if ui.selectable_value(&mut self.status_selected, "delayed".to_string(), "delayed").clicked() {}
-                            if ui.selectable_value(&mut self.status_selected, "cancelled".to_string(), "cancelled").clicked() {}
-                            if ui.selectable_value(&mut self.status_selected, "boarding".to_string(), "boarding").clicked() {}
-                            if ui.selectable_value(&mut self.status_selected, "landed".to_string(), "landed").clicked() {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "scheduled".to_string(),
+                                    "scheduled",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "on-time".to_string(),
+                                    "on-time",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "delayed".to_string(),
+                                    "delayed",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "cancelled".to_string(),
+                                    "cancelled",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "boarding".to_string(),
+                                    "boarding",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "landed".to_string(),
+                                    "landed",
+                                )
+                                .clicked()
+                            {}
                         });
                 });
             });
@@ -445,17 +525,18 @@ impl MapApp {
         egui::Area::new(Id::new(tag))
             .fixed_pos(egui::pos2(x, y))
             .show(ui.ctx(), |ui| {
-                if ui.add(
-                    egui::Button::new(tag)
-                    .fill(Color32::from_rgb(120, 66, 114)) 
-                ).clicked() {
+                if ui
+                    .add(egui::Button::new(tag).fill(Color32::from_rgb(120, 66, 114)))
+                    .clicked()
+                {
                     // logica aca
                 }
             });
     }
 
     fn super_function(&mut self, ui: &mut Ui) {
-        let mut y= 660.0;
+        //
+        let mut y = 660.0;
         let mut x = 10.0;
         self.draw_other_box(ui, x, y, "airport", AIRPORT); //aeropuerto
         y = offset_y(y);
@@ -498,7 +579,7 @@ impl eframe::App for MapApp {
                     for airport in airports.values() {
                         let (screen_x, screen_y) =
                             get_coordinate_positioning_on_map(airport.coordinates, texture.size());
-                            
+
                         let button_rect =
                             self.draw_airports(ui.painter(), screen_x, screen_y, &airport.name);
 
