@@ -2,7 +2,9 @@ use eframe::egui;
 use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureHandle, TextureId, Ui};
 
 use image::GenericImageView;
-use std::{collections::HashMap, net::TcpStream};
+use std::{collections::HashMap, net::TcpStream, thread};
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::{mpsc, Arc, Mutex};
 
 use crate::{
     clientstuff::client_cql::Client,
@@ -106,18 +108,47 @@ impl MapApp {
 
     /// Se agrega las conecciones que tiene el aeropuesto con los demás por los aviones que salen o regresan de este.
     fn add_all_connections(&mut self, airport: &Airport, texture: &TextureHandle, screen_x: f32, screen_y: f32) {
-        if let (Ok(origin_flights), Ok(return_flights)) = (
-            airport.get_origin_flights_from(
-                &mut self.stream_client,
-                &self.date_selected,
-                &self.airports,
-            ),
-            airport.get_flights_that_return_to(
-                &mut self.stream_client,
-                &self.date_selected,
-                &self.airports,
-            ),
-        ) {
+        
+        let (tx, rx): (Sender<Vec<Flight>>, Receiver<Vec<Flight>>) = mpsc::channel();
+        let thread_tx: Sender<Vec<Flight>> = tx.clone();
+
+        let stream_client: Arc<Mutex<Option<TcpStream>>> = match &self.stream_client {
+            Some(stream) => Arc::new(Mutex::new(Some(stream.try_clone().expect("Failed to clone TcpStream")))),
+            None => return,
+        };  
+        let date_selected: Arc<String> = Arc::new(self.date_selected.clone());
+        let airports: Arc<HashMap<String, Airport>> = Arc::new(self.airports.clone());
+        let airport = Arc::new(airport.clone());
+        
+        let _ = thread::spawn({
+            let thread_tx = thread_tx.clone();
+            let airport = Arc::clone(&airport); 
+            
+            move || {
+                if let Some(stream) = stream_client.lock().unwrap().take() { {
+                
+                    if let (Ok(origin_flights), Ok(return_flights)) = (
+                        airport.get_origin_flights_from(
+                            &mut Some(stream.try_clone().unwrap()),
+                            &date_selected,
+                            &airports,
+                        ),
+                        airport.get_flights_that_return_to(
+                            &mut Some(stream),
+                            &date_selected,
+                            &airports,
+                        ),
+                    ) {
+                        thread_tx.send(origin_flights).unwrap();
+                        thread_tx.send(return_flights).unwrap();
+                    }
+                }
+        }}});
+        
+        let origin_flights = rx.recv().unwrap();
+        let return_flights = rx.recv().unwrap();
+        
+        {
             if origin_flights.is_empty() && return_flights.is_empty() {
                 return;
             }
@@ -367,7 +398,9 @@ impl eframe::App for MapApp {
                             self.reset_connection();
 
                             if !self.date_selected.is_empty() {
-                                self.add_all_connections(airport, texture, screen_x, screen_y);
+                                // thread::spawn(move || {
+                                    self.add_all_connections(airport, texture, screen_x, screen_y);
+                                // });
                             }
                         }
                     }

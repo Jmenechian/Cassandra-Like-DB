@@ -136,6 +136,7 @@ impl Update {
 
     // Executes the query
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
+        println!("{:?}",self);
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let col_names = get_file_headers(&mut rdr)?;
         self.check_columns_are_valid(&col_names)?;
