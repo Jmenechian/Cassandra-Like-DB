@@ -6,7 +6,7 @@ pub enum FlightStatus {
     Cancelled,
     Boarding, // En origen
     Airborne, // En viaje a destino
-    Landed, // En destino
+    Landed,   // En destino
 }
 
 impl FlightStatus {

@@ -42,7 +42,6 @@ impl Airport {
 
             let response = Client::read_response(stream)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-            println!("---- response{:?}", response);
 
             let mut flights: Vec<Flight> = vec![];
             for line in response {
@@ -101,7 +100,6 @@ impl Airport {
 
             let response = Client::read_response(stream)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-            println!("---- response{:?}", response);
 
             let mut flights: Vec<Flight> = vec![];
             for line in response {
