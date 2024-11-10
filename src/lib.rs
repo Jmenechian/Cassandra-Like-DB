@@ -42,6 +42,7 @@ pub mod messagestuff {
         pub mod resultrowsevermsg;
         pub mod resultservermessage;
         pub mod resultvoidservermsg;
+        pub mod readrepairmessage;
         pub mod serverpacket;
     }
 }

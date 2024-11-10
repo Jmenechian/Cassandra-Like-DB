@@ -3,7 +3,8 @@
 // La funcion principal es `handle_connection_client` que recibe un nodo, un stream y un booleano.
 // El resto son funciones auxiliares.
 
-use crate::config;
+use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
+use crate::{config, NeighborNode};
 use crate::config::RF;
 use crate::cql::query::Query;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
@@ -124,7 +125,7 @@ pub fn handle_connection_client(
     Ok(())
 }
 
-fn process_results(results: &Vec<Vec<String>>) -> Vec<String> {
+fn process_results(results: &Vec<Vec<String>>, nodes_with_result: &Vec<NeighborNode>, table: String) -> Vec<String> {
     println!("pr ===> {:?}", results);
 
     match results.len() {
@@ -132,16 +133,20 @@ fn process_results(results: &Vec<Vec<String>>) -> Vec<String> {
         1 => results[0].clone(),
         _ => {
             let index = look_newer(results);
+            read_repair(&results[index], nodes_with_result, table);
             results[index].clone()
+            
         }
     }
 }
 
-pub fn look_newer(results: &[Vec<String>]) -> usize {
+fn look_newer(results: &[Vec<String>]) -> usize {
     //falta testear en process results
+    println!("estamos en look_newer: {:?}", results);
     let mut newer = NaiveDateTime::MIN;
     let mut index = 0;
     for (i, result) in results.iter().enumerate() {
+        println!("resultado: {:?} de i: {}", result, i);
         for row in result {
             if let Some(timestamp) = row
                 .split(",")
@@ -152,7 +157,7 @@ pub fn look_newer(results: &[Vec<String>]) -> usize {
                 if let Ok(parsed_datetime) =
                     NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d %H:%M:%S%.f %Z")
                 {
-                    if parsed_datetime > newer {
+                    if parsed_datetime >= newer {
                         newer = parsed_datetime;
                         index = i;
                     }
@@ -161,6 +166,31 @@ pub fn look_newer(results: &[Vec<String>]) -> usize {
         }
     }
     index
+}
+
+// COR,DEL,25-12-24,11,scheduled,2024-11-10 14:28:27.910282968 UTC
+// COR,DEL,26-12-24,11,scheduled,2024-11-10 14:28:27.910282968 UTC
+// COR,DEL,27-12-24,11,scheduled,2024-11-10 14:28:27.910282968 UTC
+
+// SELECT * FROM origin WHERE airport = COR AND date = 
+
+fn read_repair(result: &Vec<String>, nodes_with_result: &Vec<NeighborNode>, table: String) {
+    //falta testear en process results
+    println!("estamos en read_repair: {:?}", result);
+    println!("estos son los nodos con resultado: {:?}", nodes_with_result);
+
+    for node in nodes_with_result {
+        if node.status == Status::Disconnected {
+            continue;
+        }
+        if let Ok(mut socket) = TcpStream::connect(&node.server_ip) {
+            let msg = ReadRepairMessage {
+                table: table.clone(),
+                rows_to_keep: result.to_vec(),
+            };
+            let _ = msg.send_server_through(&mut socket);
+        }
+    }
 }
 
 pub fn send_query_to_nodes(
@@ -202,7 +232,7 @@ pub fn send_query_to_nodes(
         );
     }
     println!("nodes with result: {:?}", nodes_with_result);
-    for neighbor in nodes_with_result {
+    for neighbor in &nodes_with_result {
         // El nodo original porque puede tener el resultado de la query:
         if neighbor.server_ip == node.server_ip {
             if show {
@@ -215,7 +245,7 @@ pub fn send_query_to_nodes(
                 all_response.push(result);
 
                 if consistency_level == config::ONE && all_response.len() == 1 {
-                    return Ok(process_results(&all_response));
+                    return Ok(process_results(&all_response, &nodes_with_result, query.get_table().clone()));
                 }
             }
             continue;
@@ -259,5 +289,5 @@ pub fn send_query_to_nodes(
             }
         }
     }
-    Ok(process_results(&all_response))
+    Ok(process_results(&all_response, &nodes_with_result, query.get_table().clone()))
 }

@@ -31,6 +31,7 @@ pub const ERROR: u8 = 0x00;
 pub const RESULT: u8 = 0x08;
 
 pub const GOSSIP: u8 = 0x11;
+pub const READ_REPAIR: u8 = 0x12;
 
 pub const CONNECTED: u8 = 0x20;
 pub const DISCONNECTED: u8 = 0x21;

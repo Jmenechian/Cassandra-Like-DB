@@ -31,7 +31,7 @@ impl ConsistentHash<NeighborNode> {
     // Aplicamos el hash a la dirección del nodo y normalizamos este valor en el anillo de nodos.
     // Esto nos da la posicion del nodo en el anillo.
     pub fn hash(&self, key: &str) -> usize {
-        let tocken: usize = murmur::hash32(key).try_into().unwrap_or(0);
+        let tocken: usize = murmur::hash32_with_seed(key, 0).try_into().unwrap_or(0);
         tocken % self.total
     }
 
