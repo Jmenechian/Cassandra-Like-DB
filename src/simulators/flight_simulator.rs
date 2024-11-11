@@ -163,7 +163,7 @@ impl FlightSimulator {
     }
 
     fn flight_is_already_simulated(
-        line_flight:&[String],
+        line_flight: &[String],
         stream: &Arc<RwLock<TcpStream>>,
     ) -> Result<bool, MyError> {
         let date = line_flight[4].clone();
@@ -209,10 +209,7 @@ impl FlightSimulator {
     }
 
     /// Cada thread se acupará de crear un avión y actualizar su estado hasta llegar a destino.
-    fn simulate_flight(
-        mut flight: Flight,
-        stream: &Arc<RwLock<TcpStream>>,
-    ) -> Result<(), MyError> {
+    fn simulate_flight(mut flight: Flight, stream: &Arc<RwLock<TcpStream>>) -> Result<(), MyError> {
         // Escribimos el vuelo en la tabla flights_in_progress.csv -> hacemos INSERT como Client
         FlightSimulator::insert_flight(&flight, stream)?;
         println!("\nSe inserto el vuelo {:?} correctamente.\n", flight);

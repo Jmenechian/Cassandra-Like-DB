@@ -5,14 +5,16 @@ use image::GenericImageView;
 use std::{collections::HashMap, net::TcpStream};
 
 use crate::{
-    clientstuff::client_cql::Client, config::{MAP_PATH, PLANE_PATH, PLANE_SIZE, RADIUS_CLICK_AIRPORT, RADIUS_PAINT_AIRPORT}, simulators::{
+    clientstuff::client_cql::Client,
+    config::{MAP_PATH, PLANE_PATH, PLANE_SIZE, RADIUS_CLICK_AIRPORT, RADIUS_PAINT_AIRPORT},
+    simulators::{
         airport::Airport,
         airport_coordinates::{
             get_airport_coordinates, get_angle, get_coordinate_positioning_on_map,
             obtain_middle_position,
         },
         flight::Flight,
-    }
+    },
 };
 
 /// Estructura que representa la interfaz de usuario.
@@ -36,7 +38,7 @@ impl MapApp {
         let client = Client::initialize(port);
         let stream_client = None;
         let connections = vec![];
-        let date_selected= "".to_string();
+        let date_selected = "".to_string();
 
         Self {
             airports,
@@ -45,7 +47,7 @@ impl MapApp {
             client,
             stream_client,
             connections,
-            date_selected,    
+            date_selected,
         }
     }
 
@@ -353,7 +355,7 @@ impl eframe::App for MapApp {
                     for airport in airports.values() {
                         let (screen_x, screen_y) =
                             get_coordinate_positioning_on_map(airport.coordinates, texture.size());
-                            
+
                         let button_rect =
                             self.draw_airports(ui.painter(), screen_x, screen_y, &airport.name);
 
@@ -375,7 +377,7 @@ impl eframe::App for MapApp {
 
                     self.draw_flight_table(ui);
                 });
-                
+
                 self.draw_date_box(ui);
             }
         });
