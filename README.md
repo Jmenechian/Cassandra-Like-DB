@@ -15,9 +15,12 @@ A continuacion se detallan los pasos para compilar y ejecutar el programa.
 
 ### Como correr
 
-- para correr servidor -> `cargo run --bin server <n>`
-- para correr cliente -> `cargo run --bin client <n>`
-- para correr ui -> `cargo run --bin gui <n>`
+- Para orrer el Servidor -> `cargo run --bin server <n>`
+- Para correr el Cliente -> `cargo run --bin client <n>`
+- Para correr la UI -> `cargo run --bin gui <n>`
+- Para correr el Simulador de vuelos -> `cargo run --bin simulator`
+
+_Siento el `<n>` el numero de nodo._
 
 ### Como testear
 ```cargo test```
