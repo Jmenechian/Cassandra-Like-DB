@@ -14,7 +14,7 @@ pub static TABLE_ORIGIN_NAME: &str = "origin";
 
 pub static TABLE_DESTINATION_NAME: &str = "destination";
 
-pub static N_WORKERS: usize = 10; //Nos dijeron que usemos 10.
+pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool
 
 pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 
