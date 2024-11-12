@@ -125,7 +125,7 @@ pub fn handle_connection_client(
     Ok(())
 }
 
-// Devuelve el resultado de la query segun el consistency level
+// Devuelve el resultado del SELECT segun el consistency level
 // Hace el read-repair para las tabla de origen y destino de vuelos
 // El simulador no tiene read-repair
 fn process_results(
@@ -232,6 +232,9 @@ pub fn send_query_to_nodes(
         );
     }
     println!("nodes with result: {:?}", nodes_with_result);
+
+    let is_select = query.query.contains("SELECT");
+
     for neighbor in &nodes_with_result {
         // El nodo original porque puede tener el resultado de la query:
         if neighbor.server_ip == node.server_ip {
@@ -245,11 +248,15 @@ pub fn send_query_to_nodes(
                 all_response.push(result);
 
                 if consistency_level == config::ONE && all_response.len() == 1 {
-                    return Ok(process_results(
-                        &mut all_response,
-                        &nodes_with_result,
-                        &query.get_table(),
-                    ));
+                    if is_select {
+                        return Ok(process_results(
+                            &mut all_response,
+                            &nodes_with_result,
+                            &query.get_table(),
+                        ));
+                    } else {
+                        return Ok(all_response.pop().unwrap());
+                    }
                 }
             }
             continue;
@@ -293,9 +300,13 @@ pub fn send_query_to_nodes(
             }
         }
     }
-    Ok(process_results(
-        &mut all_response,
-        &nodes_with_result,
-        &query.get_table(),
-    ))
+    if is_select {
+        Ok(process_results(
+            &mut all_response,
+            &nodes_with_result,
+            &query.get_table(),
+        ))
+    } else {
+        Ok(all_response.pop().unwrap())
+    }
 }
