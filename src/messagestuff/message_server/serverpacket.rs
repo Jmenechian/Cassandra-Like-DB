@@ -9,8 +9,8 @@ use crate::messagestuff::{
     message::*, message_server::errorservermessage::ErrorServerMessage,
     message_server::gossipmessage::GossipMessage,
     message_server::queryservermessage::QueryServerMessage,
-    message_server::resultservermessage::ResultServerMessage,
     message_server::readrepairmessage::ReadRepairMessage,
+    message_server::resultservermessage::ResultServerMessage,
 };
 use crate::my_errors::MyError;
 use std::{io::Read, net::TcpStream};

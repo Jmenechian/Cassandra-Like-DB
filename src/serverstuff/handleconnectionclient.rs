@@ -3,11 +3,10 @@
 // La funcion principal es `handle_connection_client` que recibe un nodo, un stream y un booleano.
 // El resto son funciones auxiliares.
 
-use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
-use crate::{config, NeighborNode};
-use crate::config::RF;
+use crate::config::{RF, TABLE_DESTINATION_NAME, TABLE_ORIGIN_NAME};
 use crate::cql::query::Query;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
+use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
     message::*,
     message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultvoidmessage::*},
@@ -20,6 +19,7 @@ use crate::my_errors::*;
 use crate::nodo::Node;
 use crate::nodo::Status;
 use crate::ConsistentHash;
+use crate::{config, NeighborNode};
 use chrono::NaiveDateTime;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
@@ -125,24 +125,32 @@ pub fn handle_connection_client(
     Ok(())
 }
 
-fn process_results(results: &Vec<Vec<String>>, nodes_with_result: &Vec<NeighborNode>, table: String) -> Vec<String> {
+// Devuelve el resultado de la query segun el consistency level
+// Hace el read-repair para las tabla de origen y destino de vuelos
+// El simulador no tiene read-repair
+fn process_results(
+    results: &mut Vec<Vec<String>>,
+    nodes_with_result: &Vec<NeighborNode>,
+    table: &String,
+) -> Vec<String> {
     println!("pr ===> {:?}", results);
+
+    if table != TABLE_ORIGIN_NAME && table != TABLE_DESTINATION_NAME {
+        return results.pop().unwrap();
+    }
 
     match results.len() {
         0 => vec![],
-        1 => results[0].clone(),
+        1 => results.pop().unwrap(),
         _ => {
             let index = look_newer(results);
             read_repair(&results[index], nodes_with_result, table);
-            results[index].clone()
-            
+            results.remove(index)
         }
     }
 }
 
 fn look_newer(results: &[Vec<String>]) -> usize {
-    //falta testear en process results
-    println!("estamos en look_newer: {:?}", results);
     let mut newer = NaiveDateTime::MIN;
     let mut index = 0;
     for (i, result) in results.iter().enumerate() {
@@ -168,16 +176,8 @@ fn look_newer(results: &[Vec<String>]) -> usize {
     index
 }
 
-// COR,DEL,25-12-24,11,scheduled,2024-11-10 14:28:27.910282968 UTC
-// COR,DEL,26-12-24,11,scheduled,2024-11-10 14:28:27.910282968 UTC
-// COR,DEL,27-12-24,11,scheduled,2024-11-10 14:28:27.910282968 UTC
-
-// SELECT * FROM origin WHERE airport = COR AND date = 
-
-fn read_repair(result: &Vec<String>, nodes_with_result: &Vec<NeighborNode>, table: String) {
-    //falta testear en process results
-    println!("estamos en read_repair: {:?}", result);
-    println!("estos son los nodos con resultado: {:?}", nodes_with_result);
+fn read_repair(result: &[String], nodes_with_result: &Vec<NeighborNode>, table: &str) {
+    println!("Mandando mensaje de Read Repair");
 
     for node in nodes_with_result {
         if node.status == Status::Disconnected {
@@ -185,7 +185,7 @@ fn read_repair(result: &Vec<String>, nodes_with_result: &Vec<NeighborNode>, tabl
         }
         if let Ok(mut socket) = TcpStream::connect(&node.server_ip) {
             let msg = ReadRepairMessage {
-                table: table.clone(),
+                table: table.to_string(),
                 rows_to_keep: result.to_vec(),
             };
             let _ = msg.send_server_through(&mut socket);
@@ -245,7 +245,11 @@ pub fn send_query_to_nodes(
                 all_response.push(result);
 
                 if consistency_level == config::ONE && all_response.len() == 1 {
-                    return Ok(process_results(&all_response, &nodes_with_result, query.get_table().clone()));
+                    return Ok(process_results(
+                        &mut all_response,
+                        &nodes_with_result,
+                        &query.get_table(),
+                    ));
                 }
             }
             continue;
@@ -289,5 +293,9 @@ pub fn send_query_to_nodes(
             }
         }
     }
-    Ok(process_results(&all_response, &nodes_with_result, query.get_table().clone()))
+    Ok(process_results(
+        &mut all_response,
+        &nodes_with_result,
+        &query.get_table(),
+    ))
 }

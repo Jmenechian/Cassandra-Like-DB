@@ -2,7 +2,6 @@ use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::serverpacket::*;
 use crate::my_errors::MyError;
 
-
 #[derive(Debug, PartialEq)]
 pub struct ReadRepairMessage {
     pub table: String,
@@ -11,7 +10,6 @@ pub struct ReadRepairMessage {
 
 impl Serialize for ReadRepairMessage {
     fn to_bytes(&self) -> Vec<u8> {
-        
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&longstring_to_bytes(self.table.clone()));
         bytes.extend_from_slice(&int_to_bytes(self.rows_to_keep.len() as i32));
