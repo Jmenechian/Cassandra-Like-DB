@@ -131,7 +131,7 @@ impl FlightSimulator {
         &self,
         stream_server: &Arc<RwLock<TcpStream>>,
     ) -> Result<Flight, SimulatorErrors> {
-        match self.flight_is_already_simulated(stream_server) {
+        match self.flight_in_table(stream_server, "flights_in_progress") {
             Ok(exists) => {
                 if exists {
                     return Err(SimulatorErrors::FlightIsAlreadySimulated());
@@ -151,23 +151,33 @@ impl FlightSimulator {
                 self.date.clone(),
                 self.avg_speed.clone(),
             )?;
+
+            self.flight_in_status_table(stream_server, &flight, "origin")
+                .map_err(|error| SimulatorErrors::Error(error.to_string()))?;
+            self.flight_in_status_table(stream_server, &flight, "destination")
+                .map_err(|error| SimulatorErrors::Error(error.to_string()))?;
+
             return Ok(flight);
         }
 
         Err(SimulatorErrors::UncreatedFlight())
     }
 
-    fn flight_is_already_simulated(
+    fn flight_in_table(
         &self,
         stream: &Arc<RwLock<TcpStream>>,
+        table: &str,
     ) -> Result<bool, MyError> {
         let date = self.date.clone();
-        let airport = self.origin.clone();
+        let mut airport = self.origin.clone();
+        if table == "destination" {
+            airport = self.destination.clone();
+        }
         let flight = self.flight_number.clone();
 
         let query = format!(
-            "SELECT * FROM flights_in_progress WHERE date = {} AND airport = {} AND flight = {}",
-            date, airport, flight
+            "SELECT * FROM {} WHERE date = {} AND airport = {} AND flight = {}",
+            table, date, airport, flight
         );
 
         let mut stream = stream
@@ -189,6 +199,24 @@ impl FlightSimulator {
         }
 
         Ok(false)
+    }
+
+    /// Verifica si el vuelo está en la tabla y en caso de no estar lo crea.
+    fn flight_in_status_table(&self, stream: &Arc<RwLock<TcpStream>>, flight: &Flight, table: &str) -> Result<(), MyError> {
+        if let Ok(exists) = self.flight_in_table(stream, table) {
+            if !exists {
+                let mut stream = stream
+                .write()
+                .map_err(|_| MyError::LockingError("Error adquiriendo el write lock".to_string()))?;
+    
+                let query = format!("INSERT INTO {} (airport, destination, date, flight, status) VALUES ({}, {}, {}, {}, {})", 
+                table, flight.origin_airport.name, flight.return_airport.name, flight.departure_date, flight.number, flight.status.to_str());
+    
+                Client::send_message(&mut stream, query)
+                    .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;    
+            }
+        }
+        Ok(())
     }
 
     fn get_airports(&self) -> Result<(Airport, Airport), AirportErrors> {
