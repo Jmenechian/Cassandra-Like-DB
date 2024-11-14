@@ -1,13 +1,12 @@
 use super::{
-    airport::Airport, airport_coordinates::get_airport_coordinates, flight::Flight,
-    user_input::ask_user_flight_values,
+    airport::Airport, airport_coordinates::get_airport_coordinates, flight::Flight, queries::{get_query_create_simulator_table, get_query_insert_in_destination, get_query_insert_in_origin, get_query_insert_in_simulator, get_query_update_in_destination, get_query_update_in_origin, get_query_update_in_simulator}, user_input::ask_user_flight_values
 };
 use crate::{
     client_cql::Client,
     config::N_WORKERS,
     errors::{airport_errors::AirportErrors, simulator_errors::SimulatorErrors},
     my_errors::MyError,
-    simulators::flight_status::FlightStatus,
+    simulators::{flight_status::FlightStatus, queries::get_query_select_in_destination},
 };
 
 use chrono::Utc;
@@ -37,6 +36,30 @@ impl FlightSimulator {
             date,
         }
     }
+
+    fn initializer() -> Result<Self, SimulatorErrors> {
+        let [mut _flight_number, mut _origin, mut _destination, mut _avg_speed] = [
+                "".to_string(),
+                "".to_string(),
+                "".to_string(),
+                "".to_string(),
+            ];
+
+        if let Ok(values) = ask_user_flight_values() {
+                _flight_number = values[0].clone();
+                _origin = values[1].clone();
+                _destination = values[2].clone();
+                _avg_speed = values[3].clone();
+        } else {
+            return Err(SimulatorErrors::InputError());
+        }
+
+        let flight_simulator =
+                    FlightSimulator::new(_flight_number, _origin, _destination, _avg_speed);
+
+        Ok(flight_simulator)
+    }
+
     /// Pone en marcha la creación de vuelos y su simulación de despegue y llegada a destino.
     /// Se utilizan thread pool.
     pub fn run() -> Result<(), SimulatorErrors> {
@@ -49,38 +72,19 @@ impl FlightSimulator {
         let pool = ThreadPool::new(N_WORKERS);
 
         loop {
-            // Pasamos el stream a cada thread para que pueda hacer las queries correspondientes.
             let mut stream_server: TcpStream = if let Ok(stream) = Client::connect_with_node() {
                 stream
             } else {
-                println!("No nos pudimos conectarnos a un nodo.\n");
                 return Err(SimulatorErrors::AllNodesDisconnected());
             };
 
-            let [mut _flight_number, mut _origin, mut _destination, mut _avg_speed] = [
-                "".to_string(),
-                "".to_string(),
-                "".to_string(),
-                "".to_string(),
-            ];
-
-            if let Ok(values) = ask_user_flight_values() {
-                _flight_number = values[0].clone();
-                _origin = values[1].clone();
-                _destination = values[2].clone();
-                _avg_speed = values[3].clone();
-            } else {
-                return Err(SimulatorErrors::InputError());
-            }
+            let flight_simulator = FlightSimulator::initializer()?;
 
             pool.execute(move || {
-                let flight_simulator =
-                    FlightSimulator::new(_flight_number, _origin, _destination, _avg_speed);
-
                 match flight_simulator.obtain_flight_and_simulate_it(&mut stream_server) {
                     Ok(_) => {}
                     Err(e) => {
-                        print!("{}", e);
+                        println!("{}", e);
                     }
                 }
             });
@@ -100,9 +104,7 @@ impl FlightSimulator {
             ));
         };
 
-        let query = "CREATE TABLE flights_in_progress (flight STR, airport STR, destination STR, status STR, date DATETIME, 
-            speed STR, latitude STR, longitude STR, height STR, timestamp TIMESTAMP, PRIMARY KEY (number, origin, date) 
-            WITH CLUSTERING ORDER BY (timestamp ASC)".to_string();
+        let query = get_query_create_simulator_table();
         Client::send_message(&mut stream_server, query)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
@@ -155,17 +157,12 @@ impl FlightSimulator {
     }
 
     fn flight_in_table(&self, mut stream: &mut TcpStream, table: &str) -> Result<bool, MyError> {
-        let date = self.date.clone();
-        let mut airport = self.origin.clone();
+        let query;
         if table == "destination" {
-            airport = self.destination.clone();
+            query = get_query_select_in_destination(self.date.clone(), self.destination.clone(), self.flight_number.clone());
+        } else {
+            query = get_query_select_in_destination(self.date.clone(), self.destination.clone(), self.flight_number.clone());
         }
-        let flight = self.flight_number.clone();
-
-        let query = format!(
-            "SELECT * FROM {} WHERE date = {} AND airport = {} AND flight = {}",
-            table, date, airport, flight
-        );
 
         Client::send_message(&mut stream, query)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
@@ -193,8 +190,12 @@ impl FlightSimulator {
     ) -> Result<(), MyError> {
         if let Ok(exists) = self.flight_in_table(&mut stream, table) {
             if !exists {
-                let query = format!("INSERT INTO {} (airport, destination, date, flight, status) VALUES ({}, {}, {}, {}, {})", 
-                table, flight.origin_airport.name, flight.return_airport.name, flight.departure_date, flight.number, flight.status.to_str());
+                let query;
+                if table == "destination" {
+                    query = get_query_insert_in_destination(flight);
+                } else {
+                    query = get_query_insert_in_origin(flight);
+                }
 
                 Client::send_message(&mut stream, query)
                     .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
@@ -223,7 +224,7 @@ impl FlightSimulator {
     ) -> Result<(), MyError> {
         // Escribimos el vuelo en la tabla flights_in_progress.csv -> hacemos INSERT como Client
         FlightSimulator::insert_flight(&flight, &mut stream)?;
-        println!("\nSe inserto el vuelo {:?} correctamente.\n", flight);
+        println!("\nSe agrego el vuelo {:?} correctamente.\n", flight);
 
         while flight.status != FlightStatus::Landed {
             thread::sleep(Duration::from_secs(2));
@@ -232,15 +233,16 @@ impl FlightSimulator {
             // Si vuelo en scheduled -> 3 UPDATE: actualizamos el estado del vuelo a 'Boarding', y en sus corresponientes tablas de origen y destino.
             if flight.status == FlightStatus::Scheduled {
                 flight.set_status(FlightStatus::Boarding);
+                FlightSimulator::insert_flight(&flight, &mut stream)?; //SACAR!!!!!!!!
                 FlightSimulator::update_flight(&flight, stream)?;
-                println!("\nEl vuelo {:?} está por salir.\n", flight);
+                //println!("\nEl vuelo {:?} está por salir.\n", flight);
                 continue;
             }
 
             // Si status es boarding -> actualizamos a Airborne
             if flight.status == FlightStatus::Boarding {
                 flight.set_status(FlightStatus::Airborne);
-                println!("\nEl vuelo {:?} despego.\n", flight);
+                //println!("\nEl vuelo {:?} despego.\n", flight);
             }
 
             flight.update_speed();
@@ -249,30 +251,26 @@ impl FlightSimulator {
 
             flight.update_position();
 
-            println!("\n Vuelo despues de los update: {:?}", flight);
-
             // Si el avion llego a destino, acutializamos su estado por el correspondiente:
             if flight.flight_in_destination() {
                 flight.set_status(FlightStatus::Landed);
                 flight.update_speed();
                 flight.update_height();
+                FlightSimulator::insert_flight(&flight, &mut stream)?; // SACAR!!!!!!
                 FlightSimulator::update_flight(&flight, stream)?;
-                println!("\nEl vuelo {:?} llegó a destino.\n", flight);
+                //println!("\nEl vuelo {:?} llegó a destino.\n", flight);
                 break;
             }
 
+            FlightSimulator::insert_flight(&flight, &mut stream)?; // SACAR!!!!!!
             FlightSimulator::update_flight(&flight, stream)?;
-            println!(
-                "Se actualizo el vuelo {} en todas las tablas.",
-                flight.status.to_str()
-            );
+
         }
         Ok(())
     }
 
     fn insert_flight(flight: &Flight, mut stream: &mut TcpStream) -> Result<(), MyError> {
-        let query = format!("INSERT INTO flights_in_progress (flight, airport, destination, status, date, speed, latitude, longitude, height) 
-        VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {})", flight.number, flight.origin_airport.name, flight.return_airport.name, flight.status.to_str(), flight.departure_date, flight.speed, flight.latitude, flight.longitude, flight.height);
+        let query = get_query_insert_in_simulator(flight);
 
         Client::send_message(&mut stream, query)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
@@ -281,30 +279,13 @@ impl FlightSimulator {
     }
 
     fn update_flight(flight: &Flight, mut stream: &mut TcpStream) -> Result<(), MyError> {
-        for table in ["flights_in_progress", "origin", "destination"] {
-            let airport = if table == "destination" {
-                flight.return_airport.name.clone()
-            } else {
-                flight.origin_airport.name.clone()
+        for table in ["origin", "destination"] { // Agregar flights_in_progress!!!!!!
+            let query =  match table {
+                "origin" => get_query_update_in_origin(flight),
+                "destination" => get_query_update_in_destination(flight),
+                "flights_in_progress" => get_query_update_in_simulator(flight),
+                _ => continue,
             };
-
-            let mut extra = "".to_string();
-            if table == "flights_in_progress" {
-                extra = format!(
-                    ", speed = {}, latitude = {}, longitude = {}, height = {} ",
-                    flight.speed, flight.latitude, flight.longitude, flight.height
-                );
-            }
-
-            let query = format!(
-                "UPDATE {} SET status = {}{} WHERE flight = {} AND airport = {} AND date = {}",
-                table,
-                flight.status.to_str(),
-                extra,
-                flight.number,
-                airport,
-                flight.departure_date
-            );
 
             Client::send_message(&mut stream, query)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;

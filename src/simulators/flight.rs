@@ -4,7 +4,7 @@ use super::{
     flight_status::FlightStatus,
 };
 use crate::{
-    config::{CRUISING_HEIGHT, CRUISING_SPEED, FLIGHT_STEP, STEPS_AT_CRUISING_SPEED},
+    config::{CRUISING_HEIGHT, FLIGHT_STEP, STEPS_AT_CRUISING_SPEED},
     errors::simulator_errors::SimulatorErrors,
 };
 
@@ -81,7 +81,7 @@ impl Flight {
     }
 
     /// Si no se llego a la cercania del punto medio (rango medio): aumentamos la velocidad,
-    /// en punto medio tiene que llegar a los 840 km/h (velocidad crucero).
+    /// en punto medio tiene que llegar a la velocidad promedio.
     /// Tomamos el rango medio como la mitad de la recta que une origen y destino +- 2 step de vuelo.
     /// Tenemos FLIGHT_STEP - STEPS_AT_CRUISING_SPEED pasos para llegar a la velocidad crucero.
     /// Si pasamos el rango medio donde viajamos a velocidad crucero: disminuimos la velocidad.
@@ -93,12 +93,12 @@ impl Flight {
         }
 
         let zone = self.flight_vs_midpoint();
-        if zone == -1 && self.speed < CRUISING_SPEED {
-            self.speed += CRUISING_SPEED / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);
+        if zone == -1 && self.speed < self.avg_speed {
+            self.speed += self.avg_speed / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);
         } else if zone == 0 {
-            self.speed = CRUISING_SPEED;
+            self.speed = self.avg_speed;
         } else if zone == 1 && self.speed > 0.0 {
-            self.speed -= CRUISING_SPEED / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);
+            self.speed -= self.avg_speed / (FLIGHT_STEP - STEPS_AT_CRUISING_SPEED);
         }
 
         if self.speed < 0.0 {
@@ -118,7 +118,7 @@ impl Flight {
         let angle = get_angle(
             self.origin_airport.coordinates.0,
             self.return_airport.coordinates.0,
-            self.origin_airport.coordinates.0,
+            self.origin_airport.coordinates.1,
             self.return_airport.coordinates.1,
         );
 
@@ -254,13 +254,13 @@ impl Flight {
         .sqrt();
 
         if dist_origin_flight < dist_origin_and_m_min {
-            println!("Esta en zona previa a crucero.");
+            //println!("Esta en zona previa a crucero.");
             return -1;
         } else if dist_origin_flight > dist_origin_and_m_max {
-            println!("Esta en zona posterior a crucero.");
+            //println!("Esta en zona posterior a crucero.");
             return 1;
         }
-        println!("Esta en la zona crucero.");
+        //println!("Esta en la zona crucero.");
         0
     }
 

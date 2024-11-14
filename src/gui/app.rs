@@ -83,8 +83,6 @@ impl MapApp {
         let image_rgba = map_image.to_rgba8();
         let width: usize = width.try_into().unwrap_or(0);
         let height: usize = height.try_into().unwrap_or(0);
-        println!("width: {}", width);
-        println!("height: {}", height);
 
         let texture = ctx.load_texture(
             "map",
