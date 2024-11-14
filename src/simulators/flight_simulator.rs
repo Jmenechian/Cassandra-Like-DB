@@ -1,17 +1,17 @@
-use super::{airport::Airport, airport_coordinates::get_airport_coordinates, flight::Flight};
+use super::{
+    airport::Airport, airport_coordinates::get_airport_coordinates, flight::Flight,
+    user_input::ask_user_flight_values,
+};
 use crate::{
     client_cql::Client,
-    config::{N_WORKERS, TABLE_PATH},
-    errors::airport_errors::AirportErrors,
+    config::N_WORKERS,
+    errors::{airport_errors::AirportErrors, simulator_errors::SimulatorErrors},
     my_errors::MyError,
     simulators::flight_status::FlightStatus,
 };
 
-use rand::{seq::SliceRandom, Rng};
+use chrono::Utc;
 use std::{
-    error::Error,
-    fs::File,
-    io::{BufRead, BufReader},
     net::TcpStream,
     sync::{Arc, RwLock},
     thread,
@@ -21,12 +21,30 @@ use threadpool::ThreadPool;
 
 #[derive(Debug, Clone)]
 /// Estructura que creará y simulará un vuelo desde su programación, pasando por su despegue hasta su llegada a destino.
-pub struct FlightSimulator {}
+pub struct FlightSimulator {
+    flight_number: String,
+    origin: String,
+    destination: String,
+    avg_speed: String,
+    date: String,
+}
 
 impl FlightSimulator {
+    fn new(flight_number: String, origin: String, destination: String, avg_speed: String) -> Self {
+        let today_utc = Utc::now();
+        let date = today_utc.format("%y-%m-%d").to_string();
+
+        Self {
+            flight_number,
+            origin,
+            destination,
+            avg_speed,
+            date,
+        }
+    }
     /// Pone en marcha la creación de vuelos y su simulación de despegue y llegada a destino.
     /// Se utilizan thread pool.
-    pub fn run() {
+    pub fn run() -> Result<(), SimulatorErrors> {
         if FlightSimulator::create_flight_table().is_err() {
             println!("Las tablas ya estaban creadas.\n");
         } else {
@@ -41,12 +59,31 @@ impl FlightSimulator {
                 stream
             } else {
                 println!("No nos pudimos conectarnos a un nodo.\n");
-                return;
+                return Err(SimulatorErrors::AllNodesDisconnected());
             };
-            let stream_server: Arc<RwLock<TcpStream>> = Arc::new(RwLock::new(stream_server));
+            let stream_server: Arc<RwLock<TcpStream>> = Arc::new(RwLock::new(stream_server)); // Es necesario??
+
+            let [mut _flight_number, mut _origin, mut _destination, mut _avg_speed] = [
+                "".to_string(),
+                "".to_string(),
+                "".to_string(),
+                "".to_string(),
+            ];
+
+            if let Ok(values) = ask_user_flight_values() {
+                _flight_number = values[0].clone();
+                _origin = values[1].clone();
+                _destination = values[2].clone();
+                _avg_speed = values[3].clone();
+            } else {
+                return Err(SimulatorErrors::InputError());
+            }
 
             pool.execute(move || {
-                match FlightSimulator::obtain_flight_and_simulate_it(stream_server) {
+                let flight_simulator =
+                    FlightSimulator::new(_flight_number, _origin, _destination, _avg_speed);
+
+                match flight_simulator.obtain_flight_and_simulate_it(stream_server) {
                     Ok(_) => {}
                     Err(e) => {
                         print!("{}", e);
@@ -56,7 +93,6 @@ impl FlightSimulator {
 
             thread::sleep(Duration::from_secs(5));
         }
-        // Borrar tabla flights_in_progress.
     }
 
     /// Se crea la tabla flights_in_progress.
@@ -79,96 +115,55 @@ impl FlightSimulator {
         Ok(())
     }
 
-    fn obtain_flight_and_simulate_it(stream_server: Arc<RwLock<TcpStream>>) -> Result<(), MyError> {
-        match FlightSimulator::get_random_flight(&stream_server) {
-            Ok(flight) => FlightSimulator::simulate_flight(flight, &stream_server),
+    fn obtain_flight_and_simulate_it(
+        &self,
+        stream_server: Arc<RwLock<TcpStream>>,
+    ) -> Result<(), MyError> {
+        match self.create_flight(&stream_server) {
+            Ok(flight) => self.simulate_flight(flight, &stream_server),
             Err(e) => Err(MyError::Error(e.to_string())),
         }
     }
 
-    /// Obtenemos un vuelo de una tabla random de origen_<n> que no este en estado "Cancelled".
+    /// Si el vuelo no está en las tablas de estados (origin, destnation) se crea en estado "scheduled".
     /// Lo inicializamos con velocidad 0 y en la posicion del aeropuesto de origen.
-    fn get_random_flight(stream_server: &Arc<RwLock<TcpStream>>) -> Result<Flight, MyError> {
-        let mut found_plane = false;
-        let mut line_flight = vec![];
-        while !found_plane {
-            let table_name = "origin";
-            let partition = rand::thread_rng().gen_range(1..=8);
-            let table_path = format!("{}/{}_{}.csv", TABLE_PATH, table_name, partition);
-
-            if let Ok(line) = FlightSimulator::get_random_line(table_path) {
-                line_flight = line;
-                found_plane = true;
-            }
-
-            if found_plane {
-                match FlightSimulator::flight_is_already_simulated(&line_flight, stream_server) {
-                    Ok(exists) => {
-                        if exists {
-                            found_plane = false;
-                        }
-                    }
-                    Err(e) => {
-                        return Err(e);
-                    }
+    fn create_flight(
+        &self,
+        stream_server: &Arc<RwLock<TcpStream>>,
+    ) -> Result<Flight, SimulatorErrors> {
+        match self.flight_is_already_simulated(stream_server) {
+            Ok(exists) => {
+                if exists {
+                    return Err(SimulatorErrors::FlightIsAlreadySimulated());
                 }
+            }
+            Err(e) => {
+                return Err(SimulatorErrors::Error(e.to_string()));
             }
         }
 
-        if let Ok((airport_origin, airport_return)) = FlightSimulator::get_airports(&line_flight) {
+        if let Ok((airport_origin, airport_return)) = self.get_airports() {
             let flight = Flight::new(
-                line_flight[3].clone(),
+                self.flight_number.clone(),
                 airport_origin,
                 airport_return,
-                line_flight[4].clone(),
-                line_flight[2].clone(),
-            );
+                "scheduled".to_string(),
+                self.date.clone(),
+                self.avg_speed.clone(),
+            )?;
             return Ok(flight);
         }
 
-        Err(MyError::Error(
-            "No se pudo crear el vuelo de simulación".to_string(),
-        ))
-    }
-
-    /// Se retorna los valores de un vuelo de la tabla origin: [airport,destination,date,flight,status,timestamp].
-    /// Este no tiene estado "Cancelled".
-    fn get_random_line(file_path: String) -> Result<Vec<String>, Box<dyn Error>> {
-        let file = File::open(file_path)?;
-        let reader = BufReader::new(file);
-
-        let mut lines: Vec<String> = Vec::new();
-        for line in reader.lines() {
-            let line = line?;
-            if line.contains("airport,destination,date,flight,status") || line.is_empty() {
-                continue;
-            }
-            lines.push(line);
-        }
-
-        if lines.is_empty() {
-            return Err("File is empty.".into());
-        }
-
-        let mut values: Vec<String> = vec![];
-        while values.is_empty() || values[4].to_lowercase() != "scheduled" {
-            let mut rng = rand::thread_rng();
-            let line = lines
-                .choose(&mut rng)
-                .ok_or("Error when selecting a random line")?;
-            values = line.split(",").map(|l| l.to_string()).collect();
-        }
-
-        Ok(values.clone())
+        Err(SimulatorErrors::UncreatedFlight())
     }
 
     fn flight_is_already_simulated(
-        line_flight: &[String],
+        &self,
         stream: &Arc<RwLock<TcpStream>>,
     ) -> Result<bool, MyError> {
-        let date = line_flight[4].clone();
-        let airport = line_flight[1].clone();
-        let flight = line_flight[0].clone();
+        let date = self.date.clone();
+        let airport = self.origin.clone();
+        let flight = self.flight_number.clone();
 
         let query = format!(
             "SELECT * FROM flights_in_progress WHERE date = {} AND airport = {} AND flight = {}",
@@ -196,11 +191,11 @@ impl FlightSimulator {
         Ok(false)
     }
 
-    fn get_airports(values: &[String]) -> Result<(Airport, Airport), AirportErrors> {
+    fn get_airports(&self) -> Result<(Airport, Airport), AirportErrors> {
         let airports = get_airport_coordinates();
 
         if let (Some(airport_o), Some(airport_r)) =
-            (airports.get(&values[0]), airports.get(&values[1]))
+            (airports.get(&self.origin), airports.get(&self.destination))
         {
             return Ok((airport_o.clone(), airport_r.clone()));
         }
@@ -209,7 +204,11 @@ impl FlightSimulator {
     }
 
     /// Cada thread se acupará de crear un avión y actualizar su estado hasta llegar a destino.
-    fn simulate_flight(mut flight: Flight, stream: &Arc<RwLock<TcpStream>>) -> Result<(), MyError> {
+    fn simulate_flight(
+        &self,
+        mut flight: Flight,
+        stream: &Arc<RwLock<TcpStream>>,
+    ) -> Result<(), MyError> {
         // Escribimos el vuelo en la tabla flights_in_progress.csv -> hacemos INSERT como Client
         FlightSimulator::insert_flight(&flight, stream)?;
         println!("\nSe inserto el vuelo {:?} correctamente.\n", flight);

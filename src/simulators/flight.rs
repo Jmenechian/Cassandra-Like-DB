@@ -3,7 +3,10 @@ use super::{
     airport_coordinates::{get_angle, obtain_middle_position},
     flight_status::FlightStatus,
 };
-use crate::config::{CRUISING_HEIGHT, CRUISING_SPEED, FLIGHT_STEP, STEPS_AT_CRUISING_SPEED};
+use crate::{
+    config::{CRUISING_HEIGHT, CRUISING_SPEED, FLIGHT_STEP, STEPS_AT_CRUISING_SPEED},
+    errors::simulator_errors::SimulatorErrors,
+};
 
 #[derive(Debug)]
 /// Estructura que representa un vuelo, con su número, el aeropuesto de origen y el de destino, y otras variables que varian durante recorrido que hace.
@@ -19,6 +22,7 @@ pub struct Flight {
     pub height: f32,
     pub midpoint: (f32, f32), // punto medio entre origen y destino: (longitud, latitud)
     pub step: (f32, f32),     // paso en el que avanzará el avion en longitud y latitud
+    pub avg_speed: f32,       // velocidad estimada promedio
 }
 
 impl Flight {
@@ -29,7 +33,8 @@ impl Flight {
         return_airport: Airport,
         status: String,
         departure_date: String,
-    ) -> Self {
+        avg_speed: String,
+    ) -> Result<Self, SimulatorErrors> {
         let status = FlightStatus::match_status(status);
         let speed = 0.0;
         let longitude = origin_airport.coordinates.0;
@@ -45,8 +50,16 @@ impl Flight {
             Flight::get_flight_step(longitude, midpoint.0),
             Flight::get_flight_step(latitude, midpoint.1),
         );
+        let avg_speed = match avg_speed.parse::<f32>() {
+            Ok(speed) => speed,
+            Err(_) => {
+                return Err(SimulatorErrors::Error(
+                    "No se increso un valor de velocidad primedio correcta".to_string(),
+                ));
+            }
+        };
 
-        Self {
+        Ok(Self {
             number,
             origin_airport,
             return_airport,
@@ -58,7 +71,8 @@ impl Flight {
             height,
             midpoint,
             step,
-        }
+            avg_speed,
+        })
     }
 
     /// Asignamos el status indicado al vuelo.

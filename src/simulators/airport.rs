@@ -64,13 +64,20 @@ impl Airport {
                 }
                 let airport_r = Airport::new(values[1].clone(), coordinates);
 
-                flights.push(Flight::new(
+                let flight = match Flight::new(
                     values[3].clone(),
                     airport_o,
                     airport_r,
                     values[4].clone(),
                     values[2].clone(),
-                ));
+                    0.0.to_string(),
+                ) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        return Err(MyError::Error(e.to_string()));
+                    }
+                };
+                flights.push(flight);
             }
             println!("origin_flights: {:?}", flights);
             return Ok(flights);
@@ -120,13 +127,20 @@ impl Airport {
                 }
                 let airport_r = Airport::new(values[0].clone(), coordinates);
 
-                flights.push(Flight::new(
+                let flight = match Flight::new(
                     values[3].clone(),
                     airport_o,
                     airport_r,
                     values[4].clone(),
                     values[2].clone(),
-                ));
+                    0.0.to_string(),
+                ) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        return Err(MyError::Error(e.to_string()));
+                    }
+                };
+                flights.push(flight);
             }
             println!("flights_that_return: {:?}", flights);
             return Ok(flights);
