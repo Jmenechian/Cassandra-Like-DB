@@ -1,29 +1,21 @@
 pub static PORTS_FILE: &str = "puertos.txt";
 
-pub static POOL_NUMBER: usize = 5;
-
 pub static SERVER_PORT: &str = "7000";
-
 pub static CLIENT_PORT: &str = "9042";
 
 pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Hashing.
-
-pub static TABLE_PATH: &str = "src/tables";
-
-pub static TABLE_ORIGIN_NAME: &str = "origin";
-
-pub static TABLE_DESTINATION_NAME: &str = "destination";
-
 pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool
-
 pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 
+pub static TABLE_PATH: &str = "src/tables";
+pub static TABLE_ORIGIN_NAME: &str = "origin";
+pub static TABLE_DESTINATION_NAME: &str = "destination";
+
 //GUI
-
 pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";
-
 pub static MAP_PATH: &str = "src/gui/assets/map.png";
 pub static PLANE_PATH: &str = "src/gui/assets/air-plane.png";
+pub static TABLE_USERS_NAME: &str = "users";
 
 pub static RADIUS_CLICK_AIRPORT: f32 = 15.0; // Radio del botón
 pub static RADIUS_PAINT_AIRPORT: f32 = 5.0; //

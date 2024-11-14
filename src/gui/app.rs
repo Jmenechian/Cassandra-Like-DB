@@ -15,6 +15,7 @@ use crate::{
         },
         flight::Flight,
     },
+    gui::user::User,
 };
 
 /// Estructura que representa la interfaz de usuario.
@@ -27,6 +28,9 @@ pub struct MapApp {
     stream_client: Option<TcpStream>,
     connections: Vec<(Airport, Airport, Flight)>,
     date_selected: String,
+    username: String,
+    password: String,
+    user: Option<User>,
 }
 
 impl MapApp {
@@ -39,6 +43,9 @@ impl MapApp {
         let stream_client = None;
         let connections = vec![];
         let date_selected = "".to_string();
+        let username = "".to_string();
+        let password = "".to_string();
+        let user = None;
         Self {
             airports,
             map_texture,
@@ -47,6 +54,9 @@ impl MapApp {
             stream_client,
             connections,
             date_selected,
+            username,
+            password,
+            user,
         }
     }
 
@@ -338,6 +348,37 @@ impl MapApp {
 impl eframe::App for MapApp {
     /// Se llama cada vez que es necesario volver a pintar la interfaz de usuario, lo que puede ocurrir muchas veces por segundo.
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+        // Dibujar login
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Username:");
+                // let mut username = String::new();
+                ui.text_edit_singleline(&mut self.username);
+
+                ui.label("Password:");
+                // let mut password = String::new();
+                ui.text_edit_singleline(&mut self.password);
+
+                if ui.button("Login").clicked() {
+                    println!(
+                        "Attempting to login with username: {} and password: {}",
+                        self.username, self.password
+                    );
+                    // Add your login logic here
+                    match User::new(self.username.clone(), self.password.clone()) {
+                        Ok(user) => {
+                            println!("Login successful: {:?}", user);
+                            self.user = Some(user);
+                        }
+                        Err(err) => {
+                            println!("Login failed: {:?}", err);
+                            self.user = None;
+                        }
+                    };
+                }
+            });
+        });
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Mapa de Aeropuertos");
 
@@ -367,7 +408,7 @@ impl eframe::App for MapApp {
 
                             self.reset_connection();
 
-                            if !self.date_selected.is_empty() {
+                            if !self.date_selected.is_empty() && self.user.is_some() {
                                 self.add_all_connections(airport, texture, screen_x, screen_y);
                             }
                         }

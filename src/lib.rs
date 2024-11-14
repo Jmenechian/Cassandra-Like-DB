@@ -59,6 +59,7 @@ pub use neighbor_node::NeighborNode;
 //GUI
 pub mod gui {
     pub mod app;
+    pub mod user;
     pub mod painted {
         pub mod airport;
         pub mod airport_coordinates;
