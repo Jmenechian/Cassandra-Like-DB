@@ -10,7 +10,11 @@ pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Ha
 
 pub static TABLE_PATH: &str = "src/tables";
 
-pub static N_WORKERS: usize = 10; //Nos dijeron que usemos 10.
+pub static TABLE_ORIGIN_NAME: &str = "origin";
+
+pub static TABLE_DESTINATION_NAME: &str = "destination";
+
+pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool
 
 pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 
@@ -31,6 +35,7 @@ pub const ERROR: u8 = 0x00;
 pub const RESULT: u8 = 0x08;
 
 pub const GOSSIP: u8 = 0x11;
+pub const READ_REPAIR: u8 = 0x12;
 
 pub const CONNECTED: u8 = 0x20;
 pub const DISCONNECTED: u8 = 0x21;

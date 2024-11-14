@@ -17,7 +17,6 @@ use crate::{
     },
 };
 
-
 /// Estructura que representa la interfaz de usuario.
 /// Mapa con aeropuestos y vuelos que conectan a los aeropuestos.
 pub struct MapApp {
@@ -105,7 +104,13 @@ impl MapApp {
     }
 
     /// Se agrega las conecciones que tiene el aeropuesto con los demás por los aviones que salen o regresan de este.
-    fn add_all_connections(&mut self, airport: &Airport, texture: &TextureHandle, screen_x: f32, screen_y: f32) {
+    fn add_all_connections(
+        &mut self,
+        airport: &Airport,
+        texture: &TextureHandle,
+        screen_x: f32,
+        screen_y: f32,
+    ) {
         if let (Ok(origin_flights), Ok(return_flights)) = (
             airport.get_origin_flights_from(
                 &mut self.stream_client,
@@ -124,11 +129,10 @@ impl MapApp {
 
             for flight_r in return_flights {
                 //airport_o
-                let (screen_x_o, screen_y_o) =
-                    get_coordinate_positioning_on_map(
-                        flight_r.origin_airport.coordinates,
-                        texture.size(),
-                    );
+                let (screen_x_o, screen_y_o) = get_coordinate_positioning_on_map(
+                    flight_r.origin_airport.coordinates,
+                    texture.size(),
+                );
                 if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
                     self.add_connection(
                         flight_r.origin_airport.clone(),
@@ -136,16 +140,14 @@ impl MapApp {
                         flight_r,
                     );
                 }
-                
             }
 
             for flight_o in origin_flights {
                 // airport_r
-                let (screen_x_r, screen_y_r) =
-                    get_coordinate_positioning_on_map(
-                        flight_o.return_airport.coordinates,
-                        texture.size(),
-                    );
+                let (screen_x_r, screen_y_r) = get_coordinate_positioning_on_map(
+                    flight_o.return_airport.coordinates,
+                    texture.size(),
+                );
                 if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
                     self.add_connection(
                         flight_o.origin_airport.clone(),
@@ -297,27 +299,27 @@ impl MapApp {
         // Usar un layout vertical para mantener el contenido en la parte superior
         ui.vertical(|ui| {
             ui.set_min_width(200.0); // Ancho mínimo para la tabla
-                if !self.connections.is_empty() {
-                    ui.separator();
-                    ui.label("Flight Information:");
-                    egui::Grid::new("flight_info_table")
-                        .striped(true)
-                        .show(ui, |ui| {
-                            ui.label("Flight");
-                            ui.label("Origin");
-                            ui.label("Destination");
-                            ui.label("Status");
+            if !self.connections.is_empty() {
+                ui.separator();
+                ui.label("Flight Information:");
+                egui::Grid::new("flight_info_table")
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.label("Flight");
+                        ui.label("Origin");
+                        ui.label("Destination");
+                        ui.label("Status");
+                        ui.end_row();
+                        for (origin, destination, flight) in &self.connections {
+                            ui.label(flight.name.clone());
+                            ui.label(origin.name.clone());
+                            ui.label(destination.name.clone());
+                            ui.label(flight.status.clone());
                             ui.end_row();
-                            for (origin, destination, flight) in &self.connections {
-                                ui.label(flight.name.clone());
-                                ui.label(origin.name.clone());
-                                ui.label(destination.name.clone());
-                                ui.label(flight.status.clone());
-                                ui.end_row();
-                            }
+                        }
                     });
-                    ui.separator();
-                }
+                ui.separator();
+            }
         });
     }
 
@@ -331,7 +333,6 @@ impl MapApp {
             }
         });
     }
-
 }
 
 impl eframe::App for MapApp {
@@ -380,6 +381,5 @@ impl eframe::App for MapApp {
                 self.draw_date_box(ui);
             }
         });
-
     }
 }
