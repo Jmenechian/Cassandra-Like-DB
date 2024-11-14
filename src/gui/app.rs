@@ -343,6 +343,24 @@ impl MapApp {
             }
         });
     }
+
+    fn create_user(&mut self) {
+        println!(
+            "Attempting to login with username: {} and password: {}",
+            self.username, self.password
+        );
+
+        match User::new(self.username.clone(), self.password.clone()) {
+            Ok(user) => {
+                println!("Login successful: {:?}", user);
+                self.user = Some(user);
+            }
+            Err(err) => {
+                println!("Login failed: {:?}", err);
+                self.user = None;
+            }
+        };
+    }
 }
 
 impl eframe::App for MapApp {
@@ -352,29 +370,17 @@ impl eframe::App for MapApp {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Username:");
-                // let mut username = String::new();
-                ui.text_edit_singleline(&mut self.username);
+                ui.add(egui::TextEdit::singleline(&mut self.username).hint_text("Enter username"));
 
                 ui.label("Password:");
-                // let mut password = String::new();
-                ui.text_edit_singleline(&mut self.password);
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.password)
+                        .password(true)
+                        .hint_text("Enter password"),
+                );
 
                 if ui.button("Login").clicked() {
-                    println!(
-                        "Attempting to login with username: {} and password: {}",
-                        self.username, self.password
-                    );
-                    // Add your login logic here
-                    match User::new(self.username.clone(), self.password.clone()) {
-                        Ok(user) => {
-                            println!("Login successful: {:?}", user);
-                            self.user = Some(user);
-                        }
-                        Err(err) => {
-                            println!("Login failed: {:?}", err);
-                            self.user = None;
-                        }
-                    };
+                    self.create_user();
                 }
             });
         });
