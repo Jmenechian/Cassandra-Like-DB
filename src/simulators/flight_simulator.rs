@@ -11,12 +11,7 @@ use crate::{
 };
 
 use chrono::Utc;
-use std::{
-    net::TcpStream,
-    sync::{Arc, RwLock},
-    thread,
-    time::Duration,
-};
+use std::{net::TcpStream, thread, time::Duration};
 use threadpool::ThreadPool;
 
 #[derive(Debug, Clone)]
@@ -55,13 +50,12 @@ impl FlightSimulator {
 
         loop {
             // Pasamos el stream a cada thread para que pueda hacer las queries correspondientes.
-            let stream_server: TcpStream = if let Ok(stream) = Client::connect_with_node() {
+            let mut stream_server: TcpStream = if let Ok(stream) = Client::connect_with_node() {
                 stream
             } else {
                 println!("No nos pudimos conectarnos a un nodo.\n");
                 return Err(SimulatorErrors::AllNodesDisconnected());
             };
-            let stream_server: Arc<RwLock<TcpStream>> = Arc::new(RwLock::new(stream_server)); // Es necesario??
 
             let [mut _flight_number, mut _origin, mut _destination, mut _avg_speed] = [
                 "".to_string(),
@@ -83,7 +77,7 @@ impl FlightSimulator {
                 let flight_simulator =
                     FlightSimulator::new(_flight_number, _origin, _destination, _avg_speed);
 
-                match flight_simulator.obtain_flight_and_simulate_it(stream_server) {
+                match flight_simulator.obtain_flight_and_simulate_it(&mut stream_server) {
                     Ok(_) => {}
                     Err(e) => {
                         print!("{}", e);
@@ -117,21 +111,18 @@ impl FlightSimulator {
 
     fn obtain_flight_and_simulate_it(
         &self,
-        stream_server: Arc<RwLock<TcpStream>>,
+        mut stream_server: &mut TcpStream,
     ) -> Result<(), MyError> {
-        match self.create_flight(&stream_server) {
-            Ok(flight) => self.simulate_flight(flight, &stream_server),
+        match self.create_flight(&mut stream_server) {
+            Ok(flight) => self.simulate_flight(flight, &mut stream_server),
             Err(e) => Err(MyError::Error(e.to_string())),
         }
     }
 
     /// Si el vuelo no está en las tablas de estados (origin, destnation) se crea en estado "scheduled".
     /// Lo inicializamos con velocidad 0 y en la posicion del aeropuesto de origen.
-    fn create_flight(
-        &self,
-        stream_server: &Arc<RwLock<TcpStream>>,
-    ) -> Result<Flight, SimulatorErrors> {
-        match self.flight_in_table(stream_server, "flights_in_progress") {
+    fn create_flight(&self, mut stream_server: &mut TcpStream) -> Result<Flight, SimulatorErrors> {
+        match self.flight_in_table(&mut stream_server, "flights_in_progress") {
             Ok(exists) => {
                 if exists {
                     return Err(SimulatorErrors::FlightIsAlreadySimulated());
@@ -163,11 +154,7 @@ impl FlightSimulator {
         Err(SimulatorErrors::UncreatedFlight())
     }
 
-    fn flight_in_table(
-        &self,
-        stream: &Arc<RwLock<TcpStream>>,
-        table: &str,
-    ) -> Result<bool, MyError> {
+    fn flight_in_table(&self, mut stream: &mut TcpStream, table: &str) -> Result<bool, MyError> {
         let date = self.date.clone();
         let mut airport = self.origin.clone();
         if table == "destination" {
@@ -179,10 +166,6 @@ impl FlightSimulator {
             "SELECT * FROM {} WHERE date = {} AND airport = {} AND flight = {}",
             table, date, airport, flight
         );
-
-        let mut stream = stream
-            .write()
-            .map_err(|_| MyError::LockingError("Error adquiriendo el write lock".to_string()))?;
 
         Client::send_message(&mut stream, query)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
@@ -202,18 +185,19 @@ impl FlightSimulator {
     }
 
     /// Verifica si el vuelo está en la tabla y en caso de no estar lo crea.
-    fn flight_in_status_table(&self, stream: &Arc<RwLock<TcpStream>>, flight: &Flight, table: &str) -> Result<(), MyError> {
-        if let Ok(exists) = self.flight_in_table(stream, table) {
+    fn flight_in_status_table(
+        &self,
+        mut stream: &mut TcpStream,
+        flight: &Flight,
+        table: &str,
+    ) -> Result<(), MyError> {
+        if let Ok(exists) = self.flight_in_table(&mut stream, table) {
             if !exists {
-                let mut stream = stream
-                .write()
-                .map_err(|_| MyError::LockingError("Error adquiriendo el write lock".to_string()))?;
-    
                 let query = format!("INSERT INTO {} (airport, destination, date, flight, status) VALUES ({}, {}, {}, {}, {})", 
                 table, flight.origin_airport.name, flight.return_airport.name, flight.departure_date, flight.number, flight.status.to_str());
-    
+
                 Client::send_message(&mut stream, query)
-                    .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;    
+                    .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
             }
         }
         Ok(())
@@ -235,10 +219,10 @@ impl FlightSimulator {
     fn simulate_flight(
         &self,
         mut flight: Flight,
-        stream: &Arc<RwLock<TcpStream>>,
+        mut stream: &mut TcpStream,
     ) -> Result<(), MyError> {
         // Escribimos el vuelo en la tabla flights_in_progress.csv -> hacemos INSERT como Client
-        FlightSimulator::insert_flight(&flight, stream)?;
+        FlightSimulator::insert_flight(&flight, &mut stream)?;
         println!("\nSe inserto el vuelo {:?} correctamente.\n", flight);
 
         while flight.status != FlightStatus::Landed {
@@ -286,11 +270,7 @@ impl FlightSimulator {
         Ok(())
     }
 
-    fn insert_flight(flight: &Flight, stream: &Arc<RwLock<TcpStream>>) -> Result<(), MyError> {
-        let mut stream = stream
-            .write()
-            .map_err(|_| MyError::LockingError("Error adquiriendo el write lock".to_string()))?;
-
+    fn insert_flight(flight: &Flight, mut stream: &mut TcpStream) -> Result<(), MyError> {
         let query = format!("INSERT INTO flights_in_progress (flight, airport, destination, status, date, speed, latitude, longitude, height) 
         VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {})", flight.number, flight.origin_airport.name, flight.return_airport.name, flight.status.to_str(), flight.departure_date, flight.speed, flight.latitude, flight.longitude, flight.height);
 
@@ -300,11 +280,7 @@ impl FlightSimulator {
         Ok(())
     }
 
-    fn update_flight(flight: &Flight, stream: &Arc<RwLock<TcpStream>>) -> Result<(), MyError> {
-        let mut stream = stream
-            .write()
-            .map_err(|_| MyError::LockingError("Error adquiriendo el write lock".to_string()))?;
-
+    fn update_flight(flight: &Flight, mut stream: &mut TcpStream) -> Result<(), MyError> {
         for table in ["flights_in_progress", "origin", "destination"] {
             let airport = if table == "destination" {
                 flight.return_airport.name.clone()
