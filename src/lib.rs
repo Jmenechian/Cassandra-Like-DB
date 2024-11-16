@@ -39,6 +39,7 @@ pub mod messagestuff {
         pub mod errorservermessage;
         pub mod gossipmessage;
         pub mod queryservermessage;
+        pub mod readrepairmessage;
         pub mod resultrowsevermsg;
         pub mod resultservermessage;
         pub mod resultvoidservermsg;

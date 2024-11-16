@@ -141,4 +141,18 @@ impl Query {
             _ => "BBBBBBBBBBBB".to_string(),
         }
     }
+
+    pub fn get_table(&self) -> String {
+        let mut table: String = match &self.qtype {
+            QType::None => "".to_string(),
+            QType::Select(select) => select.table.clone(),
+            QType::Update(update) => update.table.clone(),
+            QType::Insert(insert) => insert.table.clone(),
+            QType::Delete(delete) => delete.table.clone(),
+            QType::CreateTable(create_table) => create_table.table_name.clone(),
+        };
+        table.pop();
+        table.pop();
+        table
+    }
 }

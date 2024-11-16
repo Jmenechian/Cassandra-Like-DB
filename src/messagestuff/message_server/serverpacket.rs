@@ -9,6 +9,7 @@ use crate::messagestuff::{
     message::*, message_server::errorservermessage::ErrorServerMessage,
     message_server::gossipmessage::GossipMessage,
     message_server::queryservermessage::QueryServerMessage,
+    message_server::readrepairmessage::ReadRepairMessage,
     message_server::resultservermessage::ResultServerMessage,
 };
 use crate::my_errors::MyError;
@@ -21,6 +22,7 @@ pub enum ServerOpcode {
     QueryServerMessage = config::QUERY,
     ErrorServerMessage = config::ERROR,
     ResultServerMessage = config::RESULT,
+    ReadRepairMessage = config::READ_REPAIR,
 }
 
 impl ServerOpcode {
@@ -30,6 +32,7 @@ impl ServerOpcode {
             config::QUERY => Ok(ServerOpcode::QueryServerMessage),
             config::ERROR => Ok(ServerOpcode::ErrorServerMessage),
             config::RESULT => Ok(ServerOpcode::ResultServerMessage),
+            config::READ_REPAIR => Ok(ServerOpcode::ReadRepairMessage),
             _ => Err(MyError::Error("Invalid Opcode".to_string())),
         }
     }
@@ -41,6 +44,7 @@ pub enum ServerMessage {
     Query(QueryServerMessage),
     Result(ResultServerMessage),
     ErrorServer(ErrorServerMessage),
+    ReadRepair(ReadRepairMessage),
 }
 
 #[derive(Debug)]
@@ -62,6 +66,7 @@ impl Packet {
             ServerMessage::ErrorServer(msg) => bytes.extend_from_slice(&msg.to_bytes()),
             ServerMessage::Query(msg) => bytes.extend_from_slice(&msg.to_bytes()),
             ServerMessage::Result(msg) => bytes.extend_from_slice(&msg.to_bytes()),
+            ServerMessage::ReadRepair(msg) => bytes.extend_from_slice(&msg.to_bytes()),
         }
         bytes
     }
@@ -106,6 +111,10 @@ impl Packet {
             ServerOpcode::ResultServerMessage => {
                 let (result, _) = ResultServerMessage::from_bytes(body_buffer)?;
                 ServerMessage::Result(result)
+            }
+            ServerOpcode::ReadRepairMessage => {
+                let (readrepair, _) = ReadRepairMessage::from_bytes(body_buffer)?;
+                ServerMessage::ReadRepair(readrepair)
             }
         };
         Ok(Packet {

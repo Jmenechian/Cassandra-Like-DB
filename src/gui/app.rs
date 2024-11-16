@@ -110,6 +110,13 @@ impl MapApp {
         screen_x: f32,
         screen_y: f32,
     ) {
+    fn add_all_connections(
+        &mut self,
+        airport: &Airport,
+        texture: &TextureHandle,
+        screen_x: f32,
+        screen_y: f32,
+    ) {
         if let (Ok(origin_flights), Ok(return_flights)) = (
             airport.get_origin_flights_from(
                 &mut self.stream_client,
@@ -132,6 +139,10 @@ impl MapApp {
                     flight_r.origin_airport.coordinates,
                     texture.size(),
                 );
+                let (screen_x_o, screen_y_o) = get_coordinate_positioning_on_map(
+                    flight_r.origin_airport.coordinates,
+                    texture.size(),
+                );
                 if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
                     self.add_connection(
                         flight_r.origin_airport.clone(),
@@ -143,6 +154,10 @@ impl MapApp {
 
             for flight_o in origin_flights {
                 // airport_r
+                let (screen_x_r, screen_y_r) = get_coordinate_positioning_on_map(
+                    flight_o.return_airport.coordinates,
+                    texture.size(),
+                );
                 let (screen_x_r, screen_y_r) = get_coordinate_positioning_on_map(
                     flight_o.return_airport.coordinates,
                     texture.size(),
@@ -317,6 +332,8 @@ impl MapApp {
                             ui.end_row();
                         }
                     });
+                ui.separator();
+            }
                 ui.separator();
             }
         });
