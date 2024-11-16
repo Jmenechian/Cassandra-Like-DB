@@ -65,8 +65,8 @@ pub mod simulators {
     pub mod flight;
     pub mod flight_simulator;
     pub mod flight_status;
-    pub mod user_input;
     pub mod queries;
+    pub mod user_input;
 }
 
 pub mod errors {

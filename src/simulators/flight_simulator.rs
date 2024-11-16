@@ -1,5 +1,13 @@
 use super::{
-    airport::Airport, airport_coordinates::get_airport_coordinates, flight::Flight, queries::{get_query_create_simulator_table, get_query_insert_in_destination, get_query_insert_in_origin, get_query_insert_in_simulator, get_query_update_in_destination, get_query_update_in_origin, get_query_update_in_simulator}, user_input::ask_user_flight_values
+    airport::Airport,
+    airport_coordinates::get_airport_coordinates,
+    flight::Flight,
+    queries::{
+        get_query_create_simulator_table, get_query_insert_in_destination,
+        get_query_insert_in_origin, get_query_insert_in_simulator, get_query_select_in_origin,
+        get_query_update_in_destination, get_query_update_in_origin, get_query_update_in_simulator,
+    },
+    user_input::ask_user_flight_values,
 };
 use crate::{
     client_cql::Client,
@@ -39,23 +47,23 @@ impl FlightSimulator {
 
     fn initializer() -> Result<Self, SimulatorErrors> {
         let [mut _flight_number, mut _origin, mut _destination, mut _avg_speed] = [
-                "".to_string(),
-                "".to_string(),
-                "".to_string(),
-                "".to_string(),
-            ];
+            "".to_string(),
+            "".to_string(),
+            "".to_string(),
+            "".to_string(),
+        ];
 
         if let Ok(values) = ask_user_flight_values() {
-                _flight_number = values[0].clone();
-                _origin = values[1].clone();
-                _destination = values[2].clone();
-                _avg_speed = values[3].clone();
+            _flight_number = values[0].clone();
+            _origin = values[1].clone();
+            _destination = values[2].clone();
+            _avg_speed = values[3].clone();
         } else {
             return Err(SimulatorErrors::InputError());
         }
 
         let flight_simulator =
-                    FlightSimulator::new(_flight_number, _origin, _destination, _avg_speed);
+            FlightSimulator::new(_flight_number, _origin, _destination, _avg_speed);
 
         Ok(flight_simulator)
     }
@@ -113,18 +121,18 @@ impl FlightSimulator {
 
     fn obtain_flight_and_simulate_it(
         &self,
-        mut stream_server: &mut TcpStream,
+        stream_server: &mut TcpStream,
     ) -> Result<(), MyError> {
-        match self.create_flight(&mut stream_server) {
-            Ok(flight) => self.simulate_flight(flight, &mut stream_server),
+        match self.create_flight(stream_server) {
+            Ok(flight) => self.simulate_flight(flight, stream_server),
             Err(e) => Err(MyError::Error(e.to_string())),
         }
     }
 
     /// Si el vuelo no está en las tablas de estados (origin, destnation) se crea en estado "scheduled".
     /// Lo inicializamos con velocidad 0 y en la posicion del aeropuesto de origen.
-    fn create_flight(&self, mut stream_server: &mut TcpStream) -> Result<Flight, SimulatorErrors> {
-        match self.flight_in_table(&mut stream_server, "flights_in_progress") {
+    fn create_flight(&self, stream_server: &mut TcpStream) -> Result<Flight, SimulatorErrors> {
+        match self.flight_in_table(stream_server, "flights_in_progress") {
             Ok(exists) => {
                 if exists {
                     return Err(SimulatorErrors::FlightIsAlreadySimulated());
@@ -156,18 +164,25 @@ impl FlightSimulator {
         Err(SimulatorErrors::UncreatedFlight())
     }
 
-    fn flight_in_table(&self, mut stream: &mut TcpStream, table: &str) -> Result<bool, MyError> {
-        let query;
-        if table == "destination" {
-            query = get_query_select_in_destination(self.date.clone(), self.destination.clone(), self.flight_number.clone());
+    fn flight_in_table(&self, stream: &mut TcpStream, table: &str) -> Result<bool, MyError> {
+        let query = if table == "destination" {
+            get_query_select_in_destination(
+                self.date.clone(),
+                self.destination.clone(),
+                self.flight_number.clone(),
+            )
         } else {
-            query = get_query_select_in_destination(self.date.clone(), self.destination.clone(), self.flight_number.clone());
-        }
+            get_query_select_in_origin(
+                self.date.clone(),
+                self.origin.clone(),
+                self.flight_number.clone(),
+            )
+        };
 
-        Client::send_message(&mut stream, query)
+        Client::send_message(stream, query)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
-        let response = Client::read_response(&mut stream)
+        let response = Client::read_response(stream)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
         for line in response {
@@ -184,20 +199,22 @@ impl FlightSimulator {
     /// Verifica si el vuelo está en la tabla y en caso de no estar lo crea.
     fn flight_in_status_table(
         &self,
-        mut stream: &mut TcpStream,
+        stream: &mut TcpStream,
         flight: &Flight,
         table: &str,
     ) -> Result<(), MyError> {
-        if let Ok(exists) = self.flight_in_table(&mut stream, table) {
+        if let Ok(exists) = self.flight_in_table(stream, table) {
             if !exists {
-                let query;
-                if table == "destination" {
-                    query = get_query_insert_in_destination(flight);
+                let query = if table == "destination" {
+                    get_query_insert_in_destination(flight)
                 } else {
-                    query = get_query_insert_in_origin(flight);
-                }
+                    get_query_insert_in_origin(flight)
+                };
 
-                Client::send_message(&mut stream, query)
+                Client::send_message(stream, query)
+                    .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
+
+                let _ = Client::read_response(stream)
                     .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
             }
         }
@@ -220,10 +237,10 @@ impl FlightSimulator {
     fn simulate_flight(
         &self,
         mut flight: Flight,
-        mut stream: &mut TcpStream,
+        stream: &mut TcpStream,
     ) -> Result<(), MyError> {
         // Escribimos el vuelo en la tabla flights_in_progress.csv -> hacemos INSERT como Client
-        FlightSimulator::insert_flight(&flight, &mut stream)?;
+        FlightSimulator::insert_flight(&flight, stream)?;
         println!("\nSe agrego el vuelo {:?} correctamente.\n", flight);
 
         while flight.status != FlightStatus::Landed {
@@ -233,7 +250,6 @@ impl FlightSimulator {
             // Si vuelo en scheduled -> 3 UPDATE: actualizamos el estado del vuelo a 'Boarding', y en sus corresponientes tablas de origen y destino.
             if flight.status == FlightStatus::Scheduled {
                 flight.set_status(FlightStatus::Boarding);
-                FlightSimulator::insert_flight(&flight, &mut stream)?; //SACAR!!!!!!!!
                 FlightSimulator::update_flight(&flight, stream)?;
                 //println!("\nEl vuelo {:?} está por salir.\n", flight);
                 continue;
@@ -256,38 +272,40 @@ impl FlightSimulator {
                 flight.set_status(FlightStatus::Landed);
                 flight.update_speed();
                 flight.update_height();
-                FlightSimulator::insert_flight(&flight, &mut stream)?; // SACAR!!!!!!
                 FlightSimulator::update_flight(&flight, stream)?;
                 //println!("\nEl vuelo {:?} llegó a destino.\n", flight);
-                break;
+            } else {
+                FlightSimulator::update_flight(&flight, stream)?;
             }
-
-            FlightSimulator::insert_flight(&flight, &mut stream)?; // SACAR!!!!!!
-            FlightSimulator::update_flight(&flight, stream)?;
-
         }
         Ok(())
     }
 
-    fn insert_flight(flight: &Flight, mut stream: &mut TcpStream) -> Result<(), MyError> {
+    fn insert_flight(flight: &Flight, stream: &mut TcpStream) -> Result<(), MyError> {
         let query = get_query_insert_in_simulator(flight);
 
-        Client::send_message(&mut stream, query)
+        Client::send_message(stream, query)
+            .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
+
+        let _ = Client::read_response(stream)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
         Ok(())
     }
 
-    fn update_flight(flight: &Flight, mut stream: &mut TcpStream) -> Result<(), MyError> {
-        for table in ["origin", "destination"] { // Agregar flights_in_progress!!!!!!
-            let query =  match table {
+    fn update_flight(flight: &Flight, stream: &mut TcpStream) -> Result<(), MyError> {
+        for table in ["origin", "destination", "flights_in_progress"] {
+            let query = match table {
                 "origin" => get_query_update_in_origin(flight),
                 "destination" => get_query_update_in_destination(flight),
                 "flights_in_progress" => get_query_update_in_simulator(flight),
                 _ => continue,
             };
 
-            Client::send_message(&mut stream, query)
+            Client::send_message(stream, query)
+                .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
+
+            let _ = Client::read_response(stream)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
         }
 

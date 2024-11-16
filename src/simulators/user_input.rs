@@ -44,11 +44,9 @@ fn correct_input(request: &str, input: &str) -> bool {
         "velocidad promedio estimada" => {
             if input.parse::<f32>().is_err() {
                 return false;
-            } else {
-                if let Ok(value) = input.parse::<f32>() {
-                    if value < 0.0 {
-                        return false;
-                    }
+            } else if let Ok(value) = input.parse::<f32>() {
+                if value < 0.0 {
+                    return false;
                 }
             }
         }
