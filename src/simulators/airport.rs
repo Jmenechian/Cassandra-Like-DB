@@ -7,7 +7,7 @@ use crate::{clientstuff::client_cql::Client, my_errors::MyError};
 /// Estructura que representa un aeropuesto, con su nombre y coordenadas "geográficas" (en el mapa de la interfaz).
 pub struct Airport {
     pub name: String,
-    pub coordinates: (f32, f32), // (latitud, longitud)
+    pub coordinates: (f32, f32), // (logitud, latitud) = (x,y)
 }
 
 impl Airport {
@@ -42,7 +42,6 @@ impl Airport {
 
             let response = Client::read_response(stream)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-            println!("---- response{:?}", response);
 
             let mut flights: Vec<Flight> = vec![];
             for line in response {
@@ -65,12 +64,20 @@ impl Airport {
                 }
                 let airport_r = Airport::new(values[1].clone(), coordinates);
 
-                flights.push(Flight::new(
+                let flight = match Flight::new(
                     values[3].clone(),
                     airport_o,
                     airport_r,
                     values[4].clone(),
-                ));
+                    values[2].clone(),
+                    0.0.to_string(),
+                ) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        return Err(MyError::Error(e.to_string()));
+                    }
+                };
+                flights.push(flight);
             }
             println!("origin_flights: {:?}", flights);
             return Ok(flights);
@@ -100,7 +107,6 @@ impl Airport {
 
             let response = Client::read_response(stream)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-            println!("---- response{:?}", response);
 
             let mut flights: Vec<Flight> = vec![];
             for line in response {
@@ -121,12 +127,20 @@ impl Airport {
                 }
                 let airport_r = Airport::new(values[0].clone(), coordinates);
 
-                flights.push(Flight::new(
+                let flight = match Flight::new(
                     values[3].clone(),
                     airport_o,
                     airport_r,
                     values[4].clone(),
-                ));
+                    values[2].clone(),
+                    0.0.to_string(),
+                ) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        return Err(MyError::Error(e.to_string()));
+                    }
+                };
+                flights.push(flight);
             }
             println!("flights_that_return: {:?}", flights);
             return Ok(flights);

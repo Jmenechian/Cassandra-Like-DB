@@ -1,4 +1,4 @@
-use crate::config;
+use crate::config::{self, RING_SIZE};
 use crate::messagestuff::message::Sendable;
 use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
@@ -64,25 +64,22 @@ impl Client {
 
         loop {
             match Envelope::from_stream(&mut stream) {
-                Ok(env) => {
-                    //println!("El env recibido es: {:?}", env);
-                    match env.body {
-                        CqlMessage::Result(r) => match r.body {
-                            ResultBody::Rows(r) => {
-                                for row in r.rows_content {
-                                    println!("{}", row);
-                                }
+                Ok(env) => match env.body {
+                    CqlMessage::Result(r) => match r.body {
+                        ResultBody::Rows(r) => {
+                            for row in r.rows_content {
+                                println!("{}", row);
                             }
-                            ResultBody::Void(_) => {
-                                println!("Error: Error en la consulta ingresada");
-                            }
-                        },
-                        CqlMessage::Error(_) => {
-                            println!("Error: Paso algo inesperado");
                         }
-                        _ => {}
+                        ResultBody::Void(_) => {
+                            println!("Error: Error en la consulta ingresada");
+                        }
+                    },
+                    CqlMessage::Error(_) => {
+                        println!("Error: Paso algo inesperado");
                     }
-                }
+                    _ => {}
+                },
                 Err(e) => {
                     println!("Error al leer el env: {:?}", e);
                     break;
@@ -106,26 +103,35 @@ impl Client {
     pub fn read_response(stream: &mut TcpStream) -> Result<Vec<String>> {
         loop {
             match Envelope::from_stream(stream) {
-                Ok(env) => {
-                    println!("El env recibido es: {:?}", env);
-                    match env.body {
-                        CqlMessage::Result(result) => match result.body {
-                            ResultBody::Void(_) => {
-                                return Ok(vec!["".to_string()]);
-                            }
-                            ResultBody::Rows(rows) => {
-                                return Ok(rows.rows_content);
-                            }
-                        },
-                        _ => {
-                            continue;
+                Ok(env) => match env.body {
+                    CqlMessage::Result(result) => match result.body {
+                        ResultBody::Void(_) => {
+                            return Ok(vec!["".to_string()]);
                         }
+                        ResultBody::Rows(rows) => {
+                            return Ok(rows.rows_content);
+                        }
+                    },
+                    _ => {
+                        continue;
                     }
-                }
+                },
                 Err(e) => {
                     return Err(MyError::Error(e.to_string()).into());
                 }
             }
         }
+    }
+
+    /// Devolvemos el stream con el primer nodo conectado que se encuentre.
+    /// En caso de no haber nodos conectados se devuleve un error.
+    pub fn connect_with_node() -> Result<TcpStream> {
+        for number_node in 1..=RING_SIZE {
+            let mut client = Client::initialize(number_node.to_string());
+            if let Ok(stream) = client.connect() {
+                return Ok(stream);
+            }
+        }
+        Err(MyError::TcpStreamError("Error in TcpStream".to_string()).into())
     }
 }
