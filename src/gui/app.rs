@@ -331,13 +331,22 @@ impl MapApp {
                         ui.label("Origin");
                         ui.label("Destination");
                         ui.label("Status");
+                        ui.label("");
                         ui.end_row();
+                        let mut to_remove = None;
                         for (origin, destination, flight) in &self.connections {
                             ui.label(flight.number.clone());
                             ui.label(origin.name.clone());
                             ui.label(destination.name.clone());
                             ui.label(flight.status.to_str());
+                            if ui.button("🗑️").clicked() {
+                                let plane_to_delete = format!("{},{},{}", flight.number, origin.name, destination.name);
+                                to_remove = Some(plane_to_delete);
+                            }
                             ui.end_row();
+                        }
+                        if let Some(plane_to_delete) = to_remove {
+                            // borrate->(plane_to_delete);
                         }
                     });
                 ui.separator();
@@ -521,7 +530,7 @@ impl MapApp {
                 });
             });
     }
-    fn draw_fixed_button(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var: i8) { 
+    fn draw_fixed_button(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var: i8, texture: &TextureHandle) { 
         let all_fields_filled = !self.origin_destination_selected.is_empty() //extra para visual
         && !self.date_selected.is_empty()
         && !self.airport_selected.is_empty();
@@ -539,16 +548,6 @@ impl MapApp {
                     .add(egui::Button::new(tag).fill(button_color))
                     .clicked()
                 {
-                    // logica aca
-
-                    if var == SELECT {
-                        let query = format!(
-                            "SELECT * FROM {} WHERE date = '{}' AND airport = '{}'",
-                            self.origin_destination_selected,self.date_selected, self.airport_selected
-                        );
-                        println!("query: {:?}", query);
-                        self.make_query(query)
-                    }
 
                     if var == INSERT {
                         let other = if self.origin_destination_selected == "origin" {
@@ -561,25 +560,34 @@ impl MapApp {
                             self.origin_destination_selected, other, self.airport_selected, self.airport2_selected, self.date_selected, self.flight_selected, self.status_selected
                         );
                         println!("query: {:?}", query);
-                        self.make_query(query)
+                        self.make_query(query);
+
+                        // self.draw_connections_with_flight(texture, ui);
+                        // self.draw_flight_table(ui);
                     }
 
-                    // if var == UPDATE {  //todo
-                    //     let query = format!(
-                    //         "UPDATE {}",
-                    //         self.origin_destination_selected,self.date_selected, self.airport_selected
-                    //     );
-                    //     println!("query: {:?}", query);
-                    //     self.make_query(query)
-                    // }
+                    if var == UPDATE {  //todo
+                        let query = format!(
+                            "UPDATE {} SET status = '{}' WHERE date = '{}' AND airport = '{}' AND flight = '{}'",
+                            self.origin_destination_selected,self.status_selected, self.date_selected, self.airport_selected, self.flight_selected
+                        );
+                        println!("query: {:?}", query);
+                        self.make_query(query);
+
+                        // self.draw_connections_with_flight(texture, ui);
+                        // self.draw_flight_table(ui);
+                    }
 
                     if var == DELETE { //
                         let query = format!( //por ahora solo esos campos dejo
-                            "DELETE FROM {} WHERE date = '{}' AND airport = '{}'",
-                            self.origin_destination_selected,self.date_selected, self.airport_selected
+                            "DELETE FROM {} WHERE date={} AND airport={} AND flight={}",
+                            self.origin_destination_selected,self.date_selected, self.airport_selected, self.flight_selected
                         );
                         println!("query: {:?}", query);
-                        self.make_query(query)
+                        self.make_query(query);
+
+                        // self.draw_connections_with_flight(texture, ui);
+                        // self.draw_flight_table(ui);
                     }
                 }
             });
@@ -592,7 +600,7 @@ impl MapApp {
         }
     }
 
-    fn super_function(&mut self, ui: &mut Ui) {
+    fn super_function(&mut self, ui: &mut Ui, texture: &TextureHandle) {
         //
         let mut y = 660.0;
         let mut x = 10.0;
@@ -608,13 +616,11 @@ impl MapApp {
         y = offset_y(y);
         self.draw_status_box(ui, x, y, "status"); //status
         y = offset_y(y);
-        self.draw_fixed_button(ui, x, y, "SELECT", SELECT); //SELECT
+        self.draw_fixed_button(ui, x, y, "INSERT", INSERT, texture); //INSERT
         x = offset_x(x);
-        self.draw_fixed_button(ui, x, y, "INSERT", INSERT); //INSERT
+        self.draw_fixed_button(ui, x, y, "DELETE", DELETE, texture); //DELETE
         x = offset_x(x);
-        self.draw_fixed_button(ui, x, y, "DELETE", DELETE); //DELETE
-        x = offset_x(x);
-        self.draw_fixed_button(ui, x, y, "UPDATE", UPDATE); //UPDATE
+        self.draw_fixed_button(ui, x, y, "UPDATE", UPDATE, texture); //UPDATE
     }
 }
 
@@ -670,7 +676,7 @@ impl eframe::App for MapApp {
                     self.draw_flight_table(ui);
                 });
 
-                self.super_function(ui);
+                self.super_function(ui, texture);
             }
         });
     }
