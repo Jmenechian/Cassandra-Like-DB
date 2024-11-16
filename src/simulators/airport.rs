@@ -46,7 +46,7 @@ impl Airport {
 
             let mut flights: Vec<Flight> = vec![];
             for line in response {
-                if line.is_empty() {
+                if line.is_empty() || line == "linea fue agregada"{ //ojo no se si rompe algo esto
                     continue;
                 }
 
@@ -105,7 +105,7 @@ impl Airport {
 
             let mut flights: Vec<Flight> = vec![];
             for line in response {
-                if line.is_empty() {
+                if line.is_empty() || line == "linea fue agregada"{ //ojo no se si rompe algo esto
                     continue;
                 }
                 let values: Vec<String> = line.split(",").map(|f| f.to_string()).collect();

@@ -521,17 +521,75 @@ impl MapApp {
                 });
             });
     }
-    fn draw_fixed_button(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var: i8) {
+    fn draw_fixed_button(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var: i8) { 
+        let all_fields_filled = !self.origin_destination_selected.is_empty() //extra para visual
+        && !self.date_selected.is_empty()
+        && !self.airport_selected.is_empty();
+
+        let button_color = if all_fields_filled {
+            Color32::from_rgb(0, 128, 0) // Green when fields are filled
+        } else {
+            Color32::from_rgb(255, 0, 0) // Red when fields are empty
+        };
+
         egui::Area::new(Id::new(tag))
             .fixed_pos(egui::pos2(x, y))
             .show(ui.ctx(), |ui| {
                 if ui
-                    .add(egui::Button::new(tag).fill(Color32::from_rgb(120, 66, 114)))
+                    .add(egui::Button::new(tag).fill(button_color))
                     .clicked()
                 {
                     // logica aca
+
+                    if var == SELECT {
+                        let query = format!(
+                            "SELECT * FROM {} WHERE date = '{}' AND airport = '{}'",
+                            self.origin_destination_selected,self.date_selected, self.airport_selected
+                        );
+                        println!("query: {:?}", query);
+                        self.make_query(query)
+                    }
+
+                    if var == INSERT {
+                        let other = if self.origin_destination_selected == "origin" {
+                            "destination"
+                        } else {
+                            "origin"
+                        };
+                        let query = format!(
+                            "INSERT INTO {} (airport, {}, date, flight, status) VALUES ('{}', '{}', '{}', '{}', '{}')",
+                            self.origin_destination_selected, other, self.airport_selected, self.airport2_selected, self.date_selected, self.flight_selected, self.status_selected
+                        );
+                        println!("query: {:?}", query);
+                        self.make_query(query)
+                    }
+
+                    // if var == UPDATE {  //todo
+                    //     let query = format!(
+                    //         "UPDATE {}",
+                    //         self.origin_destination_selected,self.date_selected, self.airport_selected
+                    //     );
+                    //     println!("query: {:?}", query);
+                    //     self.make_query(query)
+                    // }
+
+                    if var == DELETE { //
+                        let query = format!( //por ahora solo esos campos dejo
+                            "DELETE FROM {} WHERE date = '{}' AND airport = '{}'",
+                            self.origin_destination_selected,self.date_selected, self.airport_selected
+                        );
+                        println!("query: {:?}", query);
+                        self.make_query(query)
+                    }
                 }
             });
+    }
+
+    fn make_query(&mut self, query: String) { //supongo que esta bien, copilot
+        if let Some(stream) = &mut self.stream_client {
+            Client::send_message(stream, query).unwrap();
+            println!("salio bien");
+        }
     }
 
     fn super_function(&mut self, ui: &mut Ui) {
