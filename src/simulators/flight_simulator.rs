@@ -119,10 +119,7 @@ impl FlightSimulator {
         Ok(())
     }
 
-    fn obtain_flight_and_simulate_it(
-        &self,
-        stream_server: &mut TcpStream,
-    ) -> Result<(), MyError> {
+    fn obtain_flight_and_simulate_it(&self, stream_server: &mut TcpStream) -> Result<(), MyError> {
         match self.create_flight(stream_server) {
             Ok(flight) => self.simulate_flight(flight, stream_server),
             Err(e) => Err(MyError::Error(e.to_string())),
@@ -234,11 +231,7 @@ impl FlightSimulator {
     }
 
     /// Cada thread se acupará de crear un avión y actualizar su estado hasta llegar a destino.
-    fn simulate_flight(
-        &self,
-        mut flight: Flight,
-        stream: &mut TcpStream,
-    ) -> Result<(), MyError> {
+    fn simulate_flight(&self, mut flight: Flight, stream: &mut TcpStream) -> Result<(), MyError> {
         // Escribimos el vuelo en la tabla flights_in_progress.csv -> hacemos INSERT como Client
         FlightSimulator::insert_flight(&flight, stream)?;
         println!("\nSe agrego el vuelo {:?} correctamente.\n", flight);

@@ -14,12 +14,10 @@ pub static TABLE_ORIGIN_NAME: &str = "origin";
 
 pub static TABLE_DESTINATION_NAME: &str = "destination";
 
-pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool
-
 pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 
 // SIMULADOR DE VUELOS:
-pub static N_WORKERS: usize = 10; // Acordamos usar 10.
+pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool.
 pub static FLIGHT_STEP: f32 = 10.0; // Cantidad de pasos que da un avión hasta la mitad del vuelo.
 pub static CRUISING_SPEED: f32 = 840.0; // Velocidad crucero de un avion, en km/h
 pub static STEPS_AT_CRUISING_SPEED: f32 = 2.0; // Mitad de pasos en los que el avion viajara a la velocidad crucero.
