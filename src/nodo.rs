@@ -232,7 +232,7 @@ pub fn initialize(port: String) -> Result<(), MyError> {
     )?;
 
     loop {
-        thread::sleep(Duration::from_secs(20));
+        thread::sleep(Duration::from_secs(2));
         match connect_to_random_gossip(ports.clone(), &port, show_g) {
             Some((mut s, _)) => {
                 let gossip_msg = GossipMessage {

@@ -39,6 +39,7 @@ pub mod messagestuff {
         pub mod errorservermessage;
         pub mod gossipmessage;
         pub mod queryservermessage;
+        pub mod readrepairmessage;
         pub mod resultrowsevermsg;
         pub mod resultservermessage;
         pub mod resultvoidservermsg;
@@ -65,8 +66,11 @@ pub mod simulators {
     pub mod flight;
     pub mod flight_simulator;
     pub mod flight_status;
+    pub mod queries;
+    pub mod user_input;
 }
 
 pub mod errors {
     pub mod airport_errors;
+    pub mod simulator_errors;
 }

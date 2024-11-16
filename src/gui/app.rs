@@ -1,4 +1,3 @@
-use chrono::offset;
 use eframe::egui;
 use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureHandle, TextureId, Ui};
 
@@ -27,14 +26,12 @@ pub struct MapApp {
     client: Client,
     stream_client: Option<TcpStream>,
     connections: Vec<(Airport, Airport, Flight)>,
-
-    //botones
+    date_selected: String,
     airport_selected: String,
     airport2_selected: String,
     origin_destination_selected: String,
     status_selected: String,
     flight_selected: String,
-    date_selected: String,
 }
 
 impl MapApp {
@@ -104,8 +101,6 @@ impl MapApp {
         let image_rgba = map_image.to_rgba8();
         let width: usize = width.try_into().unwrap_or(0);
         let height: usize = height.try_into().unwrap_or(0);
-        println!("width: {}", width);
-        println!("height: {}", height);
 
         let texture = ctx.load_texture(
             "map",
@@ -644,6 +639,7 @@ impl eframe::App for MapApp {
                         let (screen_x, screen_y) =
                             get_coordinate_positioning_on_map(airport.coordinates, texture.size());
 
+
                         let button_rect =
                             self.draw_airports(ui.painter(), screen_x, screen_y, &airport.name);
 
@@ -653,21 +649,11 @@ impl eframe::App for MapApp {
                             .clicked()
                         {
                             println!("¡Aeropuerto {} presionado!", airport.name);
-                            self.airport_selected = airport.name.clone();
                             self.reset_connection();
 
                             if !self.date_selected.is_empty() {
                                 self.add_all_connections(airport, texture, screen_x, screen_y);
                             }
-                        }
-
-                        if ui
-                            .interact(button_rect, Id::new(&airport.name), egui::Sense::click())
-                            .secondary_clicked()
-                        {
-                            println!("¡Aeropuerto {} presionado!", airport.name);
-                            self.airport2_selected = airport.name.clone();
-                            self.reset_connection();
                         }
                     }
 

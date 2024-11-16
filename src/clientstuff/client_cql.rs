@@ -64,25 +64,22 @@ impl Client {
 
         loop {
             match Envelope::from_stream(&mut stream) {
-                Ok(env) => {
-                    //println!("El env recibido es: {:?}", env);
-                    match env.body {
-                        CqlMessage::Result(r) => match r.body {
-                            ResultBody::Rows(r) => {
-                                for row in r.rows_content {
-                                    println!("{}", row);
-                                }
+                Ok(env) => match env.body {
+                    CqlMessage::Result(r) => match r.body {
+                        ResultBody::Rows(r) => {
+                            for row in r.rows_content {
+                                println!("{}", row);
                             }
-                            ResultBody::Void(_) => {
-                                println!("Error: Error en la consulta ingresada");
-                            }
-                        },
-                        CqlMessage::Error(_) => {
-                            println!("Error: Paso algo inesperado");
                         }
-                        _ => {}
+                        ResultBody::Void(_) => {
+                            println!("Error: Error en la consulta ingresada");
+                        }
+                    },
+                    CqlMessage::Error(_) => {
+                        println!("Error: Paso algo inesperado");
                     }
-                }
+                    _ => {}
+                },
                 Err(e) => {
                     println!("Error al leer el env: {:?}", e);
                     break;
@@ -106,22 +103,19 @@ impl Client {
     pub fn read_response(stream: &mut TcpStream) -> Result<Vec<String>> {
         loop {
             match Envelope::from_stream(stream) {
-                Ok(env) => {
-                    println!("El env recibido es: {:?}", env);
-                    match env.body {
-                        CqlMessage::Result(result) => match result.body {
-                            ResultBody::Void(_) => {
-                                return Ok(vec!["".to_string()]);
-                            }
-                            ResultBody::Rows(rows) => {
-                                return Ok(rows.rows_content);
-                            }
-                        },
-                        _ => {
-                            continue;
+                Ok(env) => match env.body {
+                    CqlMessage::Result(result) => match result.body {
+                        ResultBody::Void(_) => {
+                            return Ok(vec!["".to_string()]);
                         }
+                        ResultBody::Rows(rows) => {
+                            return Ok(rows.rows_content);
+                        }
+                    },
+                    _ => {
+                        continue;
                     }
-                }
+                },
                 Err(e) => {
                     return Err(MyError::Error(e.to_string()).into());
                 }
