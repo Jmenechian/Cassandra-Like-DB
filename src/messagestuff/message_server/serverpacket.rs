@@ -5,6 +5,7 @@
 //   - Para enviar el packet y leerlo por stream estan las funciones to_bytes() y from_stream().
 
 use crate::config;
+use crate::errors::my_errors::MyError;
 use crate::messagestuff::{
     message::*, message_server::errorservermessage::ErrorServerMessage,
     message_server::gossipmessage::GossipMessage,
@@ -12,7 +13,6 @@ use crate::messagestuff::{
     message_server::readrepairmessage::ReadRepairMessage,
     message_server::resultservermessage::ResultServerMessage,
 };
-use crate::my_errors::MyError;
 use std::{io::Read, net::TcpStream};
 
 #[derive(Copy, Clone, Debug)]

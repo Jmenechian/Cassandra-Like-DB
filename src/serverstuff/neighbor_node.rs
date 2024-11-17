@@ -1,7 +1,7 @@
 // Representa a cada uno de los otros nodos del ring
 // El nodo actual (tipo Nodo) tiene una lista de estos nodos vecinos (tipo NeighborNode)
 
-use crate::nodo::Status;
+use crate::serverstuff::node_status::Status;
 use chrono::{DateTime, Local};
 
 #[derive(Debug, Clone, PartialEq)]

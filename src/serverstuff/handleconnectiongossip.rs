@@ -3,15 +3,14 @@
 // La funcion principal es `handle_connection_gossip` que recibe un nodo, un stream y un booleano.
 // El resto son funciones auxiliares.
 
+use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
 use crate::messagestuff::{
     message::*,
     message_server::{serverpacket::Packet, serverpacket::ServerMessage},
 };
-use crate::my_errors::*;
-use crate::nodo::try_connect;
-use crate::nodo::Node;
-use crate::NeighborNode;
+use crate::serverstuff::neighbor_node::NeighborNode;
+use crate::serverstuff::node::{try_connect, Node};
 use rand::seq::SliceRandom;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
@@ -33,7 +32,7 @@ fn handle_message_gossip(
     };
 
     if let Some(true) = gossip.decrease_ttl() {
-        if let Some(n) = node.get_random_neighbor(node.puerto.clone()) {
+        if let Some(n) = node.get_random_neighbor(node.number.clone()) {
             if let Some(mut stream) = try_connect(n.gossip_ip.clone()) {
                 if let Err(e) = gossip.clone().send_server_through(&mut stream) {
                     if show {

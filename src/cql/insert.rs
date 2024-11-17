@@ -1,11 +1,12 @@
 // Representa a las consultas del tipo INSERT
 // Aca se parsea la consulta y se ejecuta
 
-use crate::config::TABLE_PATH;
-use crate::my_errors::MyError;
+use crate::errors::my_errors::MyError;
 use crate::utils::*;
 use chrono::Utc;
 use std::collections::HashMap;
+use std::fs::File;
+use std::sync::{Arc, RwLock};
 #[derive(Debug, Eq, PartialEq)]
 pub struct Insert {
     pub table: String,
@@ -136,16 +137,17 @@ impl Insert {
         Ok(())
     }
 
-    pub fn execute_command(&self) -> Result<Vec<String>, MyError> {
+    pub fn execute_command(&self, table: Arc<RwLock<File>>) -> Result<Vec<String>, MyError> {
         println!("En execute_command de INSERT");
-        let mut rdr = get_reader(TABLE_PATH, &self.table)?;
-        let headers = get_file_headers(&mut rdr)?;
+        let mut rdr_read = get_reader_read(&table)?;
+        let headers = get_file_headers(&mut rdr_read)?;
+        let mut file_open = get_file_to_write(&table)?; // Se usa para hacer append
 
         // INSERT INTO VALUES (val1, val2)
         // values are inserted in the same order as the file headers
         if self.columns.is_empty() {
             if self.values.len() == headers.len() {
-                append_row(TABLE_PATH, &self.table, &self.values)?;
+                append_row(&mut file_open, &self.values)?;
                 return Ok(vec!["linea fue agregada".to_string()]);
             }
             return Err(MyError::InvalidSyntax("Invalid INSERT syntax".to_string()));
@@ -165,7 +167,7 @@ impl Insert {
         }
         new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
         new_record.push(Utc::now().to_string()); // metes lo mas nuevo
-        append_row(TABLE_PATH, &self.table, &new_record)?;
+        append_row(&mut file_open, &new_record)?;
         Ok(vec!["linea fue agregada".to_string()])
     }
 
@@ -196,10 +198,11 @@ impl Insert {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::my_errors::MyError;
+    use crate::errors::my_errors::MyError;
     use std::collections::HashMap;
-    use std::fs::File;
+    use std::fs::{File, OpenOptions};
     use std::io::Write;
+    use crate::config::TABLE_PATH;
 
     #[test]
     fn test_parse_insert_valid_query() {
@@ -292,7 +295,10 @@ mod tests {
             )
             .unwrap();
 
-        let result = insert.execute_command().unwrap();
+        let file: File = OpenOptions::new().append(true).read(true).open(file_path.clone()).unwrap();
+        let file_arc: Arc<RwLock<File>> = Arc::new(RwLock::new(file));
+
+        let result = insert.execute_command(file_arc).unwrap();
         assert_eq!(result, vec!["linea fue agregada".to_string()]);
 
         std::fs::remove_file(file_path).unwrap();

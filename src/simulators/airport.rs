@@ -1,7 +1,8 @@
 use std::{collections::HashMap, net::TcpStream};
 
 use super::flight::Flight;
-use crate::{clientstuff::client_cql::Client, my_errors::MyError};
+use crate::clientstuff::client_cql::Client;
+use crate::errors::my_errors::MyError;
 
 #[derive(Debug, Clone, PartialEq)]
 /// Estructura que representa un aeropuesto, con su nombre y coordenadas "geográficas" (en el mapa de la interfaz).

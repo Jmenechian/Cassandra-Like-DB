@@ -3,8 +3,10 @@
 // La funcion principal es `handle_connection_client` que recibe un nodo, un stream y un booleano.
 // El resto son funciones auxiliares.
 
+use crate::config;
 use crate::config::{RF, TABLE_DESTINATION_NAME, TABLE_ORIGIN_NAME};
 use crate::cql::query::Query;
+use crate::errors::my_errors::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
@@ -15,11 +17,9 @@ use crate::messagestuff::{
         serverpacket::ServerMessage,
     },
 };
-use crate::my_errors::*;
-use crate::nodo::Node;
-use crate::nodo::Status;
+use crate::serverstuff::node_status::Status;
+use crate::serverstuff::{neighbor_node::NeighborNode, node::Node};
 use crate::ConsistentHash;
-use crate::{config, NeighborNode};
 use chrono::NaiveDateTime;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
@@ -206,7 +206,7 @@ pub fn send_query_to_nodes(
 
     // Si es un create table, lo ejecuto y devuelvo vacio
     if query.query.contains("CREATE TABLE") {
-        match query.execute() {
+        match node.process_query(&mut query) {
             Ok(_) => return Ok(vec!["Se crean las tablas.".to_string()]),
             Err(e) => {
                 let _error = format!("Error al procesar la query: {:?}", e);

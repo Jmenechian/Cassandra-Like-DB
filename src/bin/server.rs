@@ -1,6 +1,6 @@
 // Binario que va a correr cada nodo del servidor
 
-use aerolineas_rusticas::nodo;
+use aerolineas_rusticas::serverstuff::node;
 use std::env;
 use std::process::exit;
 
@@ -13,7 +13,7 @@ fn main() {
     println!("args: {:?}", args);
     let ports_file = args[1].to_string();
 
-    match nodo::initialize(ports_file) {
+    match node::initialize(ports_file) {
         Ok(result) => result,
         Err(e) => {
             eprintln!("{:?}", e);

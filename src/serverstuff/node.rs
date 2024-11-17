@@ -1,16 +1,19 @@
-use crate::config::{self, PORTS_FILE};
+use crate::config::{
+    PORTS_FILE, TABLE_DESTINATION_NAME, TABLE_FLIGHT_SIMULATOR, TABLE_ORIGIN_NAME, TABLE_PATH,
+};
 use crate::cql::query::Query;
+use crate::errors::my_errors::*;
 use crate::messagestuff::{message::*, message_server::gossipmessage::*};
-use crate::my_errors::*;
+use crate::serverstuff::neighbor_node::NeighborNode;
+use crate::serverstuff::node_status::Status;
 use crate::serverstuff::{
     handleconnectionclient::handle_connection_client,
     handleconnectiongossip::connect_to_random_gossip,
     handleconnectiongossip::handle_connection_gossip,
     handleconnectionserver::handle_connection_server,
 };
-use crate::NeighborNode;
 use rand::seq::SliceRandom;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, RwLock};
@@ -18,46 +21,59 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-#[derive(Debug, Clone, PartialEq, Copy)]
-#[repr(u8)]
-pub enum Status {
-    Connected = config::CONNECTED,
-    Disconnected = config::DISCONNECTED,
-}
-
-impl Status {
-    pub fn from_u8(value: u8) -> Result<Self, MyError> {
-        match value {
-            config::CONNECTED => Ok(Status::Connected),
-            config::DISCONNECTED => Ok(Status::Disconnected),
-            _ => Err(MyError::Error("Invalid Status".to_string())),
-        }
-    }
-}
-
 // Representa al nodo en el que estamos parados
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct Node {
-    pub puerto: String,
+    pub number: String,
     pub server_ip: String, // IP donde nodo se pone a escuchar conecciones de servidores
     pub client_ip: String, // IP donde nodo se pone a escuchar conecciones de cliente
     pub gossip_ip: String, // IP donde nodo se pone a escuchar mensajes Gossip
-    pub file_path: String,
-    pub nodes_path: String,
     pub neighbors: Vec<NeighborNode>, // todos los otros nodos
+    pub tables: Vec<Arc<RwLock<File>>>, // archivos que representan la tabla abiertos
 }
 
 impl Node {
-    pub fn new(port: &str) -> Self {
+    pub fn new(number: &str) -> Self {
+        let tables = Self::open_tables_and_lock(number.to_string());
         Self {
-            puerto: port.to_string(),
-            server_ip: format!("127.0.0.1:700{}", port),
-            client_ip: format!("127.0.0.1:800{}", port),
-            gossip_ip: format!("127.0.0.1:900{}", port),
-            file_path: "".to_string(),
-            nodes_path: "nodes.txt".to_string(),
+            number: number.to_string(),
+            server_ip: format!("127.0.0.1:700{}", number),
+            client_ip: format!("127.0.0.1:800{}", number),
+            gossip_ip: format!("127.0.0.1:900{}", number),
             neighbors: vec![], // todos los nodos que estan en el ring
+            tables,
         }
+    }
+
+    fn open_tables_and_lock(number_node: String) -> Vec<Arc<RwLock<File>>> {
+        let mut files: Vec<Arc<RwLock<File>>> = vec![];
+        for path in Self::get_table_paths(number_node) {
+            let file = match OpenOptions::new()
+                .append(true)
+                .read(true)
+                .open(path)
+                .map_err(|e| MyError::FileError(e.to_string()))
+            {
+                Ok(f) => f,
+                _ => continue,
+            };
+            let file = Arc::new(RwLock::new(file));
+            files.push(file);
+        }
+        files
+    }
+
+    fn get_table_paths(number_node: String) -> Vec<String> {
+        let path_1 = format!("{}/{}_{}.csv", TABLE_PATH, TABLE_ORIGIN_NAME, number_node);
+        let path_2 = format!(
+            "{}/{}_{}.csv",
+            TABLE_PATH, TABLE_DESTINATION_NAME, number_node
+        );
+        let path_3 = format!(
+            "{}/{}_{}.csv",
+            TABLE_PATH, TABLE_FLIGHT_SIMULATOR, number_node
+        );
+        vec![path_1, path_2, path_3]
     }
 
     pub fn add_neighbors(&mut self, neighbor_nodes: Vec<NeighborNode>) {
@@ -95,7 +111,17 @@ impl Node {
 
     // Proceso la query y devuelve la tabla en formato String
     pub fn process_query(&self, query: &mut Query) -> Result<Vec<String>, MyError> {
-        query.execute()
+        let table: Arc<RwLock<File>>;
+        if query.get_table() == format!("{}_{}", TABLE_ORIGIN_NAME, self.number) {
+            table = self.tables[0].clone();
+        } else if query.get_table() == format!("{}_{}", TABLE_DESTINATION_NAME, self.number) {
+            table = self.tables[1].clone();
+        } else if query.get_table() == format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.number) {
+            table = self.tables[2].clone();
+        } else {
+            return Err(MyError::InvalidTable("Tabla no valida".to_string()));
+        }
+        query.execute(table)
     }
 }
 
@@ -128,7 +154,6 @@ fn listen<F>(
     ip: String,
     node: Arc<RwLock<Node>>,
     handler: F,
-    //threads_joins: &mut Vec<JoinHandle<()>>,
     show: bool,
 ) -> Result<JoinHandle<Result<(), MyError>>, MyError>
 where
@@ -160,7 +185,6 @@ where
                     Err(e) => println!("Error: {:?}", e),
                 };
             });
-            //threads_joins.push(t);
         }
         Ok(())
     });
@@ -175,7 +199,7 @@ pub fn initialize(port: String) -> Result<(), MyError> {
     let mut current_node: Node = Node::new(&port);
     println!("Nodo actual: {:?}", current_node);
     //me agrego a mi mismo a vecinos
-    current_node.add_neighbor(NeighborNode::new(&current_node.puerto));
+    current_node.add_neighbor(NeighborNode::new(&current_node.number));
 
     //empiezo gossip
     let ports = read_ports_from_file(PORTS_FILE)?;
@@ -184,7 +208,7 @@ pub fn initialize(port: String) -> Result<(), MyError> {
         Some((mut s, addr)) => {
             let gossip_msg = GossipMessage {
                 ip: my_ip.clone(),
-                estado: Status::Connected,
+                status: Status::Connected,
                 ttl: 5_u8,
             };
             let _ = gossip_msg.send_server_through(&mut s);
@@ -199,8 +223,6 @@ pub fn initialize(port: String) -> Result<(), MyError> {
         }
         None => println!("tengo que ser el primer nodo porque no encontre otro"),
     };
-
-    //let mut threads_joins: Vec<JoinHandle<()>> = Vec::new();
 
     let server_ip = current_node.server_ip.clone();
     let client_ip = current_node.client_ip.clone();
@@ -237,21 +259,12 @@ pub fn initialize(port: String) -> Result<(), MyError> {
             Some((mut s, _)) => {
                 let gossip_msg = GossipMessage {
                     ip: my_ip.clone(),
-                    estado: Status::Connected,
+                    status: Status::Connected,
                     ttl: 5_u8,
                 };
                 let _ = gossip_msg.send_server_through(&mut s);
             }
             None => println!("tengo que ser el primer nodo porque no encontre otro"),
         };
-        //joinear(&mut threads_joins);
     }
 }
-/*
-fn joinear (threads_joins: &mut Vec<JoinHandle<()>>) {
-    for j in threads_joins.into_iter() {
-        if j.is_finished() {
-            j.join().unwrap();
-        }
-    }
-}*/

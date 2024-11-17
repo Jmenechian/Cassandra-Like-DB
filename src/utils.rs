@@ -1,9 +1,11 @@
 // Funciones auxiliares para el manejo de archivos y strings
 
-use crate::my_errors::MyError;
+use crate::errors::my_errors::MyError;
 use std::{
-    fs::File, fs::OpenOptions, io::BufRead, io::BufReader, io::Seek, io::SeekFrom, io::Write,
+    fs::{File, OpenOptions},
+    io::{BufRead, BufReader, Seek, SeekFrom, Write},
     iter::Peekable,
+    sync::{Arc, RwLock},
 };
 
 // Returns the full quote inside ' 'S
@@ -55,12 +57,39 @@ pub fn get_reader(path: &str, table_name: &str) -> Result<BufReader<File>, MyErr
     Ok(rdr)
 }
 
+// Open file in mode read, returns an iterable reader
+pub fn get_reader_read(table: &Arc<RwLock<File>>) -> Result<BufReader<File>, MyError> {
+    let table_file = table
+        .read()
+        .map_err(|e| MyError::FileError(e.to_string()))?;
+    Ok(BufReader::new(
+        table_file
+            .try_clone()
+            .map_err(|e| MyError::FileError(e.to_string()))?,
+    ))
+}
+
+// Open file in mode write, returns an iterable reader
+pub fn get_file_to_write(table: &Arc<RwLock<File>>) -> Result<File, MyError> {
+    println!("en get, table: {:?}", table);
+    let table_file = table
+        .write()
+        .map_err(|e| MyError::FileError(e.to_string()))?;
+    println!("table_file: {:?}", table_file);
+    Ok(
+        table_file
+            .try_clone()
+            .map_err(|e| MyError::FileError(e.to_string()))?,
+    )
+}
+
 // Receives an iterable into the CSV file
 // Returns the CSV file headers
 pub fn get_file_headers<R: std::io::BufRead>(rdr: &mut R) -> Result<Vec<String>, MyError> {
     let mut headers_line = String::new();
     rdr.read_line(&mut headers_line)
         .map_err(|e| MyError::FileError(e.to_string()))?;
+    println!("hace read, headers_line: {:?}", headers_line);
 
     let headers: Vec<String> = headers_line
         .trim()
@@ -90,14 +119,7 @@ pub fn write_rows(path: &str, table_name: &str, records: &Vec<Vec<String>>) -> R
 
 // Appends row to file in given path
 // Expects file to end with a newline
-pub fn append_row(path: &str, table_name: &str, records: &[String]) -> Result<(), MyError> {
-    let file_path = get_file_path(path, table_name);
-
-    let mut file = OpenOptions::new()
-        .append(true)
-        .open(file_path)
-        .map_err(|e| MyError::FileError(e.to_string()))?;
-
+pub fn append_row(file: &mut File, records: &[String]) -> Result<(), MyError> {
     writeln!(file, "{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }
@@ -147,7 +169,15 @@ pub fn write_temporary_to_original(
     for line in lines {
         let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
         let record: Vec<String> = line.trim().split(",").map(|s| s.to_string()).collect();
-        append_row(path, original_table, &record).map_err(|e| MyError::FileError(e.to_string()))?;
+
+        let file_path = get_file_path(path, original_table);
+        
+        let mut file_open = OpenOptions::new()
+            .append(true)
+            .open(file_path)
+            .map_err(|e| MyError::FileError(e.to_string()))?;
+
+        append_row(&mut file_open, &record).map_err(|e| MyError::FileError(e.to_string()))?;
     }
     Ok(())
 }

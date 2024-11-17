@@ -3,9 +3,9 @@
 //
 // Contiene por dentro la consulta y la consistencia
 
+use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::cqlenvelope::*;
-use crate::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub struct QueryMessage {

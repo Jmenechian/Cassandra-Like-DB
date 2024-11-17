@@ -1,12 +1,13 @@
 // Representa las consultas del tipo SELECT
 // Aca se parsea la consulta y se ejecuta
 
-use crate::config::TABLE_PATH;
 use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
-use crate::my_errors::MyError;
+use crate::errors::my_errors::MyError;
 use crate::utils::*;
+use std::fs::File;
 use std::io::BufRead;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Select {
@@ -108,9 +109,9 @@ impl Select {
         Ok(())
     }
 
-    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
+    pub fn execute_command(&mut self, table: Arc<RwLock<File>>) -> Result<Vec<String>, MyError> {
         //cambiarlo a vec string
-        let mut rdr = get_reader(TABLE_PATH, &self.table)?;
+        let mut rdr = get_reader_read(&table)?;
         let col_names = get_file_headers(&mut rdr)?;
 
         let mut tabla: Vec<String> = Vec::new();

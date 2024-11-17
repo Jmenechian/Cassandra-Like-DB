@@ -4,7 +4,7 @@
 use crate::cql::lexer::*;
 use crate::cql::parser::*;
 use crate::cql::relation::Relation;
-use crate::my_errors::MyError;
+use crate::errors::my_errors::MyError;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum WhereClause {
