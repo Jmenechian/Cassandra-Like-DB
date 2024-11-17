@@ -34,13 +34,7 @@ impl Query {
         }
     }
 
-    pub fn execute(&mut self, table: Arc<RwLock<File>>) -> Result<Vec<String>, MyError> {
-        println!("En execute Query");
-        self.get_type();
-        match self.parse_query() {
-            Ok(_) => (),
-            Err(e) => return Err(e),
-        }
+    pub fn execute(&mut self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
         self.execute_command(table)
     }
 
@@ -96,6 +90,8 @@ impl Query {
 
     // Delegates the parsing
     pub fn parse_query(&mut self) -> Result<(), MyError> {
+        self.get_type();
+        
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to parse".to_string())),
             QType::Select(select) => select.parse_select(&self.query, &self.sender_node_ip),
@@ -107,7 +103,7 @@ impl Query {
     }
 
     // Delegates the command execution
-    pub fn execute_command(&mut self, table: Arc<RwLock<File>>) -> Result<Vec<String>, MyError> {
+    pub fn execute_command(&mut self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
         println!("\n - Query: {:?} \n", self.qtype);
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to execute".to_string())),
@@ -146,7 +142,7 @@ impl Query {
     }
 
     pub fn get_table(&self) -> String {
-        let mut table: String = match &self.qtype {
+        let table: String = match &self.qtype {
             QType::None => "".to_string(),
             QType::Select(select) => select.table.clone(),
             QType::Update(update) => update.table.clone(),
@@ -154,8 +150,7 @@ impl Query {
             QType::Delete(delete) => delete.table.clone(),
             QType::CreateTable(create_table) => create_table.table_name.clone(),
         };
-        table.pop();
-        table.pop();
-        table
+        println!("---- table: {}", table);
+        table.trim().to_string()
     }
 }

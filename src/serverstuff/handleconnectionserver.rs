@@ -26,7 +26,7 @@ fn handle_message_query(
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
-    let node = match node.read() {
+    let mut node = match node.write() {
         Ok(n) => n,
         Err(e) => {
             let _error = format!("Error al tratar de usar el nodo: {:?}", e);
@@ -75,7 +75,7 @@ fn handle_message_read_repair(
     node: Arc<RwLock<Node>>,
     query: ReadRepairMessage,
 ) -> Result<(), MyError> {
-    let node = match node.read() {
+    let mut node = match node.write() {
         Ok(n) => n,
         Err(e) => {
             return Err(MyError::LockingError(e.to_string()));

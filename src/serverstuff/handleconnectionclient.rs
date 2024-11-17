@@ -126,12 +126,20 @@ fn process_results(
     println!("pr ===> {:?}", results);
 
     if table != TABLE_ORIGIN_NAME && table != TABLE_DESTINATION_NAME {
-        return results.pop().unwrap();
+        if let Some(result) = results.pop() {
+            return result;
+        } 
+        return vec![];
     }
 
     match results.len() {
         0 => vec![],
-        1 => results.pop().unwrap(),
+        1 => {
+            if let Some(result) = results.pop() {
+                return result;
+            } 
+            return vec![];
+        },
         _ => {
             let index = look_newer(results);
             read_repair(&results[index], nodes_with_result, table);
@@ -189,7 +197,7 @@ pub fn send_query_to_nodes(
     consistency_level: u16,
     show: bool,
 ) -> Result<Vec<String>, MyError> {
-    let node: RwLockWriteGuard<'_, Node> = match node.write() {
+    let mut node: RwLockWriteGuard<'_, Node> = match node.write() {
         Ok(n) => n,
         Err(e) => {
             let _error = format!("Error al tratar de usar el nodo: {:?}", e);
@@ -204,10 +212,12 @@ pub fn send_query_to_nodes(
     let mut hash = ConsistentHash::new(RF);
     let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());
 
-    // Si es un create table, lo ejecuto y devuelvo vacio
+    // Si es un create table, lo ejecuto:
     if query.query.contains("CREATE TABLE") {
         match node.process_query(&mut query) {
-            Ok(_) => return Ok(vec!["Se crean las tablas.".to_string()]),
+            Ok(_) => {
+                return Ok(vec!["Se crean las tablas.".to_string()])
+            },
             Err(e) => {
                 let _error = format!("Error al procesar la query: {:?}", e);
                 if show {
@@ -256,7 +266,10 @@ pub fn send_query_to_nodes(
                             &query.get_table(),
                         ));
                     } else {
-                        return Ok(all_response.pop().unwrap());
+                        if let Some(result) = all_response.pop() {
+                            return Ok(result);
+                        } 
+                        return Ok(vec![]);
                     }
                 }
             }
@@ -308,6 +321,9 @@ pub fn send_query_to_nodes(
             &query.get_table(),
         ))
     } else {
-        Ok(all_response.pop().unwrap())
+        if let Some(result) = all_response.pop() {
+            return Ok(result);
+        } 
+        Ok(vec![])
     }
 }

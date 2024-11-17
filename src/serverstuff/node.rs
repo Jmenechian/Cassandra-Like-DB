@@ -29,7 +29,9 @@ pub struct Node {
     pub client_ip: String, // IP donde nodo se pone a escuchar conecciones de cliente
     pub gossip_ip: String, // IP donde nodo se pone a escuchar mensajes Gossip
     pub neighbors: Vec<NeighborNode>, // todos los otros nodos
-    pub tables: Vec<Arc<RwLock<File>>>, // archivos que representan la tabla abiertos
+    pub table_origin: Option<Arc<RwLock<File>>>, // archivos que representan la tabla abiertos
+    pub table_destination: Option<Arc<RwLock<File>>>,
+    pub table_simulator: Option<Arc<RwLock<File>>>,
 }
 
 impl Node {
@@ -41,24 +43,30 @@ impl Node {
             client_ip: format!("127.0.0.1:800{}", number),
             gossip_ip: format!("127.0.0.1:900{}", number),
             neighbors: vec![], // todos los nodos que estan en el ring
-            tables,
+            table_origin: tables[0].clone(),
+            table_destination: tables[1].clone(),
+            table_simulator: tables[2].clone(),
         }
     }
 
-    fn open_tables_and_lock(number_node: String) -> Vec<Arc<RwLock<File>>> {
-        let mut files: Vec<Arc<RwLock<File>>> = vec![];
+    fn open_tables_and_lock(number_node: String) -> Vec<Option<Arc<RwLock<File>>>> {
+        let mut files: Vec<Option<Arc<RwLock<File>>>> = vec![];
         for path in Self::get_table_paths(number_node) {
-            let file = match OpenOptions::new()
+            match OpenOptions::new()
                 .append(true)
                 .read(true)
                 .open(path)
                 .map_err(|e| MyError::FileError(e.to_string()))
             {
-                Ok(f) => f,
-                _ => continue,
+                Ok(file) => {
+                    let file = Arc::new(RwLock::new(file));
+                    files.push(Some(file));
+                },
+                _ => {
+                    files.push(None);
+                },
             };
-            let file = Arc::new(RwLock::new(file));
-            files.push(file);
+
         }
         files
     }
@@ -74,6 +82,52 @@ impl Node {
             TABLE_PATH, TABLE_FLIGHT_SIMULATOR, number_node
         );
         vec![path_1, path_2, path_3]
+    }
+
+    fn open_table_and_lock(&self, path: String) -> Option<Arc<RwLock<File>>> {
+        match OpenOptions::new()
+            .append(true)
+            .read(true)
+            .open(path)
+            .map_err(|e| MyError::FileError(e.to_string()))
+        {
+            Ok(file) => {
+                 return Some(Arc::new(RwLock::new(file)));
+            },
+            _ => {
+                return None;
+            },
+        };
+    }
+
+    /// Agrega la tabla que se creo como un archivo abierto lockeado.
+    pub fn add_table(&mut self, query: &mut Query) -> Result<(), MyError> {
+        println!("----- en add_table query.get_table(): {}", query.get_table());
+        
+        if [format!("{}", TABLE_ORIGIN_NAME), format!("{}_{}", TABLE_ORIGIN_NAME, self.number)].contains(&query.get_table()) 
+        && self.table_origin.is_none() {
+
+            let table = self.open_table_and_lock(format!("{}_{}", TABLE_ORIGIN_NAME, self.number));
+            self.table_origin = table.clone();
+
+        } else if [format!("{}", TABLE_DESTINATION_NAME), format!("{}_{}", TABLE_DESTINATION_NAME, self.number)].contains(&query.get_table()) 
+        && self.table_destination.is_none(){
+
+            let table = self.open_table_and_lock(format!("{}_{}", TABLE_DESTINATION_NAME, self.number));
+            self.table_destination = table.clone();
+
+        } else if [format!("{}", TABLE_FLIGHT_SIMULATOR), format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.number)].contains(&query.get_table()) 
+        && self.table_simulator.is_none() {
+
+            let table = self.open_table_and_lock(format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.number));
+            self.table_simulator = table.clone();
+
+        } else {
+            println!("----- en add_table error");
+            return Err(MyError::InvalidTable("Tabla no valida".to_string()));
+        }
+
+        Ok(())
     }
 
     pub fn add_neighbors(&mut self, neighbor_nodes: Vec<NeighborNode>) {
@@ -110,15 +164,22 @@ impl Node {
     }
 
     // Proceso la query y devuelve la tabla en formato String
-    pub fn process_query(&self, query: &mut Query) -> Result<Vec<String>, MyError> {
-        let table: Arc<RwLock<File>>;
-        if query.get_table() == format!("{}_{}", TABLE_ORIGIN_NAME, self.number) {
-            table = self.tables[0].clone();
-        } else if query.get_table() == format!("{}_{}", TABLE_DESTINATION_NAME, self.number) {
-            table = self.tables[1].clone();
-        } else if query.get_table() == format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.number) {
-            table = self.tables[2].clone();
+    pub fn process_query(&mut self, query: &mut Query) -> Result<Vec<String>, MyError> {
+        query.parse_query()?;
+
+        self.add_table(query)?;
+
+        let table: Option<Arc<RwLock<File>>>;
+
+        println!("----- en process_query query.get_table(): {}", query.get_table());
+        if [format!("{}", TABLE_ORIGIN_NAME), format!("{}_{}", TABLE_ORIGIN_NAME, self.number)].contains(&query.get_table()) {
+            table = self.table_origin.clone();
+        } else if [format!("{}", TABLE_DESTINATION_NAME), format!("{}_{}", TABLE_DESTINATION_NAME, self.number)].contains(&query.get_table()) {
+            table = self.table_destination.clone();
+        } else if [format!("{}", TABLE_FLIGHT_SIMULATOR), format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.number)].contains(&query.get_table()) {
+            table = self.table_simulator.clone();
         } else {
+            println!("----- en process_query error");
             return Err(MyError::InvalidTable("Tabla no valida".to_string()));
         }
         query.execute(table)

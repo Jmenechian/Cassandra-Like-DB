@@ -109,8 +109,14 @@ impl Select {
         Ok(())
     }
 
-    pub fn execute_command(&mut self, table: Arc<RwLock<File>>) -> Result<Vec<String>, MyError> {
-        //cambiarlo a vec string
+    pub fn execute_command(&mut self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
+        let table = match table {
+            None => {
+                return Err(MyError::InvalidTable("No se econtró la tabla en el nodo.".to_string()));
+            },
+            Some(table) => table,
+        };
+
         let mut rdr = get_reader_read(&table)?;
         let col_names = get_file_headers(&mut rdr)?;
 

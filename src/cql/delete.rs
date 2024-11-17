@@ -62,15 +62,20 @@ impl Delete {
     }
 
     // Ejecuta la consulta
-    pub fn execute_command(&mut self, table: Arc<RwLock<File>>) -> Result<Vec<String>, MyError> {
-        let full_path = get_file_path(TABLE_PATH, &self.table);
+    pub fn execute_command(&mut self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
+        let table = match table {
+            None => {
+                return Err(MyError::InvalidTable("No se econtró la tabla en el nodo.".to_string()));
+            },
+            Some(table) => table,
+        };
+
         let mut rdr = get_reader_read(&table)?;
         let col_names = get_file_headers(&mut rdr)?;
         let mut file_open = get_file_to_write(&table)?;
 
         // Vacia archivo completo si no hay condicion
         if self.whereclause == WhereClause::True {
-            let _ = File::create(full_path).map_err(|e| MyError::FileError(e.to_string()))?;
             append_row(&mut file_open, &col_names)?;
             return Ok(vec!["Se elimino la tabla completa".to_string()]);
         }
@@ -91,7 +96,7 @@ impl Delete {
             }
         }
 
-        write_temporary_to_original(TABLE_PATH, &temp_file_name, &self.table)?;
+        write_temporary_to_original(TABLE_PATH, &temp_file_name, file_open)?;
         delete_file(&temp_file_name, TABLE_PATH)?;
         Ok(vec!["Se eliminaron las filas".to_string()])
     }

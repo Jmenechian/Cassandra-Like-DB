@@ -2,7 +2,7 @@
 
 use crate::errors::my_errors::MyError;
 use std::{
-    fs::{File, OpenOptions},
+    fs::File,
     io::{BufRead, BufReader, Seek, SeekFrom, Write},
     iter::Peekable,
     sync::{Arc, RwLock},
@@ -157,10 +157,8 @@ pub fn delete_file(file_name: &str, path: &str) -> Result<(), MyError> {
 pub fn write_temporary_to_original(
     path: &str,
     temporary_file: &str,
-    original_table: &str,
+    mut original_table: File,
 ) -> Result<(), MyError> {
-    let full_path: String = get_file_path(path, original_table);
-    let _ = File::create(full_path).map_err(|e| MyError::FileError(e.to_string()))?; // empty oriignal file
 
     let rdr = get_reader(path, temporary_file)?;
     let lines = rdr.lines();
@@ -170,14 +168,13 @@ pub fn write_temporary_to_original(
         let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
         let record: Vec<String> = line.trim().split(",").map(|s| s.to_string()).collect();
 
-        let file_path = get_file_path(path, original_table);
-        
-        let mut file_open = OpenOptions::new()
-            .append(true)
-            .open(file_path)
-            .map_err(|e| MyError::FileError(e.to_string()))?;
-
-        append_row(&mut file_open, &record).map_err(|e| MyError::FileError(e.to_string()))?;
+        append_row(&mut original_table, &record).map_err(|e| MyError::FileError(e.to_string()))?;
     }
     Ok(())
 }
+
+// CREATE TABLE origin  (airport STR, destination STR, date DATETIME, flight STR, status STR, timestamp TIMESTAMP, PRIMARY KEY (airport, date, flight)) WITH CLUSTERING ORDER BY (timestamp ASC)
+// SELECT * FROM origin WHERE date = 24-12-24 AND airport = IBR
+// UPDATE origin SET status = boarding WHERE flight = 123 AND airport = MEX AND date = 24-12-24
+// DELETE FROM origin WHERE flight = 123 AND airport = MEX AND date = 24-12-24
+// INSERT INTO origin (airport, destination, date, flight, status) VALUES (MEX, DEL, 24-12-24, 123, scheduled)

@@ -137,8 +137,14 @@ impl Insert {
         Ok(())
     }
 
-    pub fn execute_command(&self, table: Arc<RwLock<File>>) -> Result<Vec<String>, MyError> {
-        println!("En execute_command de INSERT");
+    pub fn execute_command(&self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
+        let table = match table {
+            None => {
+                return Err(MyError::InvalidTable("No se econtró la tabla en el nodo.".to_string()));
+            },
+            Some(table) => table,
+        };
+
         let mut rdr_read = get_reader_read(&table)?;
         let headers = get_file_headers(&mut rdr_read)?;
         let mut file_open = get_file_to_write(&table)?; // Se usa para hacer append
@@ -298,7 +304,7 @@ mod tests {
         let file: File = OpenOptions::new().append(true).read(true).open(file_path.clone()).unwrap();
         let file_arc: Arc<RwLock<File>> = Arc::new(RwLock::new(file));
 
-        let result = insert.execute_command(file_arc).unwrap();
+        let result = insert.execute_command(Some(file_arc)).unwrap();
         assert_eq!(result, vec!["linea fue agregada".to_string()]);
 
         std::fs::remove_file(file_path).unwrap();

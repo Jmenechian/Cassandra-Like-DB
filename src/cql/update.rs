@@ -137,11 +137,18 @@ impl Update {
     }
 
     // Executes the query
-    pub fn execute_command(&mut self, table: Arc<RwLock<File>>) -> Result<Vec<String>, MyError> {
+    pub fn execute_command(&mut self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
+        let table = match table {
+            None => {
+                return Err(MyError::InvalidTable("No se econtró la tabla en el nodo.".to_string()));
+            },
+            Some(table) => table,
+        };
+
         let mut rdr = get_reader_read(&table)?;
         let col_names = get_file_headers(&mut rdr)?;
         self.check_columns_are_valid(&col_names)?;
-        let mut _file_open = get_file_to_write(&table)?; // Ver de usar para hacer los inserts del update
+        let file_open = get_file_to_write(&table)?;
 
         let (mut temp_file, temp_file_name) = create_temporary_file(TABLE_PATH, &self.table)?;
         append_row_with_file(&mut temp_file, &col_names)?;
@@ -176,7 +183,7 @@ impl Update {
             append_row_with_file(&mut temp_file, &updated_row)?;
         }
 
-        write_temporary_to_original(TABLE_PATH, &temp_file_name, &self.table)?;
+        write_temporary_to_original(TABLE_PATH, &temp_file_name, file_open)?;
         delete_file(&temp_file_name, TABLE_PATH)?;
         Ok(vec!["Se updateo la tabla".to_string()])
     }
