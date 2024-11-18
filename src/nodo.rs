@@ -70,27 +70,49 @@ impl Node {
             .iter()
             .position(|n| n.puerto == neighbor_node.puerto)
         {
-            if self.neighbors[pos].time < neighbor_node.time {
+            let existing = &self.neighbors[pos];
+            if existing.status != neighbor_node.status {
                 self.neighbors[pos] = neighbor_node;
-                false
-            } else {
-                false
+                return true;
             }
+            if existing.time < neighbor_node.time {
+                self.neighbors[pos] = neighbor_node;
+                return false;
+            }
+            false
         } else {
             self.neighbors.push(neighbor_node);
             true
         }
     }
 
-    pub fn get_random_neighbor(&self, my_port: String) -> Option<&NeighborNode> {
+    pub fn get_random_neighbor(&self) -> Option<&NeighborNode> {
         let mut rng = rand::thread_rng();
 
         let filtered: Vec<&NeighborNode> = self
             .neighbors
             .iter()
-            .filter(|n| n.puerto != my_port)
+            .filter(|n| n.puerto != self.puerto && n.status == Status::Connected)
             .collect();
         filtered.choose(&mut rng).copied()
+    }
+
+    pub fn disconnect_neighbor(&mut self, ip: String) {
+        if let Some(c) = ip.chars().last() {
+            let port = c.to_string();
+            if let Some(n) = self.neighbors.iter_mut().find(|n| n.puerto == port) {
+                n.disconnect_node();
+            }
+        }
+    }
+
+    pub fn connect_neighbor(&mut self, ip: String) {
+        if let Some(c) = ip.chars().last() {
+            let port = c.to_string();
+            if let Some(n) = self.neighbors.iter_mut().find(|n| n.puerto == port) {
+                n.connect_node();
+            }
+        }
     }
 
     // Proceso la query y devuelve la tabla en formato String
