@@ -125,16 +125,16 @@ impl Node {
 fn read_ports_from_file(filename: &str) -> Result<Vec<u16>, MyError> {
     let file = match File::open(filename) {
         Ok(f) => f,
-        Err(e) => return Err(MyError::FileError(e.to_string())),
+        Err(e) => return Err(MyError::FileError(format!("Error 1 {:?}, en archivo: {:?}, dir: {:?}",e, filename, std::env::current_dir()))),
     };
     let reader = BufReader::new(file);
     reader
         .lines()
         .map(|l| {
-            let l_string = l.map_err(|e| MyError::FileError(e.to_string()))?;
+            let l_string = l.map_err(|e| MyError::FileError(format!("Error 2 {:?}",e)))?;
             l_string
                 .parse::<u16>()
-                .map_err(|e| MyError::FileError(e.to_string()))
+                .map_err(|e| MyError::FileError(format!("Error 3 {:?}",e)))
         })
         .collect()
 }

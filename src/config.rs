@@ -1,5 +1,7 @@
 pub static PORTS_FILE: &str = "puertos.txt";
 
+pub static KEY_FILE: &str = "src/config_aes/aes_key.bin";
+
 pub static POOL_NUMBER: usize = 5;
 
 pub static SERVER_PORT: &str = "7000";

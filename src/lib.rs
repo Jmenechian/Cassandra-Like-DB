@@ -27,6 +27,7 @@ pub mod serverstuff {
 }
 pub mod messagestuff {
     pub mod message;
+    pub mod encrypt;
     pub mod message_cql {
         pub mod cqlenvelope;
         pub mod errormessage;
