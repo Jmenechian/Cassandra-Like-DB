@@ -21,21 +21,21 @@ use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
 fn handle_message_query(
-    node: Arc<RwLock<Node>>,
+    node: &mut Node, //Arc<RwLock<Node>>,
     query: QueryServerMessage,
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
-    let mut node = match node.write() {
-        Ok(n) => n,
-        Err(e) => {
-            let _error = format!("Error al tratar de usar el nodo: {:?}", e);
-            if show {
-                println!("S   {:?}", _error);
-            }
-            return Err(MyError::LockingError(_error));
-        }
-    };
+    // let mut node = match node.write() {
+    //     Ok(n) => n,
+    //     Err(e) => {
+    //         let _error = format!("Error al tratar de usar el nodo: {:?}", e);
+    //         if show {
+    //             println!("S   {:?}", _error);
+    //         }
+    //         return Err(MyError::LockingError(_error));
+    //     }
+    // };
     let mut query = Query::new(query.query.clone(), node.server_ip.clone());
     let msg = match node.process_query(&mut query) {
         Ok(s) => {
@@ -72,15 +72,15 @@ fn get_primary_key(row: &str) -> Vec<String> {
 // Hay que revisar LOOK_NEWER para qu devuelva por FILAS y no por nodos
 // airport,destination,date,flight,status,timestamp
 fn handle_message_read_repair(
-    node: Arc<RwLock<Node>>,
+    node: &mut Node, //Arc<RwLock<Node>>,
     query: ReadRepairMessage,
 ) -> Result<(), MyError> {
-    let mut node = match node.write() {
-        Ok(n) => n,
-        Err(e) => {
-            return Err(MyError::LockingError(e.to_string()));
-        }
-    };
+    // let mut node = match node.write() {
+    //     Ok(n) => n,
+    //     Err(e) => {
+    //         return Err(MyError::LockingError(e.to_string()));
+    //     }
+    // };
 
     let primary_keys = get_primary_key(&query.rows_to_keep[0]);
 
@@ -161,7 +161,7 @@ fn contains_row(rows: &Vec<String>, row: &str) -> bool {
 }
 
 pub fn handle_connection_server(
-    node: Arc<RwLock<Node>>,
+    node: &mut Node, //Arc<RwLock<Node>>,
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
@@ -172,9 +172,9 @@ pub fn handle_connection_server(
             }
             match packet.body {
                 ServerMessage::Query(query) => {
-                    handle_message_query(node.clone(), query, stream, show)
+                    handle_message_query(node, query, stream, show)
                 }
-                ServerMessage::ReadRepair(msg) => handle_message_read_repair(node.clone(), msg),
+                ServerMessage::ReadRepair(msg) => handle_message_read_repair(node, msg),
                 _ => {
                     let _error = "Error entre server y servers".to_string();
                     if show {

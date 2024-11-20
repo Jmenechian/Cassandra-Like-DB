@@ -172,9 +172,3 @@ pub fn write_temporary_to_original(
     }
     Ok(())
 }
-
-// CREATE TABLE origin  (airport STR, destination STR, date DATETIME, flight STR, status STR, timestamp TIMESTAMP, PRIMARY KEY (airport, date, flight)) WITH CLUSTERING ORDER BY (timestamp ASC)
-// SELECT * FROM origin WHERE date = 24-12-24 AND airport = IBR
-// UPDATE origin SET status = boarding WHERE flight = 123 AND airport = MEX AND date = 24-12-24
-// DELETE FROM origin WHERE flight = 123 AND airport = MEX AND date = 24-12-24
-// INSERT INTO origin (airport, destination, date, flight, status) VALUES (MEX, DEL, 24-12-24, 123, scheduled)

@@ -25,7 +25,7 @@ use std::net::TcpStream;
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
 
 fn handle_message_query(
-    node: &Arc<RwLock<Node>>,
+    node: &mut Node, //&Arc<RwLock<Node>>,
     querymessage: QueryMessage,
     stream: &mut TcpStream,
     show: bool,
@@ -81,7 +81,7 @@ fn handle_message_error(stream: &mut TcpStream, _error: String, show: bool) {
 }
 
 pub fn handle_connection_client(
-    node: Arc<RwLock<Node>>,
+    node: &mut Node, //Arc<RwLock<Node>>,
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
@@ -93,7 +93,7 @@ pub fn handle_connection_client(
                 }
                 match env.body {
                     CqlMessage::Query(querymessage) => {
-                        handle_message_query(&node, querymessage, stream, show)?;
+                        handle_message_query(node, querymessage, stream, show)?;
                     }
                     _ => {
                         handle_message_error(
@@ -192,21 +192,21 @@ fn read_repair(result: &[String], nodes_with_result: &Vec<NeighborNode>, table: 
 }
 
 pub fn send_query_to_nodes(
-    node: &Arc<RwLock<Node>>,
+    node: &mut Node, //&Arc<RwLock<Node>>,
     _query: String,
     consistency_level: u16,
     show: bool,
 ) -> Result<Vec<String>, MyError> {
-    let mut node: RwLockWriteGuard<'_, Node> = match node.write() {
-        Ok(n) => n,
-        Err(e) => {
-            let _error = format!("Error al tratar de usar el nodo: {:?}", e);
-            if show {
-                println!("C   {:?}", _error);
-            }
-            return Err(MyError::LockingError(_error));
-        }
-    };
+    // let mut node: RwLockWriteGuard<'_, Node> = match node.write() {
+    //     Ok(n) => n,
+    //     Err(e) => {
+    //         let _error = format!("Error al tratar de usar el nodo: {:?}", e);
+    //         if show {
+    //             println!("C   {:?}", _error);
+    //         }
+    //         return Err(MyError::LockingError(_error));
+    //     }
+    // };
 
     let mut all_response: Vec<Vec<String>> = vec![];
     let mut hash = ConsistentHash::new(RF);

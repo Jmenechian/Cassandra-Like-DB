@@ -22,7 +22,7 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 // Representa al nodo en el que estamos parados
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node {
     pub number: String,
     pub server_ip: String, // IP donde nodo se pone a escuchar conecciones de servidores
@@ -213,14 +213,15 @@ pub fn try_connect(ip: String) -> Option<TcpStream> {
 
 fn listen<F>(
     ip: String,
-    node: Arc<RwLock<Node>>,
+    node: &mut Node, //Arc<RwLock<Node>>,
     handler: F,
     show: bool,
 ) -> Result<JoinHandle<Result<(), MyError>>, MyError>
 where
-    F: Fn(Arc<RwLock<Node>>, &mut TcpStream, bool) -> Result<(), MyError> + Send + 'static + Copy,
+    F: Fn(&mut Node, &mut TcpStream, bool) -> Result<(), MyError> + Send + 'static + Copy,
 {
-    let current_node = Arc::clone(&node);
+    //let current_node = Arc::clone(&node);
+    let current_node = node.clone();
     let t: JoinHandle<Result<(), MyError>> = thread::spawn(move || {
         let listener = match TcpListener::bind(ip) {
             Ok(j) => j,
@@ -239,9 +240,10 @@ where
                     ))
                 }
             };
-            let node_thread = Arc::clone(&current_node);
+            //let node_thread = Arc::clone(&current_node);
+            let mut node_thread = current_node.clone();
             thread::spawn(move || {
-                match handler(node_thread.clone(), &mut s, show) {
+                match handler(&mut node_thread, &mut s, show) {
                     Ok(_) => {}
                     Err(e) => println!("Error: {:?}", e),
                 };
@@ -288,12 +290,12 @@ pub fn initialize(port: String) -> Result<(), MyError> {
     let server_ip = current_node.server_ip.clone();
     let client_ip = current_node.client_ip.clone();
     let gossip_ip = current_node.gossip_ip.clone();
-    let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
+    //let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node)); //node para MAIN THREAD
 
     // Seccion cliente-servidor
     listen(
         client_ip,
-        current_node.clone(),
+        &mut current_node,
         handle_connection_client,
         show_c,
     )?;
@@ -301,7 +303,7 @@ pub fn initialize(port: String) -> Result<(), MyError> {
     // Seccion servidor-servidor
     listen(
         server_ip,
-        current_node.clone(),
+        &mut current_node,
         handle_connection_server,
         show_s,
     )?;
@@ -309,7 +311,7 @@ pub fn initialize(port: String) -> Result<(), MyError> {
     // Seccion Gossip
     listen(
         gossip_ip,
-        current_node.clone(),
+        &mut current_node,
         handle_connection_gossip,
         show_g,
     )?;

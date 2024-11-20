@@ -16,20 +16,20 @@ use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
 fn handle_message_gossip(
-    node: Arc<RwLock<Node>>,
+    node: &mut Node, //Arc<RwLock<Node>>,
     gossip: &mut GossipMessage,
     show: bool,
 ) -> Result<(), MyError> {
     let ip: String = gossip.ip.clone();
-    let mut node = match node.write() {
-        Ok(n) => n,
-        Err(e) => {
-            if show {
-                println!("G   Error al tratar de usar el nodo: {:?}", e);
-            }
-            return Err(MyError::LockingError("No puedo usar el nodo".to_string()));
-        }
-    };
+    // let mut node = match node.write() {
+    //     Ok(n) => n,
+    //     Err(e) => {
+    //         if show {
+    //             println!("G   Error al tratar de usar el nodo: {:?}", e);
+    //         }
+    //         return Err(MyError::LockingError("No puedo usar el nodo".to_string()));
+    //     }
+    // };
 
     if let Some(true) = gossip.decrease_ttl() {
         if let Some(n) = node.get_random_neighbor(node.number.clone()) {
@@ -61,7 +61,7 @@ fn handle_message_gossip(
 }
 
 pub fn handle_connection_gossip(
-    node: Arc<RwLock<Node>>,
+    node: &mut Node,//Arc<RwLock<Node>>,
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
