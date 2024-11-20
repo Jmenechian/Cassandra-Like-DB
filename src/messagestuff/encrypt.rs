@@ -1,8 +1,8 @@
 use crate::config::KEY_FILE;
 use crate::my_errors::MyError;
-use std::{io::Read, net::TcpStream, fs::File};
-use aes::{cipher, Aes128};
-use aes::cipher::{BlockCipher, BlockEncrypt, BlockDecrypt, KeyInit, generic_array::GenericArray};
+use std::{io::Read, fs::File};
+use aes::Aes128;
+use aes::cipher::{BlockEncrypt, BlockDecrypt, KeyInit, generic_array::GenericArray};
 
 fn load_key_from_file(filename: &str) -> Result<[u8;16], MyError> {
     let mut file = match File::open(filename) {
@@ -42,4 +42,32 @@ pub fn decrypt_body_aes128(encrypted_body: Vec<u8>) -> Result<Vec<u8>, MyError> 
         decrypted.extend_from_slice(&block);
     }
     Ok(decrypted)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::messagestuff::message::*;
+    use crate::messagestuff::message_cql::querymessage::*;
+    #[test]
+    fn test_encrypt_string() -> Result<(), MyError> {
+        let string = "Hola".to_string();
+        let string_vec = string_to_bytes(string.clone());
+        let string_encrypted = encrypt_body_aes128(string_vec)?;
+        let string_decrypted = decrypt_body_aes128(string_encrypted)?;
+        let (string_from_vec, _) = string_from_bytes(string_decrypted)?;
+        assert_eq!(string, string_from_vec);
+        Ok(())
+    }
+
+    #[test]
+    fn test_encrypt_message() -> Result<(), MyError> {
+        let message = QueryMessage{query: "SELECT FROM origin WHERE airport = AEP".to_string(),consistency: 8 as u16};
+        let message_vec = message.to_bytes();
+        let message_encrypt = encrypt_body_aes128(message_vec)?;
+        let message_decrypt = decrypt_body_aes128(message_encrypt)?;
+        let (message_from_vec, _) = QueryMessage::from_bytes(message_decrypt)?;
+        assert_eq!(message, message_from_vec);
+        Ok(())
+    }
 }

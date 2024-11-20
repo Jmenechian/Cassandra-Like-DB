@@ -9,8 +9,8 @@ use crate::config;
 use crate::messagestuff::{
     message::*, message_cql::errormessage::ErrorMessage, message_cql::querymessage::QueryMessage,
     message_cql::resultmessage::ResultMessage,
+    encrypt::*,
 };
-use crate::messagestuff::encrypt::*;
 use crate::my_errors::MyError;
 use std::{io::Read, net::TcpStream};
 
