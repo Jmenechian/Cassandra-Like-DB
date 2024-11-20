@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 /// Estados de un vuelo.
 pub enum FlightStatus {
     Scheduled,

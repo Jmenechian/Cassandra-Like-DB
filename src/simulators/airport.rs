@@ -24,6 +24,17 @@ impl Airport {
         Self { name, coordinates }
     }
 
+    pub fn do_query(&self, stream: &mut Option<TcpStream>, query: String) -> Result<(), MyError> {
+        if let Some(stream) = stream {
+            Client::send_message(stream, query)
+                .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
+
+            let response = Client::read_response(stream)
+                .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
+            println!("response: {:?}", response);
+        }
+        Ok(())
+    }
     /// Se obtienen los vuelos cuyo aeropuerto de origen es el indicado.
     /// Se especifica la fecha en la que salen esos vuelos.
     pub fn get_origin_flights_from(
@@ -46,12 +57,17 @@ impl Airport {
 
             let mut flights: Vec<Flight> = vec![];
             for line in response {
-                if line.is_empty() {
+                if line.is_empty() || line == "linea fue agregada" {
+                    //ojo no se si rompe algo esto
                     continue;
                 }
 
                 // [origin, destination, date, flight, status, timestamp]
                 let values: Vec<String> = line.split(",").map(|f| f.to_string()).collect();
+
+                if values.len() < 2 {
+                    continue;
+                }
 
                 let mut coordinates = (0.0, 0.0);
                 if let Some(airport_aux) = airports.get(&values[0]) {
@@ -111,10 +127,15 @@ impl Airport {
 
             let mut flights: Vec<Flight> = vec![];
             for line in response {
-                if line.is_empty() {
+                if line.is_empty() || line == "linea fue agregada" {
+                    //ojo no se si rompe algo esto
                     continue;
                 }
                 let values: Vec<String> = line.split(",").map(|f| f.to_string()).collect();
+
+                if values.len() < 2 {
+                    continue;
+                }
 
                 let mut coordinates = (0.0, 0.0);
                 if let Some(airport_aux) = airports.get(&values[1]) {
