@@ -7,7 +7,7 @@ use std::{collections::HashMap, net::TcpStream};
 use crate::{
     clientstuff::client_cql::Client,
     config::*,
-    my_errors::MyError,
+    errors::my_errors::MyError,
     simulators::{
         airport::Airport,
         airport_coordinates::{

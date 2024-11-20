@@ -93,7 +93,7 @@ fn handle_message_read_repair(
         query.table, primary_keys[0], primary_keys[1]
     );
 
-    let mut _query = Query::new(query_str, node.read().unwrap().server_ip.clone());
+    let mut _query = Query::new(query_str, node.server_ip.clone());
 
     let rows_to_update = node.process_query(&mut _query)?;
 
