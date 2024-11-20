@@ -36,7 +36,7 @@ fn handle_message_query(
     //idea:
     // if query.get_type == insert,update
     // insert -> (airport, destination ... pusheas timestamp aca)
-    // values.push UTC::now().to_string() 
+    // values.push UTC::now().to_string()
 
     // para update agregas el timestamp durante el set y listo supongo
 

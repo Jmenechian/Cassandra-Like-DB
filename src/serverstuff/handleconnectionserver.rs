@@ -167,7 +167,7 @@ pub fn handle_connection_server(
                 ServerMessage::Query(query) => {
                     handle_message_query(node.clone(), query, stream, show)
                 }
-                ServerMessage::ReadRepair(msg) => handle_message_read_repair(node.clone(), msg),
+                // ServerMessage::ReadRepair(msg) => handle_message_read_repair(node.clone(), msg),
                 _ => {
                     let _error = "Error entre server y servers".to_string();
                     if show {

@@ -8,7 +8,7 @@ use crate::{
     errors::simulator_errors::SimulatorErrors,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Estructura que representa un vuelo, con su número, el aeropuesto de origen y el de destino, y otras variables que varian durante recorrido que hace.
 pub struct Flight {
     pub number: String,

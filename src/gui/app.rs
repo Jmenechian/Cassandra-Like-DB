@@ -7,6 +7,7 @@ use std::{collections::HashMap, net::TcpStream};
 use crate::{
     clientstuff::client_cql::Client,
     config::*,
+    my_errors::MyError,
     simulators::{
         airport::Airport,
         airport_coordinates::{
@@ -29,7 +30,6 @@ pub struct MapApp {
     date_selected: String,
     airport_selected: String,
     airport2_selected: String,
-    origin_destination_selected: String,
     status_selected: String,
     flight_selected: String,
 }
@@ -47,7 +47,6 @@ impl MapApp {
         //botones
         let airport_selected = "".to_string();
         let airport2_selected = "".to_string();
-        let origin_destination_selected = "".to_string();
         let status_selected = "".to_string();
         let flight_selected = "".to_string();
         let date_selected = "".to_string();
@@ -62,7 +61,6 @@ impl MapApp {
             //botones
             airport_selected,
             airport2_selected,
-            origin_destination_selected,
             status_selected,
             flight_selected,
             date_selected,
@@ -119,7 +117,6 @@ impl MapApp {
     fn reset_connection(&mut self) {
         self.connections = vec![];
     }
-
     /// Se agrega las conecciones que tiene el aeropuesto con los demás por los aviones que salen o regresan de este.
     fn add_all_connections(
         &mut self,
@@ -311,7 +308,7 @@ impl MapApp {
     }
 
     /// Se dibuja la tabla con los detalles del avión.
-    fn draw_flight_table(&self, ui: &mut Ui) {
+    fn draw_flight_table(&mut self, ui: &mut Ui, texture: &TextureHandle) {
         // Tabla de vuelos
         // Usar un layout vertical para mantener el contenido en la parte superior
         ui.vertical(|ui| {
@@ -328,34 +325,37 @@ impl MapApp {
                         ui.label("Status");
                         ui.label("");
                         ui.end_row();
-                        let mut to_remove = None;
-                        for (origin, destination, flight) in &self.connections {
+                        for (origin, destination, flight) in &self.connections.clone() {
                             ui.label(flight.number.clone());
                             ui.label(origin.name.clone());
                             ui.label(destination.name.clone());
                             ui.label(flight.status.to_str());
                             if ui.button("🗑️").clicked() {
-                                let plane_to_delete = format!("{},{},{}", flight.number, origin.name, destination.name);
-                                to_remove = Some(plane_to_delete);
+
+                                let query_origen = format!(
+                                    "DELETE FROM origin WHERE date={} AND airport={} AND flight={}",
+                                    flight.departure_date, origin.name, flight.number
+                                );
+                                let query_destino = format!(
+                                    "DELETE FROM destination WHERE date={} AND airport={} AND flight={}",
+                                    flight.departure_date, destination.name, flight.number
+                                );
+
+                                if !query_origen.is_empty() && !query_destino.is_empty() {
+                                    let _ = self.make_query(query_origen);
+                                    let _ = self.make_query(query_destino);
+                                    if let Some(airport) = self.airports.clone().get(&self.airport_selected){
+                                        let (screen_x, screen_y) =
+                                        get_coordinate_positioning_on_map(airport.coordinates, texture.size());
+                                            self.reset_connection();
+                                            self.add_all_connections(airport, texture, screen_x, screen_y);
+                                            }
+                                }
                             }
                             ui.end_row();
                         }
-                        if let Some(plane_to_delete) = to_remove {
-                            // borrate->(plane_to_delete);
-                        }
                     });
                 ui.separator();
-            }
-        });
-    }
-
-    /// Se dibuja el box para engresar la fecha.
-    fn draw_date_box(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            ..{
-                ui.label("Enter date:");
-                ui.text_edit_singleline(&mut self.date_selected);
-                self.date_selected = self.date_selected.trim().to_string();
             }
         });
     }
@@ -376,88 +376,6 @@ impl MapApp {
                     ui.label(label);
                     ui.text_edit_singleline(var);
                     *var = var.trim().to_string();
-                });
-            });
-    }
-
-    fn draw_other_box2(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var: i8) {
-        // caja de input con dropdown
-
-        egui::Area::new(Id::new(tag))
-            .fixed_pos(egui::pos2(x, y)) // Position at (100, 200)
-            .show(ui.ctx(), |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Select date:");
-
-                    // Dropdown for selecting options
-                    egui::ComboBox::from_label("")
-                        .selected_text(&self.date_selected)
-                        .show_ui(ui, |ui| {
-                            if ui
-                                .selectable_value(
-                                    &mut self.date_selected,
-                                    "2024-01-01".to_string(),
-                                    "2024-01-01",
-                                )
-                                .clicked()
-                            {}
-                            if ui
-                                .selectable_value(
-                                    &mut self.date_selected,
-                                    "2024-02-01".to_string(),
-                                    "2024-02-01",
-                                )
-                                .clicked()
-                            {}
-                            if ui
-                                .selectable_value(
-                                    &mut self.date_selected,
-                                    "2024-03-01".to_string(),
-                                    "2024-03-01",
-                                )
-                                .clicked()
-                            {}
-                            // Add more dates as options as needed
-                        });
-
-                    if ui
-                        .add(egui::Button::new("Submit").fill(Color32::from_rgb(120, 66, 114)))
-                        .clicked()
-                    {
-                        println!("Date selected: {}", self.date_selected);
-                    }
-                });
-            });
-    }
-
-    fn draw_origin_destination_box(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str) {
-        egui::Area::new(Id::new(tag))
-            .fixed_pos(egui::pos2(x, y))
-            .show(ui.ctx(), |ui| {
-                ui.horizontal(|ui| {
-                    let label = format!("Enter {}:", tag);
-                    ui.label(label);
-
-                    egui::ComboBox::from_label("")
-                        .selected_text(&self.origin_destination_selected)
-                        .show_ui(ui, |ui| {
-                            if ui
-                                .selectable_value(
-                                    &mut self.origin_destination_selected,
-                                    "origin".to_string(),
-                                    "origin",
-                                )
-                                .clicked()
-                            {}
-                            if ui
-                                .selectable_value(
-                                    &mut self.origin_destination_selected,
-                                    "destination".to_string(),
-                                    "destination",
-                                )
-                                .clicked()
-                            {}
-                        });
                 });
             });
     }
@@ -484,8 +402,8 @@ impl MapApp {
                             if ui
                                 .selectable_value(
                                     &mut self.status_selected,
-                                    "on-time".to_string(),
-                                    "on-time",
+                                    "airborne".to_string(),
+                                    "airborne",
                                 )
                                 .clicked()
                             {}
@@ -525,85 +443,104 @@ impl MapApp {
                 });
             });
     }
-    fn draw_fixed_button(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var: i8, texture: &TextureHandle) { 
-        let all_fields_filled = !self.origin_destination_selected.is_empty() //extra para visual
-        && !self.date_selected.is_empty()
-        && !self.airport_selected.is_empty();
-
-        let button_color = if all_fields_filled {
-            Color32::from_rgb(0, 128, 0) // Green when fields are filled
-        } else {
-            Color32::from_rgb(255, 0, 0) // Red when fields are empty
-        };
-
+    fn draw_fixed_button(
+        &mut self,
+        ui: &mut Ui,
+        x: f32,
+        y: f32,
+        tag: &str,
+        var: i8,
+        texture: &TextureHandle,
+        color: Color32,
+    ) {
+        let insert_button = !self.airport_selected.is_empty()
+            && !self.airport2_selected.is_empty()
+            && !self.date_selected.is_empty()
+            && !self.flight_selected.is_empty()
+            && !self.status_selected.is_empty();
+        let up_del_button = !self.date_selected.is_empty()
+            && !self.airport_selected.is_empty()
+            && !self.flight_selected.is_empty()
+            && !self.airport2_selected.is_empty();
         egui::Area::new(Id::new(tag))
             .fixed_pos(egui::pos2(x, y))
             .show(ui.ctx(), |ui| {
+                let mut query_origen = "".to_string();
+                let mut query_destino = "".to_string();
                 if ui
-                    .add(egui::Button::new(tag).fill(button_color))
+                    .add(egui::Button::new(tag).fill(color))
                     .clicked()
                 {
 
-                    if var == INSERT {
-                        let other = if self.origin_destination_selected == "origin" {
-                            "destination"
-                        } else {
-                            "origin"
-                        };
-                        let query = format!(
-                            "INSERT INTO {} (airport, {}, date, flight, status) VALUES ('{}', '{}', '{}', '{}', '{}')",
-                            self.origin_destination_selected, other, self.airport_selected, self.airport2_selected, self.date_selected, self.flight_selected, self.status_selected
+                    if var == INSERT && insert_button{
+                        query_origen = format!(
+                            "INSERT INTO origin (airport, destination, date, flight, status) VALUES ('{}', '{}', '{}', '{}', '{}')",
+                            self.airport_selected, self.airport2_selected, self.date_selected, self.flight_selected, self.status_selected
                         );
-                        println!("query: {:?}", query);
-                        self.make_query(query);
-
-                        // self.draw_connections_with_flight(texture, ui);
-                        // self.draw_flight_table(ui);
+                        query_destino = format!(
+                            "INSERT INTO destination (airport, origin, date, flight, status) VALUES ('{}', '{}', '{}', '{}', '{}')",
+                            self.airport2_selected, self.airport_selected, self.date_selected, self.flight_selected, self.status_selected
+                        );
                     }
 
-                    if var == UPDATE {  //todo
-                        let query = format!(
-                            "UPDATE {} SET status = '{}' WHERE date = '{}' AND airport = '{}' AND flight = '{}'",
-                            self.origin_destination_selected,self.status_selected, self.date_selected, self.airport_selected, self.flight_selected
+                    if var == UPDATE && up_del_button {  //todo
+                        query_origen = format!(
+                            "UPDATE origin SET status = '{}' WHERE date = '{}' AND airport = '{}' AND flight = '{}'",
+                            self.status_selected, self.date_selected, self.airport_selected, self.flight_selected
                         );
-                        println!("query: {:?}", query);
-                        self.make_query(query);
-
-                        // self.draw_connections_with_flight(texture, ui);
-                        // self.draw_flight_table(ui);
+                        query_destino = format!(
+                            "UPDATE destination SET status = '{}' WHERE date = '{}' AND airport = '{}' AND flight = '{}'",
+                            self.status_selected, self.date_selected, self.airport2_selected, self.flight_selected
+                        );
                     }
 
-                    if var == DELETE { //
-                        let query = format!( //por ahora solo esos campos dejo
-                            "DELETE FROM {} WHERE date={} AND airport={} AND flight={}",
-                            self.origin_destination_selected,self.date_selected, self.airport_selected, self.flight_selected
+                    if var == DELETE && up_del_button{
+                        query_origen = format!(
+                            "DELETE FROM origin WHERE date={} AND airport={} AND flight={}",
+                            self.date_selected, self.airport_selected, self.flight_selected
                         );
-                        println!("query: {:?}", query);
-                        self.make_query(query);
-
-                        // self.draw_connections_with_flight(texture, ui);
-                        // self.draw_flight_table(ui);
+                        query_destino = format!(
+                            "DELETE FROM destination WHERE date={} AND airport={} AND flight={}",
+                            self.date_selected, self.airport2_selected, self.flight_selected
+                        );
+                    }
+                    if !query_origen.is_empty() && !query_destino.is_empty() {
+                        let _ = self.make_query(query_origen);
+                        let _ = self.make_query(query_destino);
+                        if let Some(airport) = self.airports.clone().get(&self.airport_selected){
+                            let (screen_x, screen_y) =
+                            get_coordinate_positioning_on_map(airport.coordinates, texture.size());
+                                self.reset_connection();
+                                self.add_all_connections(airport, texture, screen_x, screen_y);
+                                }
                     }
                 }
             });
     }
 
-    fn make_query(&mut self, query: String) { //supongo que esta bien, copilot
+    fn make_query(&mut self, query: String) -> Result<(), MyError> {
+        //supongo que esta bien, copilot
         if let Some(stream) = &mut self.stream_client {
             Client::send_message(stream, query).unwrap();
             println!("salio bien");
+
+            let response = Client::read_response(stream)
+                .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
+            println!("response: {:?}", response);
         }
+
+        Ok(())
     }
 
     fn super_function(&mut self, ui: &mut Ui, texture: &TextureHandle) {
         //
         let mut y = 660.0;
         let mut x = 10.0;
-        self.draw_other_box(ui, x, y, "airport", AIRPORT); //aeropuerto
+        self.draw_other_box(ui, x, y, "Origen", AIRPORT); //aeropuerto
         y = offset_y(y);
-        self.draw_origin_destination_box(ui, x, y, "origin/destination"); //origin/destination //se puede hacer una funcion generica tambien pasando array
-        y = offset_y(y);
-        self.draw_other_box(ui, x, y, "airport2", AIRPORT2); //aeropuerto2
+        // self.draw_origin_destination_box(ui, x, y, "origin/destination"); //origin/destination //se puede hacer una funcion generica tambien pasando array
+        // y = offset_y(y);
+        self.draw_other_box(ui, x, y, "Destino", AIRPORT2); //aeropuerto2
         y = offset_y(y);
         self.draw_other_box(ui, x, y, "date", DATE); //date
         y = offset_y(y);
@@ -611,11 +548,34 @@ impl MapApp {
         y = offset_y(y);
         self.draw_status_box(ui, x, y, "status"); //status
         y = offset_y(y);
-        self.draw_fixed_button(ui, x, y, "INSERT", INSERT, texture); //INSERT
+
+        let insert_button = !self.airport_selected.is_empty()
+            && !self.airport2_selected.is_empty()
+            && !self.date_selected.is_empty()
+            && !self.flight_selected.is_empty()
+            && !self.status_selected.is_empty();
+        let up_del_button = !self.date_selected.is_empty()
+            && !self.airport_selected.is_empty()
+            && !self.flight_selected.is_empty()
+            && !self.airport2_selected.is_empty();
+
+        let insert_color = if insert_button {
+            Color32::from_rgb(0, 128, 0) // Green when fields are filled
+        } else {
+            Color32::from_rgb(255, 0, 0) // Red when fields are empty
+        };
+        let up_del_color = if up_del_button {
+            Color32::from_rgb(0, 128, 0) // Green when fields are filled
+        } else {
+            Color32::from_rgb(255, 0, 0) // Red when fields are empty
+        };
+
+        self.draw_fixed_button(ui, x, y, "INSERT", INSERT, texture, insert_color); //INSERT
         x = offset_x(x);
-        self.draw_fixed_button(ui, x, y, "DELETE", DELETE, texture); //DELETE
+        self.draw_fixed_button(ui, x, y, "DELETE", DELETE, texture, up_del_color); //DELETE
         x = offset_x(x);
-        self.draw_fixed_button(ui, x, y, "UPDATE", UPDATE, texture); //UPDATE
+        self.draw_fixed_button(ui, x, y, "UPDATE", UPDATE, texture, up_del_color);
+        //UPDATE
     }
 }
 
@@ -639,7 +599,6 @@ impl eframe::App for MapApp {
                         let (screen_x, screen_y) =
                             get_coordinate_positioning_on_map(airport.coordinates, texture.size());
 
-
                         let button_rect =
                             self.draw_airports(ui.painter(), screen_x, screen_y, &airport.name);
 
@@ -649,6 +608,9 @@ impl eframe::App for MapApp {
                             .clicked()
                         {
                             println!("¡Aeropuerto {} presionado!", airport.name);
+                            self.airport_selected = airport.name.clone();
+                            self.airport2_selected = "".to_string();
+                            self.flight_selected = "".to_string();
                             self.reset_connection();
 
                             if !self.date_selected.is_empty() {
@@ -659,10 +621,11 @@ impl eframe::App for MapApp {
 
                     self.draw_connections_with_flight(texture, ui);
 
-                    self.draw_flight_table(ui);
+                    self.draw_flight_table(ui, texture);
                 });
 
-                self.super_function(ui, texture);
+                self.super_function(ui, texture); //ver si se puede refreshear mapa
+                                                  // self.reset_connection();
             }
         });
     }
