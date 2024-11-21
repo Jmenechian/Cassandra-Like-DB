@@ -474,7 +474,7 @@ impl MapApp {
                         );
                     }
 
-                    if var == UPDATE && up_del_button {  //todo
+                    if var == UPDATE && up_del_button {
                         query_origen = format!(
                             "UPDATE origin SET status = '{}' WHERE date = '{}' AND airport = '{}' AND flight = '{}'",
                             self.status_selected, self.date_selected, self.airport_selected, self.flight_selected
@@ -521,8 +521,6 @@ impl MapApp {
         let mut x = 10.0;
         self.draw_other_box(ui, x, y, "Origen", AIRPORT); //aeropuerto
         y = offset_y(y);
-        // self.draw_origin_destination_box(ui, x, y, "origin/destination"); //origin/destination //se puede hacer una funcion generica tambien pasando array
-        // y = offset_y(y);
         self.draw_other_box(ui, x, y, "Destino", AIRPORT2); //aeropuerto2
         y = offset_y(y);
         self.draw_other_box(ui, x, y, "date", DATE); //date
@@ -597,10 +595,7 @@ impl eframe::App for MapApp {
                             self.reset_connection();
 
                             if !self.date_selected.is_empty() {
-                                // thread::spawn(move || {
-                                let _ =
-                                    self.add_all_connections(airport, texture, screen_x, screen_y);
-                                // });
+                                let _ = self.add_all_connections(airport, texture, screen_x, screen_y);
                             }
                         }
                     }
@@ -610,8 +605,7 @@ impl eframe::App for MapApp {
                     self.draw_flight_table(ui, texture);
                 });
 
-                self.super_function(ui, texture); //ver si se puede refreshear mapa
-                                                  // self.reset_connection();
+                self.super_function(ui, texture);
             }
         });
     }
