@@ -43,8 +43,7 @@ impl Query {
 
     fn get_type(&mut self) {
         let q_upper = self.query.to_ascii_uppercase();
-        println!("query: {:?}", self.query);
-        println!("q_upper: {:?}", q_upper);
+
         if q_upper.contains("SELECT") {
             self.set_select();
         } else if q_upper.contains("UPDATE") {
@@ -106,7 +105,7 @@ impl Query {
 
     // Delegates the command execution
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
-        println!("En execute_command GRAL: {:?}", self.qtype);
+        println!("\n - Query: {:?} \n", self.qtype);
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to execute".to_string())),
             QType::Select(select) => select.execute_command(),

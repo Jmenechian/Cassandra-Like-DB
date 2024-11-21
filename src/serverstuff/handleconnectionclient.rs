@@ -22,17 +22,27 @@ use crate::ConsistentHash;
 use crate::{config, NeighborNode};
 use chrono::NaiveDateTime;
 use std::net::TcpStream;
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::{Arc, RwLock, RwLockWriteGuard};
 
 fn handle_message_query(
-    node: RwLockReadGuard<'_, Node>,
+    node: &Arc<RwLock<Node>>,
     querymessage: QueryMessage,
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
+    // cambiamos la query en un insert/update con el timestamp
+    // let mut query = Query::check(querymessage.query);
+
+    //idea:
+    // if query.get_type == insert,update
+    // insert -> (airport, destination ... pusheas timestamp aca)
+    // values.push UTC::now().to_string()
+
+    // para update agregas el timestamp durante el set y listo supongo
+
     let table = match send_query_to_nodes(
-        &node,
-        querymessage.query.clone(),
+        node,
+        querymessage.query, //.clone tenia antes nose  <=== aca metes la nueva query
         querymessage.consistency,
         show,
     ) {
@@ -88,22 +98,12 @@ pub fn handle_connection_client(
     loop {
         match Envelope::from_stream(stream) {
             Ok(env) => {
-                let node: RwLockReadGuard<'_, Node> = match node.read() {
-                    Ok(n) => n,
-                    Err(e) => {
-                        let _error = format!("Error al tratar de usar el nodo: {:?}", e);
-                        if show {
-                            println!("C   {:?}", _error);
-                        }
-                        return Err(MyError::LockingError(_error));
-                    }
-                };
                 if show {
                     println!("C   El env recibido es: {:?}", env);
                 }
                 match env.body {
                     CqlMessage::Query(querymessage) => {
-                        handle_message_query(node, querymessage, stream, show)?;
+                        handle_message_query(&node, querymessage, stream, show)?;
                     }
                     _ => {
                         handle_message_error(
@@ -194,11 +194,22 @@ fn read_repair(result: &[String], nodes_with_result: &Vec<NeighborNode>, table: 
 }
 
 pub fn send_query_to_nodes(
-    node: &RwLockReadGuard<'_, Node>,
+    node: &Arc<RwLock<Node>>,
     _query: String,
     consistency_level: u16,
     show: bool,
 ) -> Result<Vec<String>, MyError> {
+    let node: RwLockWriteGuard<'_, Node> = match node.write() {
+        Ok(n) => n,
+        Err(e) => {
+            let _error = format!("Error al tratar de usar el nodo: {:?}", e);
+            if show {
+                println!("C   {:?}", _error);
+            }
+            return Err(MyError::LockingError(_error));
+        }
+    };
+
     let mut all_response: Vec<Vec<String>> = vec![];
     let mut hash = ConsistentHash::new(RF);
     let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());

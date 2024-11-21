@@ -6,8 +6,10 @@ use std::{collections::HashMap, net::TcpStream};
 
 use crate::{
     clientstuff::client_cql::Client,
-    config::{MAP_PATH, PLANE_PATH, PLANE_SIZE, RADIUS_CLICK_AIRPORT, RADIUS_PAINT_AIRPORT},
-    gui::painted::{
+    config::*,
+    gui::user::User,
+    my_errors::MyError,
+    simulators::{
         airport::Airport,
         airport_coordinates::{
             get_airport_coordinates, get_angle, get_coordinate_positioning_on_map,
@@ -15,8 +17,9 @@ use crate::{
         },
         flight::Flight,
     },
-    gui::user::User,
 };
+
+use super::user;
 
 /// Estructura que representa la interfaz de usuario.
 /// Mapa con aeropuestos y vuelos que conectan a los aeropuestos.
@@ -28,9 +31,14 @@ pub struct MapApp {
     stream_client: Option<TcpStream>,
     connections: Vec<(Airport, Airport, Flight)>,
     date_selected: String,
+    airport_selected: String,
+    airport2_selected: String,
+    status_selected: String,
+    flight_selected: String,
     username: String,
     password: String,
     user: Option<User>,
+    login_status: String,
 }
 
 impl MapApp {
@@ -42,10 +50,19 @@ impl MapApp {
         let client = Client::initialize(port);
         let stream_client = None;
         let connections = vec![];
+
+        //botones
+        let airport_selected = "".to_string();
+        let airport2_selected = "".to_string();
+        let status_selected = "".to_string();
+        let flight_selected = "".to_string();
         let date_selected = "".to_string();
+
+        // usuario
         let username = "".to_string();
         let password = "".to_string();
         let user = None;
+        let login_status = "Por favor ingresar usuario y contraseña".to_string();
         Self {
             airports,
             map_texture,
@@ -53,10 +70,19 @@ impl MapApp {
             client,
             stream_client,
             connections,
+
+            //botones
+            airport_selected,
+            airport2_selected,
+            status_selected,
+            flight_selected,
             date_selected,
+
+            // usuario
             username,
             password,
             user,
+            login_status,
         }
     }
 
@@ -92,8 +118,6 @@ impl MapApp {
         let image_rgba = map_image.to_rgba8();
         let width: usize = width.try_into().unwrap_or(0);
         let height: usize = height.try_into().unwrap_or(0);
-        println!("width: {}", width);
-        println!("height: {}", height);
 
         let texture = ctx.load_texture(
             "map",
@@ -112,7 +136,6 @@ impl MapApp {
     fn reset_connection(&mut self) {
         self.connections = vec![];
     }
-
     /// Se agrega las conecciones que tiene el aeropuesto con los demás por los aviones que salen o regresan de este.
     fn add_all_connections(
         &mut self,
@@ -293,7 +316,7 @@ impl MapApp {
                     mid_x,
                     mid_y,
                     plane_texture.id(),
-                    &flight.name,
+                    &flight.number,
                     angle,
                 );
             }
@@ -304,7 +327,7 @@ impl MapApp {
     }
 
     /// Se dibuja la tabla con los detalles del avión.
-    fn draw_flight_table(&self, ui: &mut Ui) {
+    fn draw_flight_table(&mut self, ui: &mut Ui, texture: &TextureHandle) {
         // Tabla de vuelos
         // Usar un layout vertical para mantener el contenido en la parte superior
         ui.vertical(|ui| {
@@ -319,12 +342,35 @@ impl MapApp {
                         ui.label("Origin");
                         ui.label("Destination");
                         ui.label("Status");
+                        ui.label("");
                         ui.end_row();
-                        for (origin, destination, flight) in &self.connections {
-                            ui.label(flight.name.clone());
+                        for (origin, destination, flight) in &self.connections.clone() {
+                            ui.label(flight.number.clone());
                             ui.label(origin.name.clone());
                             ui.label(destination.name.clone());
-                            ui.label(flight.status.clone());
+                            ui.label(flight.status.to_str());
+                            if ui.button("🗑️").clicked() {
+
+                                let query_origen = format!(
+                                    "DELETE FROM origin WHERE date={} AND airport={} AND flight={}",
+                                    flight.departure_date, origin.name, flight.number
+                                );
+                                let query_destino = format!(
+                                    "DELETE FROM destination WHERE date={} AND airport={} AND flight={}",
+                                    flight.departure_date, destination.name, flight.number
+                                );
+
+                                if !query_origen.is_empty() && !query_destino.is_empty() {
+                                    let _ = self.make_query(query_origen);
+                                    let _ = self.make_query(query_destino);
+                                    if let Some(airport) = self.airports.clone().get(&self.airport_selected){
+                                        let (screen_x, screen_y) =
+                                        get_coordinate_positioning_on_map(airport.coordinates, texture.size());
+                                            self.reset_connection();
+                                            self.add_all_connections(airport, texture, screen_x, screen_y);
+                                            }
+                                }
+                            }
                             ui.end_row();
                         }
                     });
@@ -333,18 +379,235 @@ impl MapApp {
         });
     }
 
-    /// Se dibuja el box para engresar la fecha.
-    fn draw_date_box(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            ..{
-                ui.label("Enter date:");
-                ui.text_edit_singleline(&mut self.date_selected);
-                self.date_selected = self.date_selected.trim().to_string();
-            }
-        });
+    fn draw_other_box(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str, var_number: i8) {
+        //caja de input con input keyboard
+        let var = match var_number {
+            0 => &mut self.airport_selected,
+            2 => &mut self.airport2_selected,
+            3 => &mut self.date_selected,
+            _ => &mut self.flight_selected,
+        };
+        egui::Area::new(Id::new(tag))
+            .fixed_pos(egui::pos2(x, y))
+            .show(ui.ctx(), |ui| {
+                ui.horizontal(|ui| {
+                    let label = format!("Enter {}:", tag);
+                    ui.label(label);
+                    ui.text_edit_singleline(var);
+                    *var = var.trim().to_string();
+                });
+            });
     }
 
-    fn create_user(&mut self) {
+    fn draw_status_box(&mut self, ui: &mut Ui, x: f32, y: f32, tag: &str) {
+        egui::Area::new(Id::new(tag))
+            .fixed_pos(egui::pos2(x, y))
+            .show(ui.ctx(), |ui| {
+                ui.horizontal(|ui| {
+                    let label = format!("Enter {}:", tag);
+                    ui.label(label);
+
+                    egui::ComboBox::from_label("")
+                        .selected_text(&self.status_selected)
+                        .show_ui(ui, |ui| {
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "scheduled".to_string(),
+                                    "scheduled",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "airborne".to_string(),
+                                    "airborne",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "delayed".to_string(),
+                                    "delayed",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "cancelled".to_string(),
+                                    "cancelled",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "boarding".to_string(),
+                                    "boarding",
+                                )
+                                .clicked()
+                            {}
+                            if ui
+                                .selectable_value(
+                                    &mut self.status_selected,
+                                    "landed".to_string(),
+                                    "landed",
+                                )
+                                .clicked()
+                            {}
+                        });
+                });
+            });
+    }
+    fn draw_fixed_button(
+        &mut self,
+        ui: &mut Ui,
+        x: f32,
+        y: f32,
+        tag: &str,
+        var: i8,
+        texture: &TextureHandle,
+        color: Color32,
+    ) {
+        let insert_button = !self.airport_selected.is_empty()
+            && !self.airport2_selected.is_empty()
+            && !self.date_selected.is_empty()
+            && !self.flight_selected.is_empty()
+            && !self.status_selected.is_empty();
+        let up_del_button = !self.date_selected.is_empty()
+            && !self.airport_selected.is_empty()
+            && !self.flight_selected.is_empty()
+            && !self.airport2_selected.is_empty();
+        egui::Area::new(Id::new(tag))
+            .fixed_pos(egui::pos2(x, y))
+            .show(ui.ctx(), |ui| {
+                let mut query_origen = "".to_string();
+                let mut query_destino = "".to_string();
+                if ui
+                    .add(egui::Button::new(tag).fill(color))
+                    .clicked()
+                {
+
+                    if var == INSERT && insert_button{
+                        query_origen = format!(
+                            "INSERT INTO origin (airport, destination, date, flight, status) VALUES ('{}', '{}', '{}', '{}', '{}')",
+                            self.airport_selected, self.airport2_selected, self.date_selected, self.flight_selected, self.status_selected
+                        );
+                        query_destino = format!(
+                            "INSERT INTO destination (airport, origin, date, flight, status) VALUES ('{}', '{}', '{}', '{}', '{}')",
+                            self.airport2_selected, self.airport_selected, self.date_selected, self.flight_selected, self.status_selected
+                        );
+                    }
+
+                    if var == UPDATE && up_del_button {  //todo
+                        query_origen = format!(
+                            "UPDATE origin SET status = '{}' WHERE date = '{}' AND airport = '{}' AND flight = '{}'",
+                            self.status_selected, self.date_selected, self.airport_selected, self.flight_selected
+                        );
+                        query_destino = format!(
+                            "UPDATE destination SET status = '{}' WHERE date = '{}' AND airport = '{}' AND flight = '{}'",
+                            self.status_selected, self.date_selected, self.airport2_selected, self.flight_selected
+                        );
+                    }
+
+                    if var == DELETE && up_del_button{
+                        query_origen = format!(
+                            "DELETE FROM origin WHERE date={} AND airport={} AND flight={}",
+                            self.date_selected, self.airport_selected, self.flight_selected
+                        );
+                        query_destino = format!(
+                            "DELETE FROM destination WHERE date={} AND airport={} AND flight={}",
+                            self.date_selected, self.airport2_selected, self.flight_selected
+                        );
+                    }
+                    if !query_origen.is_empty() && !query_destino.is_empty() {
+                        let _ = self.make_query(query_origen);
+                        let _ = self.make_query(query_destino);
+                        if let Some(airport) = self.airports.clone().get(&self.airport_selected){
+                            let (screen_x, screen_y) =
+                            get_coordinate_positioning_on_map(airport.coordinates, texture.size());
+                                self.reset_connection();
+                                self.add_all_connections(airport, texture, screen_x, screen_y);
+                                }
+                    }
+                }
+            });
+    }
+
+    fn make_query(&mut self, query: String) -> Result<(), MyError> {
+        //supongo que esta bien, copilot
+        if let Some(stream) = &mut self.stream_client {
+            Client::send_message(stream, query).unwrap();
+            println!("salio bien");
+
+            let response = Client::read_response(stream)
+                .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
+            println!("response: {:?}", response);
+        }
+
+        Ok(())
+    }
+
+    fn super_function(&mut self, ui: &mut Ui, texture: &TextureHandle) {
+        //
+        let mut y = 660.0;
+        let mut x = 10.0;
+
+        if self.user.is_none() {
+            return;
+        }
+
+        if let Some(ref user) = self.user {
+            if user.role == user::Role::User {
+                self.draw_other_box(ui, x, y, "date", DATE); //date
+                return;
+            }
+        }
+
+        self.draw_other_box(ui, x, y, "Origen", AIRPORT); //aeropuerto
+        y = offset_y(y);
+        self.draw_other_box(ui, x, y, "Destino", AIRPORT2); //aeropuerto2
+        y = offset_y(y);
+        self.draw_other_box(ui, x, y, "date", DATE); //date
+        y = offset_y(y);
+        self.draw_other_box(ui, x, y, "flight", FLIGHT); //flight
+        y = offset_y(y);
+        self.draw_status_box(ui, x, y, "status"); //status
+        y = offset_y(y);
+
+        let insert_button = !self.airport_selected.is_empty()
+            && !self.airport2_selected.is_empty()
+            && !self.date_selected.is_empty()
+            && !self.flight_selected.is_empty()
+            && !self.status_selected.is_empty();
+        let up_del_button = !self.date_selected.is_empty()
+            && !self.airport_selected.is_empty()
+            && !self.flight_selected.is_empty()
+            && !self.airport2_selected.is_empty();
+
+        let insert_color = if insert_button {
+            Color32::from_rgb(0, 128, 0) // Green when fields are filled
+        } else {
+            Color32::from_rgb(255, 0, 0) // Red when fields are empty
+        };
+        let up_del_color = if up_del_button {
+            Color32::from_rgb(0, 128, 0) // Green when fields are filled
+        } else {
+            Color32::from_rgb(255, 0, 0) // Red when fields are empty
+        };
+
+        self.draw_fixed_button(ui, x, y, "INSERT", INSERT, texture, insert_color); //INSERT
+        x = offset_x(x);
+        self.draw_fixed_button(ui, x, y, "DELETE", DELETE, texture, up_del_color); //DELETE
+        x = offset_x(x);
+        self.draw_fixed_button(ui, x, y, "UPDATE", UPDATE, texture, up_del_color);
+        //UPDATE
+    }
+
+    fn get_user(&mut self) {
         println!(
             "Attempting to login with username: {} and password: {}",
             self.username, self.password
@@ -353,10 +616,12 @@ impl MapApp {
         match User::new(self.username.clone(), self.password.clone()) {
             Ok(user) => {
                 println!("Login successful: {:?}", user);
+                self.login_status = format!("Bienvenido {}!", user.username);
                 self.user = Some(user);
             }
             Err(err) => {
                 println!("Login failed: {:?}", err);
+                self.login_status = "Usuario o contraseña incorrectos".to_string();
                 self.user = None;
             }
         };
@@ -380,9 +645,10 @@ impl eframe::App for MapApp {
                 );
 
                 if ui.button("Login").clicked() {
-                    self.create_user();
+                    self.get_user();
                 }
-            });
+                ui.label(&self.login_status);
+            })
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -411,7 +677,9 @@ impl eframe::App for MapApp {
                             .clicked()
                         {
                             println!("¡Aeropuerto {} presionado!", airport.name);
-
+                            self.airport_selected = airport.name.clone();
+                            self.airport2_selected = "".to_string();
+                            self.flight_selected = "".to_string();
                             self.reset_connection();
 
                             if !self.date_selected.is_empty() && self.user.is_some() {
@@ -422,11 +690,19 @@ impl eframe::App for MapApp {
 
                     self.draw_connections_with_flight(texture, ui);
 
-                    self.draw_flight_table(ui);
+                    self.draw_flight_table(ui, texture);
                 });
 
-                self.draw_date_box(ui);
+                self.super_function(ui, texture);
             }
         });
     }
+}
+
+fn offset_y(y: f32) -> f32 {
+    y + 30.0
+}
+
+fn offset_x(x: f32) -> f32 {
+    x + 100.0
 }

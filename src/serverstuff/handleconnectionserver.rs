@@ -75,14 +75,17 @@ fn handle_message_read_repair(
     node: Arc<RwLock<Node>>,
     query: ReadRepairMessage,
 ) -> Result<(), MyError> {
+    if query.rows_to_keep.len() == 0 {
+        return Ok(());
+    }
     let primary_keys = get_primary_key(&query.rows_to_keep[0]);
 
     let query_str = format!(
-        "SELECT * FROM {} WHERE airport = {} AND date = {} AND flight = {}",
-        query.table, primary_keys[0], primary_keys[1], primary_keys[2]
+        "SELECT * FROM {} WHERE airport = {} AND date = {}",
+        query.table, primary_keys[0], primary_keys[1]
     );
 
-    let mut _query = Query::new(query_str, node.read().unwrap().server_ip.clone());
+    let mut _query = Query::new(query_str, node.write().unwrap().server_ip.clone());
 
     let rows_to_update = _query.execute()?;
 
@@ -97,9 +100,11 @@ fn handle_message_read_repair(
     for row in &query.rows_to_keep {
         let row_vec = row.split(",").collect::<Vec<&str>>();
 
+        println!("rows_to_update: {:?}", rows_to_update);
+
         if contains_row(&rows_to_update, row) {
             let query_str = format!(
-                    "UPDATE {} SET status = {} WHERE airport = {} AND {} = {} AND date = {} AND flight = {} ",
+                    "UPDATE {} SET status = {} WHERE airport = {} AND {} = {} AND date = {} AND flight = {}",
                     query.table, row_vec[stat], row_vec[ap], column, row_vec[place], row_vec[date], row_vec[flight]);
             println!("\nRR   {}\n", query_str);
             let mut query = Query::new(query_str, node.read().unwrap().server_ip.clone());
@@ -138,15 +143,11 @@ fn handle_message_read_repair(
 }
 
 fn contains_row(rows: &Vec<String>, row: &str) -> bool {
-    let mut vec_row = row.split(",").collect::<Vec<&str>>();
-    vec_row.pop(); //remove timestamp
-
+    let row_to_compare = get_primary_key(row);
     for r in rows {
-        let mut vec_r = r.split(",").collect::<Vec<&str>>();
-        vec_r.pop();
-        println!("vec_r: {:?} vec_row: {:?}", vec_r, vec_row);
+        let keep_row = get_primary_key(r);
 
-        if vec_r == vec_row {
+        if row_to_compare == keep_row {
             return true;
         }
     }

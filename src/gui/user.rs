@@ -1,5 +1,5 @@
 // User struct that represents the user of the application.
-// Used for authentication and Authoriazation.
+// Used for Authentication and Authoriazation.
 //
 // User: Can only do SELECT queries
 // Admin: Can do SELECT, INSERT, UPDATE, DELETE queries
@@ -9,7 +9,7 @@ use crate::my_errors::MyError;
 use crate::utils::get_reader;
 use std::io::BufRead;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Role {
     Admin,
     User,
@@ -44,11 +44,15 @@ impl User {
 
         for line in lines {
             let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
-            let mut values = line.split(",");
+            let mut values: Vec<&str> = line.split(",").collect();
 
-            let user = values.next().unwrap();
-            let pass = values.next().unwrap();
-            let role = values.next().unwrap();
+            if values.len() < 3 {
+                return Err(MyError::UserError("Invalid user file".to_string()));
+            }
+
+            let role: &str = values.pop().unwrap();
+            let pass: &str = values.pop().unwrap();
+            let user: &str = values.pop().unwrap();
 
             if user == username && pass == password {
                 return match role {
