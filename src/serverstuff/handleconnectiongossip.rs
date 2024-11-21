@@ -1,8 +1,3 @@
-// Handler que se encarga de manejar el servidor cuando se comunica por Gossip.
-//
-// La funcion principal es `handle_connection_gossip` que recibe un nodo, un stream y un booleano.
-// El resto son funciones auxiliares.
-
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
 use crate::messagestuff::{
@@ -10,26 +5,28 @@ use crate::messagestuff::{
     message_server::{serverpacket::Packet, serverpacket::ServerMessage},
 };
 use crate::serverstuff::neighbor_node::NeighborNode;
-use crate::serverstuff::node::{try_connect, Node};
+use crate::serverstuff::node::Node;
 use rand::seq::SliceRandom;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
+use super::node_initializer::try_connect;
+
 fn handle_message_gossip(
-    node: &mut Node, //Arc<RwLock<Node>>,
+    node: Arc<RwLock<Node>>,
     gossip: &mut GossipMessage,
     show: bool,
 ) -> Result<(), MyError> {
     let ip: String = gossip.ip.clone();
-    // let mut node = match node.write() {
-    //     Ok(n) => n,
-    //     Err(e) => {
-    //         if show {
-    //             println!("G   Error al tratar de usar el nodo: {:?}", e);
-    //         }
-    //         return Err(MyError::LockingError("No puedo usar el nodo".to_string()));
-    //     }
-    // };
+    let mut node = match node.write() {
+        Ok(n) => n,
+        Err(e) => {
+            if show {
+                println!("G   Error al tratar de usar el nodo: {:?}", e);
+            }
+            return Err(MyError::LockingError("No puedo usar el nodo".to_string()));
+        }
+    };
 
     if let Some(true) = gossip.decrease_ttl() {
         if let Some(n) = node.get_random_neighbor(node.number.clone()) {
@@ -60,8 +57,10 @@ fn handle_message_gossip(
     Ok(())
 }
 
+/// Handler que se encarga de manejar el servidor cuando se comunica por Gossip.
+/// Funcion principal que recibe un nodo, un stream y un booleano.
 pub fn handle_connection_gossip(
-    node: &mut Node,//Arc<RwLock<Node>>,
+    node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
@@ -95,6 +94,7 @@ pub fn handle_connection_gossip(
     Ok(())
 }
 
+/// Nos conectamos con un nodo al azar y devolvemos el stream.
 pub fn connect_to_random_gossip(
     ports: Vec<u16>,
     my_port: &String,

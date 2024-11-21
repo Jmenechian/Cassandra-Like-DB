@@ -5,7 +5,6 @@ use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
-use std::fs::File;
 use std::io::BufRead;
 use std::sync::{Arc, RwLock};
 
@@ -109,15 +108,10 @@ impl Select {
         Ok(())
     }
 
-    pub fn execute_command(&mut self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
-        let table = match table {
-            None => {
-                return Err(MyError::InvalidTable("No se econtró la tabla en el nodo.".to_string()));
-            },
-            Some(table) => table,
-        };
+    /// Se ejecuta la query sobre la tabla.
+    pub fn execute_command(&mut self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
 
-        let mut rdr = get_reader_read(&table)?;
+        let mut rdr = get_reader_read(&path_table)?;
         let col_names = get_file_headers(&mut rdr)?;
 
         let mut tabla: Vec<String> = Vec::new();

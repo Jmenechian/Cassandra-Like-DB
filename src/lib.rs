@@ -27,6 +27,7 @@ pub mod serverstuff {
     pub mod neighbor_node;
     pub mod node;
     pub mod node_status;
+    pub mod node_initializer;
 }
 
 pub mod messagestuff {

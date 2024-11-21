@@ -1,8 +1,3 @@
-// Handler que se encarga de manejar la conexion del servidor con si mismo.
-//
-// La funcion principal es `handle_connection_server` que recibe un nodo, un stream y un booleano.
-// El resto son funciones auxiliares.
-
 use crate::config::TABLE_ORIGIN_NAME;
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
@@ -21,21 +16,22 @@ use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
 fn handle_message_query(
-    node: &mut Node, //Arc<RwLock<Node>>,
+    node: Arc<RwLock<Node>>,
     query: QueryServerMessage,
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
-    // let mut node = match node.write() {
-    //     Ok(n) => n,
-    //     Err(e) => {
-    //         let _error = format!("Error al tratar de usar el nodo: {:?}", e);
-    //         if show {
-    //             println!("S   {:?}", _error);
-    //         }
-    //         return Err(MyError::LockingError(_error));
-    //     }
-    // };
+    let node = match node.read() {
+        Ok(n) => n,
+        Err(e) => {
+            let _error = format!("Error al tratar de usar el nodo: {:?}", e);
+            if show {
+                println!("S   {:?}", _error);
+            }
+            return Err(MyError::LockingError(_error));
+        }
+    };
+
     let mut query = Query::new(query.query.clone(), node.server_ip.clone());
     let msg = match node.process_query(&mut query) {
         Ok(s) => {
@@ -69,10 +65,8 @@ fn get_primary_key(row: &str) -> Vec<String> {
     primary_keys
 }
 
-// Hay que revisar LOOK_NEWER para qu devuelva por FILAS y no por nodos
-// airport,destination,date,flight,status,timestamp
 fn handle_message_read_repair(
-    node: &mut Node, //Arc<RwLock<Node>>,
+    node: Arc<RwLock<Node>>,
     query: ReadRepairMessage,
 ) -> Result<(), MyError> {
     if query.rows_to_keep.is_empty() {
@@ -84,6 +78,13 @@ fn handle_message_read_repair(
         "SELECT * FROM {} WHERE airport = {} AND date = {}",
         query.table, primary_keys[0], primary_keys[1]
     );
+
+    let node = match node.read() {
+        Ok(n) => n,
+        Err(e) => {
+            return Err(MyError::LockingError(e.to_string()));
+        }
+    };
 
     let mut _query = Query::new(query_str, node.server_ip.clone());
 
@@ -154,8 +155,10 @@ fn contains_row(rows: &Vec<String>, row: &str) -> bool {
     false
 }
 
+/// Handler que se encarga de manejar la conexion del servidor con si mismo.
+/// Funcion principal que recibe un nodo, un stream y un booleano.
 pub fn handle_connection_server(
-    node: &mut Node, //Arc<RwLock<Node>>,
+    node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {

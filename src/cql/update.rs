@@ -6,7 +6,6 @@ use crate::cql::where_clause::WhereClause;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
 use std::collections::HashMap;
-use std::fs::File;
 use std::io::BufRead;
 use std::sync::{Arc, RwLock};
 
@@ -137,18 +136,12 @@ impl Update {
     }
 
     // Executes the query
-    pub fn execute_command(&mut self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
-        let table = match table {
-            None => {
-                return Err(MyError::InvalidTable("No se econtró la tabla en el nodo.".to_string()));
-            },
-            Some(table) => table,
-        };
+    pub fn execute_command(&mut self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
 
-        let mut rdr = get_reader_read(&table)?;
+        let mut rdr = get_reader_read(&path_table)?;
         let col_names = get_file_headers(&mut rdr)?;
         self.check_columns_are_valid(&col_names)?;
-        let file_open = get_file_to_write(&table)?;
+        let file_open = get_file_to_write(&path_table)?;
 
         let (mut temp_file, temp_file_name) = create_temporary_file(TABLE_PATH, &self.table)?;
         append_row_with_file(&mut temp_file, &col_names)?;
@@ -204,6 +197,3 @@ impl Update {
         res
     }
 }
-
-// UPDATE origin SET airport = AAAAA, date = 02-12-02, destination = BBBBBBB WHERE airport = MEX AND date = 24-12-24 AND destination = AEP
-// SELECT * FROM origin WHERE airport = MEX AND date = 24-12-24 AND destination = AEP

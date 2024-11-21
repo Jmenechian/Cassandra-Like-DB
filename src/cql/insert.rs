@@ -5,7 +5,6 @@ use crate::errors::my_errors::MyError;
 use crate::utils::*;
 use chrono::Utc;
 use std::collections::HashMap;
-use std::fs::File;
 use std::sync::{Arc, RwLock};
 #[derive(Debug, Eq, PartialEq)]
 pub struct Insert {
@@ -122,6 +121,8 @@ impl Insert {
     fn check_columns_are_valid(&self, file_headers: &[String]) -> Result<(), MyError> {
         for header in &self.columns {
             if !file_headers.contains(header) {
+                println!("\nfile_headers: {:?}", file_headers);
+                println!("header: {:?}", header);
                 return Err(MyError::InvalidColumn("Column not valid".to_string()));
             }
         }
@@ -137,17 +138,15 @@ impl Insert {
         Ok(())
     }
 
-    pub fn execute_command(&self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
-        let table = match table {
-            None => {
-                return Err(MyError::InvalidTable("No se econtró la tabla en el nodo.".to_string()));
-            },
-            Some(table) => table,
-        };
+    pub fn execute_command(&self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
 
-        let mut rdr_read = get_reader_read(&table)?;
+        println!("\n\nen execute command de insert - table: {:?}", path_table);
+        let mut rdr_read = get_reader_read(&path_table)?;
+        println!("en execute command de insert - rdr_read: {:?}", rdr_read);
         let headers = get_file_headers(&mut rdr_read)?;
-        let mut file_open = get_file_to_write(&table)?; // Se usa para hacer append
+        println!("en execute command de insert - headers: {:?}", headers);
+        let mut file_open = get_file_to_write(&path_table)?; // Se usa para hacer append
+        println!("en execute command de insert - file_open: {:?}", file_open);
 
         // INSERT INTO VALUES (val1, val2)
         // values are inserted in the same order as the file headers
@@ -206,7 +205,7 @@ mod tests {
     use super::*;
     use crate::errors::my_errors::MyError;
     use std::collections::HashMap;
-    use std::fs::{File, OpenOptions};
+    use std::fs::File;
     use std::io::Write;
     use crate::config::TABLE_PATH;
 
@@ -301,10 +300,9 @@ mod tests {
             )
             .unwrap();
 
-        let file: File = OpenOptions::new().append(true).read(true).open(file_path.clone()).unwrap();
-        let file_arc: Arc<RwLock<File>> = Arc::new(RwLock::new(file));
+        let file_arc: Arc<RwLock<String>> = Arc::new(RwLock::new(file_path.clone()));
 
-        let result = insert.execute_command(Some(file_arc)).unwrap();
+        let result = insert.execute_command(file_arc).unwrap();
         assert_eq!(result, vec!["linea fue agregada".to_string()]);
 
         std::fs::remove_file(file_path).unwrap();

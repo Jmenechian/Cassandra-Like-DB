@@ -1,4 +1,3 @@
-use std::fs::File;
 use std::sync::{Arc, RwLock};
 
 use crate::cql::create_table::CreateTable;
@@ -34,7 +33,7 @@ impl Query {
         }
     }
 
-    pub fn execute(&mut self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
+    pub fn execute(&mut self, table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
         self.execute_command(table)
     }
 
@@ -103,7 +102,7 @@ impl Query {
     }
 
     // Delegates the command execution
-    pub fn execute_command(&mut self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
+    pub fn execute_command(&mut self, table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
         println!("\n - Query: {:?} \n", self.qtype);
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to execute".to_string())),

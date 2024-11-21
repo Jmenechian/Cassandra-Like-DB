@@ -5,7 +5,7 @@ use crate::cql::{filter::Filter, where_clause::WhereClause};
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
 use std::sync::{Arc, RwLock};
-use std::{fs::File, io::BufRead};
+use std::io::BufRead;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Delete {
@@ -62,17 +62,11 @@ impl Delete {
     }
 
     // Ejecuta la consulta
-    pub fn execute_command(&mut self, table: Option<Arc<RwLock<File>>>) -> Result<Vec<String>, MyError> {
-        let table = match table {
-            None => {
-                return Err(MyError::InvalidTable("No se econtró la tabla en el nodo.".to_string()));
-            },
-            Some(table) => table,
-        };
+    pub fn execute_command(&mut self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
 
-        let mut rdr = get_reader_read(&table)?;
+        let mut rdr = get_reader_read(&path_table)?;
         let col_names = get_file_headers(&mut rdr)?;
-        let mut file_open = get_file_to_write(&table)?;
+        let mut file_open = get_file_to_write(&path_table)?;
 
         // Vacia archivo completo si no hay condicion
         if self.whereclause == WhereClause::True {
