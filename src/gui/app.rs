@@ -339,8 +339,13 @@ impl MapApp {
                             ui.label(origin.name.clone());
                             ui.label(destination.name.clone());
                             ui.label(flight.status.to_str());
+                            if let Some(ref user) = self.user {
+                                if user.role == Role::User {
+                                    ui.end_row();
+                                    continue;
+                                }
+                            }
                             if ui.button("🗑️").clicked() {
-
                                 let query_origen = format!(
                                     "DELETE FROM origin WHERE date={} AND airport={} AND flight={}",
                                     flight.departure_date, origin.name, flight.number
