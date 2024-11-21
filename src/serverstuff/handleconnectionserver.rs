@@ -75,7 +75,7 @@ fn handle_message_read_repair(
     node: Arc<RwLock<Node>>,
     query: ReadRepairMessage,
 ) -> Result<(), MyError> {
-    if query.rows_to_keep.len() == 0 {
+    if query.rows_to_keep.is_empty() {
         return Ok(());
     }
     let primary_keys = get_primary_key(&query.rows_to_keep[0]);

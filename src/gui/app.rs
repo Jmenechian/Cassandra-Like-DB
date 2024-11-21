@@ -2,11 +2,13 @@ use eframe::egui;
 use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureHandle, TextureId, Ui};
 
 use image::GenericImageView;
-use std::{collections::HashMap, net::TcpStream};
+use std::collections::HashMap;
+use std::sync::mpsc::Receiver;
 
 use crate::{
     clientstuff::client_cql::Client,
     config::*,
+    gui::user::Role,
     gui::user::User,
     my_errors::MyError,
     simulators::{
@@ -19,7 +21,7 @@ use crate::{
     },
 };
 
-use super::user;
+use super::connection_server::ConnectionServer;
 
 /// Estructura que representa la interfaz de usuario.
 /// Mapa con aeropuestos y vuelos que conectan a los aeropuestos.
@@ -27,8 +29,7 @@ pub struct MapApp {
     airports: HashMap<String, Airport>,
     map_texture: Option<egui::TextureHandle>,
     plane_texture: Option<egui::TextureHandle>,
-    client: Client,
-    stream_client: Option<TcpStream>,
+    connection_server: ConnectionServer,
     connections: Vec<(Airport, Airport, Flight)>,
     date_selected: String,
     airport_selected: String,
@@ -48,7 +49,7 @@ impl MapApp {
         let map_texture = None;
         let plane_texture = None;
         let client = Client::initialize(port);
-        let stream_client = None;
+        let connection_server = ConnectionServer::initialize(client);
         let connections = vec![];
 
         //botones
@@ -67,8 +68,7 @@ impl MapApp {
             airports,
             map_texture,
             plane_texture,
-            client,
-            stream_client,
+            connection_server,
             connections,
 
             //botones
@@ -78,21 +78,11 @@ impl MapApp {
             flight_selected,
             date_selected,
 
-            // usuario
+            //usuario
             username,
             password,
             user,
             login_status,
-        }
-    }
-
-    /// Establece la conección con el nodo indicado.
-    fn set_connection_server(&mut self) {
-        if let Ok(stream) = self.client.connect() {
-            self.stream_client = Some(stream);
-        } else {
-            //Cambiar de nodo?
-            self.stream_client = None;
         }
     }
 
@@ -143,51 +133,55 @@ impl MapApp {
         texture: &TextureHandle,
         screen_x: f32,
         screen_y: f32,
+    ) -> Result<(), MyError> {
+        let rx: &Receiver<Vec<String>> = self.connection_server.get_channel_to_receive();
+
+        self.connection_server
+            .send_origin_and_return_flights(self.date_selected.clone(), airport.clone())?;
+
+        let origin_flights = rx.recv().unwrap();
+        let return_flights = rx.recv().unwrap();
+
+        let origin_flights =
+            airport.parse_origin_flights(&self.airports.clone(), origin_flights)?;
+        let return_flights =
+            airport.parse_return_flights(&self.airports.clone(), return_flights)?;
+
+        if origin_flights.is_empty() && return_flights.is_empty() {
+            return Ok(());
+        }
+
+        self.iter_and_add_connections("origin", return_flights, texture, (screen_x, screen_y));
+        self.iter_and_add_connections("return", origin_flights, texture, (screen_x, screen_y));
+        Ok(())
+    }
+
+    fn iter_and_add_connections(
+        &mut self,
+        connect_with: &str,
+        flights: Vec<Flight>,
+        texture: &TextureHandle,
+        coordenates: (f32, f32),
     ) {
-        if let (Ok(origin_flights), Ok(return_flights)) = (
-            airport.get_origin_flights_from(
-                &mut self.stream_client,
-                &self.date_selected,
-                &self.airports,
-            ),
-            airport.get_flights_that_return_to(
-                &mut self.stream_client,
-                &self.date_selected,
-                &self.airports,
-            ),
-        ) {
-            if origin_flights.is_empty() && return_flights.is_empty() {
-                return;
-            }
-
-            for flight_r in return_flights {
-                //airport_o
-                let (screen_x_o, screen_y_o) = get_coordinate_positioning_on_map(
-                    flight_r.origin_airport.coordinates,
+        for flight in flights {
+            let (screen_x, screen_y) = match connect_with {
+                "origin" => get_coordinate_positioning_on_map(
+                    flight.origin_airport.coordinates,
                     texture.size(),
-                );
-                if (screen_x, screen_y) != (screen_x_o, screen_y_o) {
-                    self.add_connection(
-                        flight_r.origin_airport.clone(),
-                        flight_r.return_airport.clone(),
-                        flight_r,
-                    );
-                }
-            }
-
-            for flight_o in origin_flights {
-                // airport_r
-                let (screen_x_r, screen_y_r) = get_coordinate_positioning_on_map(
-                    flight_o.return_airport.coordinates,
+                ),
+                "return" => get_coordinate_positioning_on_map(
+                    flight.return_airport.coordinates,
                     texture.size(),
+                ),
+                _ => return,
+            };
+
+            if coordenates != (screen_x, screen_y) {
+                self.add_connection(
+                    flight.origin_airport.clone(),
+                    flight.return_airport.clone(),
+                    flight,
                 );
-                if (screen_x, screen_y) != (screen_x_r, screen_y_r) {
-                    self.add_connection(
-                        flight_o.origin_airport.clone(),
-                        flight_o.return_airport.clone(),
-                        flight_o,
-                    );
-                }
             }
         }
     }
@@ -199,10 +193,6 @@ impl MapApp {
 
         if self.plane_texture.is_none() {
             self.load_plane_texture(ctx);
-        }
-
-        if self.stream_client.is_none() {
-            self.set_connection_server();
         }
     }
 
@@ -361,14 +351,19 @@ impl MapApp {
                                 );
 
                                 if !query_origen.is_empty() && !query_destino.is_empty() {
-                                    let _ = self.make_query(query_origen);
-                                    let _ = self.make_query(query_destino);
-                                    if let Some(airport) = self.airports.clone().get(&self.airport_selected){
+                                    let rx: &Receiver<Vec<String>> = self.connection_server.get_channel_to_receive();
+
+                                    let _ = self.connection_server.make_query(query_origen);
+                                    let _ = rx.recv().unwrap();
+                                    let _ = self.connection_server.make_query(query_destino);
+                                    let _ = rx.recv().unwrap();
+
+                                    if let Some(airport) = self.airports.clone().get(&self.airport_selected) {
                                         let (screen_x, screen_y) =
                                         get_coordinate_positioning_on_map(airport.coordinates, texture.size());
                                             self.reset_connection();
-                                            self.add_all_connections(airport, texture, screen_x, screen_y);
-                                            }
+                                            let _ = self.add_all_connections(airport, texture, screen_x, screen_y);
+                                    }
                                 }
                             }
                             ui.end_row();
@@ -410,54 +405,42 @@ impl MapApp {
                     egui::ComboBox::from_label("")
                         .selected_text(&self.status_selected)
                         .show_ui(ui, |ui| {
-                            if ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "scheduled".to_string(),
-                                    "scheduled",
-                                )
-                                .clicked()
-                            {}
-                            if ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "airborne".to_string(),
-                                    "airborne",
-                                )
-                                .clicked()
-                            {}
-                            if ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "delayed".to_string(),
-                                    "delayed",
-                                )
-                                .clicked()
-                            {}
-                            if ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "cancelled".to_string(),
-                                    "cancelled",
-                                )
-                                .clicked()
-                            {}
-                            if ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "boarding".to_string(),
-                                    "boarding",
-                                )
-                                .clicked()
-                            {}
-                            if ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "landed".to_string(),
-                                    "landed",
-                                )
-                                .clicked()
-                            {}
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "scheduled".to_string(),
+                                "scheduled",
+                            )
+                            .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "airborne".to_string(),
+                                "airborne",
+                            )
+                            .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "delayed".to_string(),
+                                "delayed",
+                            )
+                            .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "cancelled".to_string(),
+                                "cancelled",
+                            )
+                            .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "boarding".to_string(),
+                                "boarding",
+                            )
+                            .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "landed".to_string(),
+                                "landed",
+                            )
+                            .clicked();
                         });
                 });
             });
@@ -502,7 +485,7 @@ impl MapApp {
                         );
                     }
 
-                    if var == UPDATE && up_del_button {  //todo
+                    if var == UPDATE && up_del_button {
                         query_origen = format!(
                             "UPDATE origin SET status = '{}' WHERE date = '{}' AND airport = '{}' AND flight = '{}'",
                             self.status_selected, self.date_selected, self.airport_selected, self.flight_selected
@@ -524,31 +507,23 @@ impl MapApp {
                         );
                     }
                     if !query_origen.is_empty() && !query_destino.is_empty() {
-                        let _ = self.make_query(query_origen);
-                        let _ = self.make_query(query_destino);
+                        let rx: &Receiver<Vec<String>> = self.connection_server.get_channel_to_receive();
+
+                        let _ = self.connection_server.make_query(query_origen);
+                        let _ = rx.recv().unwrap();
+                        let _ = self.connection_server.make_query(query_destino);
+                        let _ = rx.recv().unwrap();
+                        print!("Ok receive response query");
+
                         if let Some(airport) = self.airports.clone().get(&self.airport_selected){
                             let (screen_x, screen_y) =
                             get_coordinate_positioning_on_map(airport.coordinates, texture.size());
                                 self.reset_connection();
-                                self.add_all_connections(airport, texture, screen_x, screen_y);
+                                let _ = self.add_all_connections(airport, texture, screen_x, screen_y);
                                 }
                     }
                 }
             });
-    }
-
-    fn make_query(&mut self, query: String) -> Result<(), MyError> {
-        //supongo que esta bien, copilot
-        if let Some(stream) = &mut self.stream_client {
-            Client::send_message(stream, query).unwrap();
-            println!("salio bien");
-
-            let response = Client::read_response(stream)
-                .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-            println!("response: {:?}", response);
-        }
-
-        Ok(())
     }
 
     fn super_function(&mut self, ui: &mut Ui, texture: &TextureHandle) {
@@ -561,7 +536,7 @@ impl MapApp {
         }
 
         if let Some(ref user) = self.user {
-            if user.role == user::Role::User {
+            if user.role == Role::User {
                 self.draw_other_box(ui, x, y, "date", DATE); //date
                 return;
             }
@@ -682,8 +657,9 @@ impl eframe::App for MapApp {
                             self.flight_selected = "".to_string();
                             self.reset_connection();
 
-                            if !self.date_selected.is_empty() && self.user.is_some() {
-                                self.add_all_connections(airport, texture, screen_x, screen_y);
+                            if !self.date_selected.is_empty() {
+                                let _ =
+                                    self.add_all_connections(airport, texture, screen_x, screen_y);
                             }
                         }
                     }
