@@ -75,8 +75,7 @@ fn handle_message_read_repair(
     node: Arc<RwLock<Node>>,
     query: ReadRepairMessage,
 ) -> Result<(), MyError> {
-
-    if query.rows_to_keep.len() == 0 {
+    if query.rows_to_keep.is_empty() {
         return Ok(());
     }
     let primary_keys = get_primary_key(&query.rows_to_keep[0]);
@@ -102,7 +101,7 @@ fn handle_message_read_repair(
         let row_vec = row.split(",").collect::<Vec<&str>>();
 
         println!("rows_to_update: {:?}", rows_to_update);
-        
+
         if contains_row(&rows_to_update, row) {
             let query_str = format!(
                     "UPDATE {} SET status = {} WHERE airport = {} AND {} = {} AND date = {} AND flight = {}",
