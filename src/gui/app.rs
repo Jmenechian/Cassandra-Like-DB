@@ -8,9 +8,9 @@ use std::sync::mpsc::Receiver;
 use crate::{
     clientstuff::client_cql::Client,
     config::*,
+    errors::my_errors::MyError,
     gui::user::Role,
     gui::user::User,
-    errors::my_errors::MyError,
     simulators::{
         airport::Airport,
         airport_coordinates::{

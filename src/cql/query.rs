@@ -90,7 +90,7 @@ impl Query {
     // Delegates the parsing
     pub fn parse_query(&mut self) -> Result<(), MyError> {
         self.get_type();
-        
+
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to parse".to_string())),
             QType::Select(select) => select.parse_select(&self.query, &self.sender_node_ip),

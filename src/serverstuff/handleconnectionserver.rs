@@ -168,9 +168,7 @@ pub fn handle_connection_server(
                 println!("S   El packet recibido es: {:?}", packet);
             }
             match packet.body {
-                ServerMessage::Query(query) => {
-                    handle_message_query(node, query, stream, show)
-                }
+                ServerMessage::Query(query) => handle_message_query(node, query, stream, show),
                 ServerMessage::ReadRepair(msg) => handle_message_read_repair(node, msg),
                 _ => {
                     let _error = "Error entre server y servers".to_string();

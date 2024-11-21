@@ -8,7 +8,6 @@ use crate::serverstuff::neighbor_node::NeighborNode;
 use rand::seq::SliceRandom;
 use std::sync::{Arc, RwLock};
 
-
 /// Estructura que eepresenta al nodo en el que estamos parados.
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -46,9 +45,15 @@ impl Node {
         if table == "origin" {
             format!("{}/{}_{}.csv", TABLE_PATH, TABLE_ORIGIN_NAME, number_node)
         } else if table == "destination" {
-            format!("{}/{}_{}.csv", TABLE_PATH, TABLE_DESTINATION_NAME, number_node)
+            format!(
+                "{}/{}_{}.csv",
+                TABLE_PATH, TABLE_DESTINATION_NAME, number_node
+            )
         } else {
-            format!("{}/{}_{}.csv", TABLE_PATH, TABLE_FLIGHT_SIMULATOR, number_node)
+            format!(
+                "{}/{}_{}.csv",
+                TABLE_PATH, TABLE_FLIGHT_SIMULATOR, number_node
+            )
         }
     }
 
@@ -93,11 +98,26 @@ impl Node {
 
         let path_table: Arc<RwLock<String>>;
 
-        if [format!("{}", TABLE_ORIGIN_NAME), format!("{}_{}", TABLE_ORIGIN_NAME, self.number)].contains(&query.get_table()) {
+        if [
+            TABLE_ORIGIN_NAME.to_string(),
+            format!("{}_{}", TABLE_ORIGIN_NAME, self.number),
+        ]
+        .contains(&query.get_table())
+        {
             path_table = self.path_table_origin.clone();
-        } else if [format!("{}", TABLE_DESTINATION_NAME), format!("{}_{}", TABLE_DESTINATION_NAME, self.number)].contains(&query.get_table()) {
+        } else if [
+            TABLE_DESTINATION_NAME.to_string(),
+            format!("{}_{}", TABLE_DESTINATION_NAME, self.number),
+        ]
+        .contains(&query.get_table())
+        {
             path_table = self.path_table_destination.clone();
-        } else if [format!("{}", TABLE_FLIGHT_SIMULATOR), format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.number)].contains(&query.get_table()) {
+        } else if [
+            TABLE_FLIGHT_SIMULATOR.to_string(),
+            format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.number),
+        ]
+        .contains(&query.get_table())
+        {
             path_table = self.path_table_simulator.clone();
         } else {
             return Err(MyError::InvalidTable("Tabla no valida".to_string()));

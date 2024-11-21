@@ -59,9 +59,7 @@ pub fn get_reader(path: &str, table_name: &str) -> Result<BufReader<File>, MyErr
 
 /// Open file in mode read, returns an iterable reader
 pub fn get_reader_read(path: &Arc<RwLock<String>>) -> Result<BufReader<File>, MyError> {
-    let path_table_file = path
-        .read()
-        .map_err(|e| MyError::FileError(e.to_string()))?;
+    let path_table_file = path.read().map_err(|e| MyError::FileError(e.to_string()))?;
     let table_file = open_file(path_table_file.clone())?;
     Ok(BufReader::new(
         table_file
@@ -78,20 +76,18 @@ pub fn get_file_to_write(path: &Arc<RwLock<String>>) -> Result<File, MyError> {
         .map_err(|e| MyError::FileError(e.to_string()))?;
     let table_file = open_file(path_table_file.clone())?;
     println!("table_file: {:?}", table_file);
-    Ok(
-        table_file
-            .try_clone()
-            .map_err(|e| MyError::FileError(e.to_string()))?,
-    )
+    table_file
+        .try_clone()
+        .map_err(|e| MyError::FileError(e.to_string()))
 }
 
-/// Open file 
+/// Open file
 fn open_file(path: String) -> Result<File, MyError> {
     let file = OpenOptions::new()
-            .append(true)
-            .read(true)
-            .open(path)
-            .map_err(|e| MyError::FileError(e.to_string()))?;
+        .append(true)
+        .read(true)
+        .open(path)
+        .map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(file)
 }
 
@@ -129,7 +125,7 @@ pub fn write_rows(path: &str, table_name: &str, records: &Vec<Vec<String>>) -> R
     Ok(())
 }
 
-/// Appends row to file 
+/// Appends row to file
 /// Expects file to end with a newline
 pub fn append_row(file: &mut File, records: &[String]) -> Result<(), MyError> {
     writeln!(file, "{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
@@ -159,7 +155,6 @@ pub fn create_temporary_file(path: &str, original_table: &str) -> Result<(File, 
     Ok((temp_file, temp_file_name))
 }
 
-
 pub fn delete_file(file_name: &str, path: &str) -> Result<(), MyError> {
     let file_path = get_file_path(path, file_name);
     std::fs::remove_file(file_path).map_err(|e| MyError::FileError(e.to_string()))?;
@@ -172,7 +167,6 @@ pub fn write_temporary_to_original(
     temporary_file: &str,
     mut original_table: File,
 ) -> Result<(), MyError> {
-    
     empty_table(&original_table)?;
 
     let rdr = get_reader(path, temporary_file)?;
@@ -188,6 +182,8 @@ pub fn write_temporary_to_original(
 }
 
 fn empty_table(table: &File) -> Result<(), MyError> {
-    table.set_len(0).map_err(|e| MyError::FileError(e.to_string()))?;
+    table
+        .set_len(0)
+        .map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }

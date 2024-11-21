@@ -58,30 +58,14 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
     let gossip_ip = current_node.gossip_ip.clone();
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node));
 
-
     // Seccion cliente-servidor
-    listen(
-        client_ip,
-        &current_node,
-        handle_connection_client,
-        show_c,
-    )?;
+    listen(client_ip, &current_node, handle_connection_client, show_c)?;
 
     // Seccion servidor-servidor
-    listen(
-        server_ip,
-        &current_node,
-        handle_connection_server,
-        show_s,
-    )?;
+    listen(server_ip, &current_node, handle_connection_server, show_s)?;
 
     // Seccion Gossip
-    listen(
-        gossip_ip,
-        &current_node,
-        handle_connection_gossip,
-        show_g,
-    )?;
+    listen(gossip_ip, &current_node, handle_connection_gossip, show_g)?;
 
     loop {
         thread::sleep(Duration::from_secs(2));
@@ -134,8 +118,8 @@ fn listen<F>(
 where
     F: Fn(Arc<RwLock<Node>>, &mut TcpStream, bool) -> Result<(), MyError> + Send + 'static + Copy,
 {
-    let current_node = Arc::clone(&node);
-    
+    let current_node = Arc::clone(node);
+
     let t: JoinHandle<Result<(), MyError>> = thread::spawn(move || {
         let listener = match TcpListener::bind(ip) {
             Ok(j) => j,

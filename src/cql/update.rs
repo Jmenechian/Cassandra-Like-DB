@@ -136,8 +136,10 @@ impl Update {
     }
 
     // Executes the query
-    pub fn execute_command(&mut self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
-
+    pub fn execute_command(
+        &mut self,
+        path_table: Arc<RwLock<String>>,
+    ) -> Result<Vec<String>, MyError> {
         let mut rdr = get_reader_read(&path_table)?;
         let col_names = get_file_headers(&mut rdr)?;
         self.check_columns_are_valid(&col_names)?;

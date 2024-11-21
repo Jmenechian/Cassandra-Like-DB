@@ -139,7 +139,6 @@ impl Insert {
     }
 
     pub fn execute_command(&self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
-
         println!("\n\nen execute command de insert - table: {:?}", path_table);
         let mut rdr_read = get_reader_read(&path_table)?;
         println!("en execute command de insert - rdr_read: {:?}", rdr_read);
@@ -203,11 +202,11 @@ impl Insert {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::TABLE_PATH;
     use crate::errors::my_errors::MyError;
     use std::collections::HashMap;
     use std::fs::File;
     use std::io::Write;
-    use crate::config::TABLE_PATH;
 
     #[test]
     fn test_parse_insert_valid_query() {

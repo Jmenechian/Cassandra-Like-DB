@@ -25,12 +25,8 @@ fn handle_message_query(
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
-    let table = match send_query_to_nodes(
-        node,
-        querymessage.query,
-        querymessage.consistency,
-        show,
-    ) {
+    let table = match send_query_to_nodes(node, querymessage.query, querymessage.consistency, show)
+    {
         Ok(r) => r,
         Err(e) => {
             handle_message_error(
@@ -125,7 +121,7 @@ fn process_results(
     if table != TABLE_ORIGIN_NAME && table != TABLE_DESTINATION_NAME {
         if let Some(result) = results.pop() {
             return result;
-        } 
+        }
         return vec![];
     }
 
@@ -134,9 +130,9 @@ fn process_results(
         1 => {
             if let Some(result) = results.pop() {
                 return result;
-            } 
-            return vec![];
-        },
+            }
+            vec![]
+        }
         _ => {
             let index = look_newer(results);
             read_repair(&results[index], nodes_with_result, table);
@@ -214,9 +210,7 @@ pub fn send_query_to_nodes(
     // Si es un create table, lo ejecuto:
     if query.query.contains("CREATE TABLE") {
         match node.process_query(&mut query) {
-            Ok(_) => {
-                return Ok(vec!["Se crean las tablas.".to_string()])
-            },
+            Ok(_) => return Ok(vec!["Se crean las tablas.".to_string()]),
             Err(e) => {
                 let _error = format!("Error al procesar la query: {:?}", e);
                 if show {
@@ -267,7 +261,7 @@ pub fn send_query_to_nodes(
                     } else {
                         if let Some(result) = all_response.pop() {
                             return Ok(result);
-                        } 
+                        }
                         return Ok(vec![]);
                     }
                 }
@@ -280,7 +274,7 @@ pub fn send_query_to_nodes(
             continue;
         } else if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
             // Mando mensaje y el IP del nodo que se conecto con el cliente y en ese mismo stream leo la respuesta que me envia como resultado de la consulta.
-            
+
             let msg = QueryServerMessage {
                 query: _query.clone(),
                 consistency: 0,
@@ -323,7 +317,7 @@ pub fn send_query_to_nodes(
     } else {
         if let Some(result) = all_response.pop() {
             return Ok(result);
-        } 
+        }
         Ok(vec![])
     }
 }

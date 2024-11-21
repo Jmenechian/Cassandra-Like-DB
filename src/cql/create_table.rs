@@ -77,7 +77,6 @@ impl CreateTable {
             self.column_type = self.set_columns(parts[3..].join(" "));
         }
         println!("---- en create table: {}", self.table_name);
-        
 
         // PRIMARY KEY
         if let Some(pkey_index) = parts.iter().position(|&x| x == "KEY") {
