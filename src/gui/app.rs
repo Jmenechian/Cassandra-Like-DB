@@ -8,6 +8,8 @@ use std::sync::mpsc::Receiver;
 use crate::{
     clientstuff::client_cql::Client,
     config::*,
+    gui::user::Role,
+    gui::user::User,
     my_errors::MyError,
     simulators::{
         airport::Airport,
@@ -34,6 +36,10 @@ pub struct MapApp {
     airport2_selected: String,
     status_selected: String,
     flight_selected: String,
+    username: String,
+    password: String,
+    user: Option<User>,
+    login_status: String,
 }
 
 impl MapApp {
@@ -52,6 +58,12 @@ impl MapApp {
         let status_selected = "".to_string();
         let flight_selected = "".to_string();
         let date_selected = "".to_string();
+
+        // usuario
+        let username = "".to_string();
+        let password = "".to_string();
+        let user = None;
+        let login_status = "Por favor ingresar usuario y contraseña".to_string();
         Self {
             airports,
             map_texture,
@@ -65,6 +77,12 @@ impl MapApp {
             status_selected,
             flight_selected,
             date_selected,
+
+            //usuario
+            username,
+            password,
+            user,
+            login_status,
         }
     }
 
@@ -321,8 +339,13 @@ impl MapApp {
                             ui.label(origin.name.clone());
                             ui.label(destination.name.clone());
                             ui.label(flight.status.to_str());
+                            if let Some(ref user) = self.user {
+                                if user.role == Role::User {
+                                    ui.end_row();
+                                    continue;
+                                }
+                            }
                             if ui.button("🗑️").clicked() {
-
                                 let query_origen = format!(
                                     "DELETE FROM origin WHERE date={} AND airport={} AND flight={}",
                                     flight.departure_date, origin.name, flight.number
@@ -339,7 +362,6 @@ impl MapApp {
                                     let _ = rx.recv().unwrap();
                                     let _ = self.connection_server.make_query(query_destino);
                                     let _ = rx.recv().unwrap();
-                                    print!("Ok receive response query");
 
                                     if let Some(airport) = self.airports.clone().get(&self.airport_selected) {
                                         let (screen_x, screen_y) =
@@ -388,48 +410,42 @@ impl MapApp {
                     egui::ComboBox::from_label("")
                         .selected_text(&self.status_selected)
                         .show_ui(ui, |ui| {
-                            ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "scheduled".to_string(),
-                                    "scheduled",
-                                )
-                                .clicked();
-                            ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "airborne".to_string(),
-                                    "airborne",
-                                )
-                                .clicked();
-                            ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "delayed".to_string(),
-                                    "delayed",
-                                )
-                                .clicked();
-                            ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "cancelled".to_string(),
-                                    "cancelled",
-                                )
-                                .clicked();
-                            ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "boarding".to_string(),
-                                    "boarding",
-                                )
-                                .clicked();
-                            ui
-                                .selectable_value(
-                                    &mut self.status_selected,
-                                    "landed".to_string(),
-                                    "landed",
-                                )
-                                .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "scheduled".to_string(),
+                                "scheduled",
+                            )
+                            .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "airborne".to_string(),
+                                "airborne",
+                            )
+                            .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "delayed".to_string(),
+                                "delayed",
+                            )
+                            .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "cancelled".to_string(),
+                                "cancelled",
+                            )
+                            .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "boarding".to_string(),
+                                "boarding",
+                            )
+                            .clicked();
+                            ui.selectable_value(
+                                &mut self.status_selected,
+                                "landed".to_string(),
+                                "landed",
+                            )
+                            .clicked();
                         });
                 });
             });
@@ -519,6 +535,18 @@ impl MapApp {
         //
         let mut y = 660.0;
         let mut x = 10.0;
+
+        if self.user.is_none() {
+            return;
+        }
+
+        if let Some(ref user) = self.user {
+            if user.role == Role::User {
+                self.draw_other_box(ui, x, y, "date", DATE); //date
+                return;
+            }
+        }
+
         self.draw_other_box(ui, x, y, "Origen", AIRPORT); //aeropuerto
         y = offset_y(y);
         self.draw_other_box(ui, x, y, "Destino", AIRPORT2); //aeropuerto2
@@ -558,11 +586,51 @@ impl MapApp {
         self.draw_fixed_button(ui, x, y, "UPDATE", UPDATE, texture, up_del_color);
         //UPDATE
     }
+
+    fn get_user(&mut self) {
+        println!(
+            "Attempting to login with username: {} and password: {}",
+            self.username, self.password
+        );
+
+        match User::new(self.username.clone(), self.password.clone()) {
+            Ok(user) => {
+                println!("Login successful: {:?}", user);
+                self.login_status = format!("Bienvenido {}!", user.username);
+                self.user = Some(user);
+            }
+            Err(err) => {
+                println!("Login failed: {:?}", err);
+                self.login_status = "Usuario o contraseña incorrectos".to_string();
+                self.user = None;
+            }
+        };
+    }
 }
 
 impl eframe::App for MapApp {
     /// Se llama cada vez que es necesario volver a pintar la interfaz de usuario, lo que puede ocurrir muchas veces por segundo.
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+        // Dibujar login
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Username:");
+                ui.add(egui::TextEdit::singleline(&mut self.username).hint_text("Enter username"));
+
+                ui.label("Password:");
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.password)
+                        .password(true)
+                        .hint_text("Enter password"),
+                );
+
+                if ui.button("Login").clicked() {
+                    self.get_user();
+                }
+                ui.label(&self.login_status);
+            })
+        });
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Mapa de Aeropuertos");
 
@@ -595,7 +663,8 @@ impl eframe::App for MapApp {
                             self.reset_connection();
 
                             if !self.date_selected.is_empty() {
-                                let _ = self.add_all_connections(airport, texture, screen_x, screen_y);
+                                let _ =
+                                    self.add_all_connections(airport, texture, screen_x, screen_y);
                             }
                         }
                     }

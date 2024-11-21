@@ -73,7 +73,6 @@ impl ConnectionServer {
                 }
             }
         });
-        println!("Ok send flights");
         Ok(())
     }
 

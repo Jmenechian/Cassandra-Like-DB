@@ -59,6 +59,7 @@ pub use neighbor_node::NeighborNode;
 pub mod gui {
     pub mod app;
     pub mod connection_server;
+    pub mod user;
 }
 
 pub mod simulators {
