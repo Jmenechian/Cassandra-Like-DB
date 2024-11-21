@@ -3,10 +3,10 @@
 // La funcion principal es `handle_connection_client` que recibe un nodo, un stream y un booleano.
 // El resto son funciones auxiliares.
 
-use crate::config;
-use crate::config::RF;
+use crate::config::{RF, TABLE_DESTINATION_NAME, TABLE_ORIGIN_NAME};
 use crate::cql::query::Query;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
+use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
     message::*,
     message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultvoidmessage::*},
@@ -19,19 +19,30 @@ use crate::my_errors::*;
 use crate::nodo::Node;
 use crate::nodo::Status;
 use crate::ConsistentHash;
+use crate::{config, NeighborNode};
 use chrono::NaiveDateTime;
 use std::net::TcpStream;
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::{Arc, RwLock, RwLockWriteGuard};
 
 fn handle_message_query(
-    node: RwLockReadGuard<'_, Node>,
+    node: &Arc<RwLock<Node>>,
     querymessage: QueryMessage,
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
+    // cambiamos la query en un insert/update con el timestamp
+    // let mut query = Query::check(querymessage.query);
+
+    //idea:
+    // if query.get_type == insert,update
+    // insert -> (airport, destination ... pusheas timestamp aca)
+    // values.push UTC::now().to_string()
+
+    // para update agregas el timestamp durante el set y listo supongo
+
     let table = match send_query_to_nodes(
-        &node,
-        querymessage.query.clone(),
+        node,
+        querymessage.query, //.clone tenia antes nose  <=== aca metes la nueva query
         querymessage.consistency,
         show,
     ) {
@@ -87,22 +98,12 @@ pub fn handle_connection_client(
     loop {
         match Envelope::from_stream(stream) {
             Ok(env) => {
-                let node: RwLockReadGuard<'_, Node> = match node.read() {
-                    Ok(n) => n,
-                    Err(e) => {
-                        let _error = format!("Error al tratar de usar el nodo: {:?}", e);
-                        if show {
-                            println!("C   {:?}", _error);
-                        }
-                        return Err(MyError::LockingError(_error));
-                    }
-                };
                 if show {
                     println!("C   El env recibido es: {:?}", env);
                 }
                 match env.body {
                     CqlMessage::Query(querymessage) => {
-                        handle_message_query(node, querymessage, stream, show)?;
+                        handle_message_query(&node, querymessage, stream, show)?;
                     }
                     _ => {
                         handle_message_error(
@@ -124,24 +125,36 @@ pub fn handle_connection_client(
     Ok(())
 }
 
-fn process_results(results: &Vec<Vec<String>>) -> Vec<String> {
+// Devuelve el resultado del SELECT segun el consistency level
+// Hace el read-repair para las tabla de origen y destino de vuelos
+// El simulador no tiene read-repair
+fn process_results(
+    results: &mut Vec<Vec<String>>,
+    nodes_with_result: &Vec<NeighborNode>,
+    table: &String,
+) -> Vec<String> {
     println!("pr ===> {:?}", results);
+
+    if table != TABLE_ORIGIN_NAME && table != TABLE_DESTINATION_NAME {
+        return results.pop().unwrap();
+    }
 
     match results.len() {
         0 => vec![],
-        1 => results[0].clone(),
+        1 => results.pop().unwrap(),
         _ => {
             let index = look_newer(results);
-            results[index].clone()
+            read_repair(&results[index], nodes_with_result, table);
+            results.remove(index)
         }
     }
 }
 
-pub fn look_newer(results: &[Vec<String>]) -> usize {
-    //falta testear en process results
+fn look_newer(results: &[Vec<String>]) -> usize {
     let mut newer = NaiveDateTime::MIN;
     let mut index = 0;
     for (i, result) in results.iter().enumerate() {
+        println!("resultado: {:?} de i: {}", result, i);
         for row in result {
             if let Some(timestamp) = row
                 .split(",")
@@ -152,7 +165,7 @@ pub fn look_newer(results: &[Vec<String>]) -> usize {
                 if let Ok(parsed_datetime) =
                     NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d %H:%M:%S%.f %Z")
                 {
-                    if parsed_datetime > newer {
+                    if parsed_datetime >= newer {
                         newer = parsed_datetime;
                         index = i;
                     }
@@ -163,12 +176,40 @@ pub fn look_newer(results: &[Vec<String>]) -> usize {
     index
 }
 
+fn read_repair(result: &[String], nodes_with_result: &Vec<NeighborNode>, table: &str) {
+    println!("Mandando mensaje de Read Repair");
+
+    for node in nodes_with_result {
+        if node.status == Status::Disconnected {
+            continue;
+        }
+        if let Ok(mut socket) = TcpStream::connect(&node.server_ip) {
+            let msg = ReadRepairMessage {
+                table: table.to_string(),
+                rows_to_keep: result.to_vec(),
+            };
+            let _ = msg.send_server_through(&mut socket);
+        }
+    }
+}
+
 pub fn send_query_to_nodes(
-    node: &RwLockReadGuard<'_, Node>,
+    node: &Arc<RwLock<Node>>,
     _query: String,
     consistency_level: u16,
     show: bool,
 ) -> Result<Vec<String>, MyError> {
+    let node: RwLockWriteGuard<'_, Node> = match node.write() {
+        Ok(n) => n,
+        Err(e) => {
+            let _error = format!("Error al tratar de usar el nodo: {:?}", e);
+            if show {
+                println!("C   {:?}", _error);
+            }
+            return Err(MyError::LockingError(_error));
+        }
+    };
+
     let mut all_response: Vec<Vec<String>> = vec![];
     let mut hash = ConsistentHash::new(RF);
     let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());
@@ -202,7 +243,10 @@ pub fn send_query_to_nodes(
         );
     }
     println!("nodes with result: {:?}", nodes_with_result);
-    for neighbor in nodes_with_result {
+
+    let is_select = query.query.contains("SELECT");
+
+    for neighbor in &nodes_with_result {
         // El nodo original porque puede tener el resultado de la query:
         if neighbor.server_ip == node.server_ip {
             if show {
@@ -215,7 +259,15 @@ pub fn send_query_to_nodes(
                 all_response.push(result);
 
                 if consistency_level == config::ONE && all_response.len() == 1 {
-                    return Ok(process_results(&all_response));
+                    if is_select {
+                        return Ok(process_results(
+                            &mut all_response,
+                            &nodes_with_result,
+                            &query.get_table(),
+                        ));
+                    } else {
+                        return Ok(all_response.pop().unwrap());
+                    }
                 }
             }
             continue;
@@ -259,5 +311,13 @@ pub fn send_query_to_nodes(
             }
         }
     }
-    Ok(process_results(&all_response))
+    if is_select {
+        Ok(process_results(
+            &mut all_response,
+            &nodes_with_result,
+            &query.get_table(),
+        ))
+    } else {
+        Ok(all_response.pop().unwrap())
+    }
 }

@@ -39,6 +39,7 @@ pub mod messagestuff {
         pub mod errorservermessage;
         pub mod gossipmessage;
         pub mod queryservermessage;
+        pub mod readrepairmessage;
         pub mod resultrowsevermsg;
         pub mod resultservermessage;
         pub mod resultvoidservermsg;
@@ -55,15 +56,22 @@ pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
 pub use consistent_hashing::ConsistentHash;
 pub use neighbor_node::NeighborNode;
 
-//GUI
 pub mod gui {
     pub mod app;
-    pub mod painted {
-        pub mod airport;
-        pub mod airport_coordinates;
-        pub mod draw_flights;
-        pub mod draw_lines;
-        pub mod flight;
-    }
+    pub mod connection_server;
 }
-//pub use gui::app::MapApp;
+
+pub mod simulators {
+    pub mod airport;
+    pub mod airport_coordinates;
+    pub mod flight;
+    pub mod flight_simulator;
+    pub mod flight_status;
+    pub mod queries;
+    pub mod user_input;
+}
+
+pub mod errors {
+    pub mod airport_errors;
+    pub mod simulator_errors;
+}
