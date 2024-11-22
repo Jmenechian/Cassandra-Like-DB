@@ -149,7 +149,6 @@ impl Query {
             QType::Delete(delete) => delete.table.clone(),
             QType::CreateTable(create_table) => create_table.table_name.clone(),
         };
-        println!("---- table: {}", table);
         table.trim().to_string()
     }
 }

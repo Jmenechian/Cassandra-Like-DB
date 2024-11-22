@@ -121,8 +121,6 @@ impl Insert {
     fn check_columns_are_valid(&self, file_headers: &[String]) -> Result<(), MyError> {
         for header in &self.columns {
             if !file_headers.contains(header) {
-                println!("\nfile_headers: {:?}", file_headers);
-                println!("header: {:?}", header);
                 return Err(MyError::InvalidColumn("Column not valid".to_string()));
             }
         }
@@ -139,13 +137,9 @@ impl Insert {
     }
 
     pub fn execute_command(&self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
-        println!("\n\nen execute command de insert - table: {:?}", path_table);
         let mut rdr_read = get_reader_read(&path_table)?;
-        println!("en execute command de insert - rdr_read: {:?}", rdr_read);
         let headers = get_file_headers(&mut rdr_read)?;
-        println!("en execute command de insert - headers: {:?}", headers);
         let mut file_open = get_file_to_write(&path_table)?; // Se usa para hacer append
-        println!("en execute command de insert - file_open: {:?}", file_open);
 
         // INSERT INTO VALUES (val1, val2)
         // values are inserted in the same order as the file headers
@@ -169,8 +163,8 @@ impl Insert {
                 new_record.push(String::new());
             }
         }
-        new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
-        new_record.push(Utc::now().to_string()); // metes lo mas nuevo
+        new_record.pop(); // sacamos el timestamp vacio porque nunca lo llenas
+        new_record.push(Utc::now().to_string());
         append_row(&mut file_open, &new_record)?;
         Ok(vec!["linea fue agregada".to_string()])
     }

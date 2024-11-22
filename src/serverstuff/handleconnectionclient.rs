@@ -82,7 +82,7 @@ pub fn handle_connection_client(
         match Envelope::from_stream(stream) {
             Ok(env) => {
                 if show {
-                    println!("C   El env recibido es: {:?}", env);
+                    println!("\nC   El env recibido es: {:?}", env);
                 }
                 match env.body {
                     CqlMessage::Query(querymessage) => {
@@ -284,7 +284,7 @@ pub fn send_query_to_nodes(
             match Packet::from_stream(&mut socket) {
                 Ok(packet) => {
                     if show {
-                        println!("C   El packet recibido es: {:?}", packet);
+                        println!("\nC   El packet recibido es: {:?}", packet);
                     }
                     match packet.body {
                         ServerMessage::Result(resultmessage) => match resultmessage.body {

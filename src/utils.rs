@@ -97,7 +97,6 @@ pub fn get_file_headers<R: std::io::BufRead>(rdr: &mut R) -> Result<Vec<String>,
     let mut headers_line = String::new();
     rdr.read_line(&mut headers_line)
         .map_err(|e| MyError::FileError(e.to_string()))?;
-    println!("hace read, headers_line: {:?}", headers_line);
 
     let headers: Vec<String> = headers_line
         .trim()

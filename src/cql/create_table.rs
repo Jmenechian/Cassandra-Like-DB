@@ -76,7 +76,6 @@ impl CreateTable {
             self.table_name = parts[2].to_string().replace("'", "");
             self.column_type = self.set_columns(parts[3..].join(" "));
         }
-        println!("---- en create table: {}", self.table_name);
 
         // PRIMARY KEY
         if let Some(pkey_index) = parts.iter().position(|&x| x == "KEY") {
@@ -206,7 +205,6 @@ impl CreateTable {
             let path = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
             let mut f = File::create_new(path).map_err(|e| MyError::FileError(e.to_string()))?;
 
-            println!("columns:{:?}", self.columns);
             f.write_all(self.columns.join(",").as_bytes())
                 .map_err(|e| MyError::FileError(e.to_string()))?;
             writeln!(f).map_err(|e| MyError::FileError(e.to_string()))?;
