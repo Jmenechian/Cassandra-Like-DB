@@ -4,11 +4,11 @@
 // Estos son los mensajes que se envian como respuesta a una consulta
 
 use crate::config;
+use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::{
     cqlenvelope::*, resultrowsmessage::ResultRowsMessage, resultvoidmessage::ResultVoidMessage,
 };
-use crate::my_errors::MyError;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]

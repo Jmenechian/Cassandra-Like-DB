@@ -5,7 +5,7 @@
 // Admin: Can do SELECT, INSERT, UPDATE, DELETE queries
 
 use crate::config::{TABLE_PATH, TABLE_USERS_NAME};
-use crate::my_errors::MyError;
+use crate::errors::my_errors::MyError;
 use crate::utils::get_reader;
 use std::io::BufRead;
 

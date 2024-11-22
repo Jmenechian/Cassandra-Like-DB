@@ -10,6 +10,7 @@ pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 pub static TABLE_PATH: &str = "src/tables";
 pub static TABLE_ORIGIN_NAME: &str = "origin";
 pub static TABLE_DESTINATION_NAME: &str = "destination";
+pub static TABLE_FLIGHT_SIMULATOR: &str = "flights_in_progress";
 
 // SIMULADOR DE VUELOS:
 pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool.

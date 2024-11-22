@@ -1,9 +1,9 @@
 use crate::config::{self, RING_SIZE};
+use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::Sendable;
 use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_cql::resultmessage::ResultBody;
-use crate::my_errors::MyError;
 use std::io::{self, BufRead, Result};
 use std::net::TcpStream;
 

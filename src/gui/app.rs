@@ -8,9 +8,9 @@ use std::sync::mpsc::Receiver;
 use crate::{
     clientstuff::client_cql::Client,
     config::*,
+    errors::my_errors::MyError,
     gui::user::Role,
     gui::user::User,
-    my_errors::MyError,
     simulators::{
         airport::Airport,
         airport_coordinates::{
@@ -518,7 +518,7 @@ impl MapApp {
                         let _ = rx.recv().unwrap();
                         let _ = self.connection_server.make_query(query_destino);
                         let _ = rx.recv().unwrap();
-                        print!("Ok receive response query");
+                        println!("Ok receive response query");
 
                         if let Some(airport) = self.airports.clone().get(&self.airport_selected){
                             let (screen_x, screen_y) =
