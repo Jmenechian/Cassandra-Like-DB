@@ -61,7 +61,9 @@ pub use consistent_hashing::ConsistentHash;
 
 pub mod gui {
     pub mod app;
+    pub mod buttons_and_reactions;
     pub mod connection_server;
+    pub mod queries;
     pub mod user;
 }
 
