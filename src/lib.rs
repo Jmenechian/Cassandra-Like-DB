@@ -65,11 +65,12 @@ pub mod gui {
     pub mod connection_server;
     pub mod queries;
     pub mod user;
+    pub mod images;
 }
 
 pub mod simulators {
     pub mod airport;
-    pub mod airport_coordinates;
+    pub mod coordinates;
     pub mod flight;
     pub mod flight_simulator;
     pub mod flight_status;

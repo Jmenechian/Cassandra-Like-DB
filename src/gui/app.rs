@@ -9,19 +9,17 @@ use crate::{
     clientstuff::client_cql::Client,
     config::*,
     errors::my_errors::MyError,
-    gui::user::Role,
-    gui::user::User,
+    gui::user::{Role, User},
     simulators::{
         airport::Airport,
-        airport_coordinates::{
-            get_airport_coordinates, get_angle, get_coordinate_positioning_on_map,
-            obtain_middle_position,
+        coordinates::{
+            get_airport_coordinates, get_angle, get_coordinate_positioning_on_map, integrate_simulator, obtain_middle_position
         },
         flight::Flight,
     },
 };
 
-use super::{buttons_and_reactions::{get_color_insert_button, get_color_other_button, insert_button_can_be_pressed, match_and_get_queries, update_or_delete_button_can_be_pressed}, connection_server::ConnectionServer};
+use super::{buttons_and_reactions::{get_color_insert_button, get_color_other_button, insert_button_can_be_pressed, match_and_get_queries, update_or_delete_button_can_be_pressed}, connection_server::ConnectionServer, images::{get_all_angles_for_flight, get_texture_for_flight}};
 
 /// Estructura que representa la interfaz de usuario.
 /// Log in:
@@ -30,7 +28,7 @@ use super::{buttons_and_reactions::{get_color_insert_button, get_color_other_but
 /// Mapa con aeropuestos y vuelos que conectan a los aeropuestos.
 pub struct MapApp {
     map_texture: Option<egui::TextureHandle>,
-    plane_texture: Option<egui::TextureHandle>,
+    plane_texture: HashMap<i32, Option<egui::TextureHandle>>,
     airports: HashMap<String, Airport>,
     connections: Vec<(Airport, Airport, Flight)>, // Conexiones entre aeropuestos por medio del vuelo indicado.
 
@@ -53,7 +51,7 @@ impl MapApp {
     pub fn new(port: String) -> Self {
         let airports = get_airport_coordinates();
         let map_texture = None;
-        let plane_texture = None;
+        let plane_texture = HashMap::new();
         let client = Client::initialize(port);
         let connection_server = ConnectionServer::initialize(client);
         let connections = vec![];
@@ -94,17 +92,20 @@ impl MapApp {
 
     /// Carga la imagen del avión desde un archivo.
     fn load_plane_texture(&mut self, ctx: &egui::Context) {
-        let plane_image = image::open(PLANE_PATH).expect("Failed to load plane image");
-        let (width, height) = plane_image.dimensions();
-        let image_rgba = plane_image.to_rgba8();
-        let width: usize = width.try_into().unwrap_or(0);
-        let height: usize = height.try_into().unwrap_or(0);
-        let texture = ctx.load_texture(
-            "plane",
-            egui::ColorImage::from_rgba_unmultiplied([width, height], &image_rgba),
-            Default::default(),
-        );
-        self.plane_texture = Some(texture);
+        for angle in get_all_angles_for_flight() {
+            let path = PLANE_PATH.replace("{}", &angle.to_string());
+            let plane_image = image::open(path).expect("Failed to load plane image");
+            let (width, height) = plane_image.dimensions();
+            let image_rgba = plane_image.to_rgba8();
+            let width: usize = width.try_into().unwrap_or(0);
+            let height: usize = height.try_into().unwrap_or(0);
+            let texture = ctx.load_texture(
+                "plane",
+                egui::ColorImage::from_rgba_unmultiplied([width, height], &image_rgba),
+                Default::default(),
+            );
+            self.plane_texture.insert(angle, Some(texture));
+        }
     }
 
     /// Carga la imagen del mapa desde un archivo.
@@ -197,7 +198,7 @@ impl MapApp {
             self.load_map_texture(ctx);
         }
 
-        if self.plane_texture.is_none() {
+        if self.plane_texture.is_empty() {
             self.load_plane_texture(ctx);
         }
     }
@@ -266,8 +267,6 @@ impl MapApp {
 
         let uv_rect = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
 
-        //sprite imagenes
-
         painter.image(plane_texture_id, plane_rect, uv_rect, Color32::WHITE);
 
         // Posicionar el nombre
@@ -301,16 +300,20 @@ impl MapApp {
                 (mid_x, mid_y) = (mid_x + 25.0, mid_y + 25.0);
             }
 
+            let (x, y) = integrate_simulator(&flight, (mid_x, mid_y)); 
+
             // Ángulo de rotación
             let angle = get_angle(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
 
             // Dibujar el avión
             let plane_texture = self.plane_texture.clone();
-            if let Some(plane_texture) = plane_texture {
+            let texture = get_texture_for_flight(angle, plane_texture);
+
+            if let Some(plane_texture) = texture {
                 self.draw_plane(
                     ui.painter(),
-                    mid_x,
-                    mid_y,
+                    x,
+                    y,
                     plane_texture.id(),
                     &flight.number,
                     angle,
