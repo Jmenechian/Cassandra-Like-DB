@@ -11,7 +11,13 @@ pub fn match_and_get_queries(
     query_type: i8,
     pressed_insert: bool,
     pressed_other: bool,
-    (origin_airport, destination_airport, date, flight, status): (&String, &String, &String, &String, &String),
+    (origin_airport, destination_airport, date, flight, status): (
+        &String,
+        &String,
+        &String,
+        &String,
+        &String,
+    ),
 ) -> (String, String) {
     let mut query_origin = "".to_string();
     let mut query_destination = "".to_string();
@@ -36,19 +42,35 @@ pub fn match_and_get_queries(
     (query_origin, query_destination)
 }
 
-pub fn insert_button_can_be_pressed((origin_airport, destination_airport, date, flight, status): (&String, &String, &String, &String, &String)) -> bool {
+pub fn insert_button_can_be_pressed(
+    (origin_airport, destination_airport, date, flight, status): (
+        &String,
+        &String,
+        &String,
+        &String,
+        &String,
+    ),
+) -> bool {
     !origin_airport.is_empty()
-    && !destination_airport.is_empty()
-    && !date.is_empty()
-    && !flight.is_empty()
-    && !status.is_empty()
+        && !destination_airport.is_empty()
+        && !date.is_empty()
+        && !flight.is_empty()
+        && !status.is_empty()
 }
 
-pub fn update_or_delete_button_can_be_pressed((origin_airport, destination_airport, date, flight, _status): (&String, &String, &String, &String, &String)) -> bool {
+pub fn update_or_delete_button_can_be_pressed(
+    (origin_airport, destination_airport, date, flight, _status): (
+        &String,
+        &String,
+        &String,
+        &String,
+        &String,
+    ),
+) -> bool {
     !date.is_empty()
-    && !origin_airport.is_empty()
-    && !flight.is_empty()
-    && !destination_airport.is_empty()
+        && !origin_airport.is_empty()
+        && !flight.is_empty()
+        && !destination_airport.is_empty()
 }
 
 pub fn get_color_insert_button(condition: bool) -> Color32 {

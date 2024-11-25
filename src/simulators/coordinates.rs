@@ -1,5 +1,7 @@
 use crate::{config::AIRPORTS_PATH, gui::connection_server::ConnectionServer};
-use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, result, sync::mpsc::Receiver};
+use std::{
+    collections::HashMap, f32::consts::PI, fs::read_to_string, sync::mpsc::Receiver,
+};
 
 use super::{airport::Airport, flight::Flight, queries::get_query_select_in_simulator};
 
@@ -92,18 +94,30 @@ pub fn get_angle(screen_x_o: f32, screen_x_d: f32, screen_y_o: f32, screen_y_d: 
     angle_degrees
 }
 
-pub fn integrate_simulator(flight: &Flight, (mid_x, mid_y): (f32, f32), connection_server: &ConnectionServer, [width, height]: [usize; 2]) -> (f32, f32) {
-    let query = get_query_select_in_simulator(flight.departure_date.clone(), flight.origin_airport.name.clone(), flight.number.clone());
+pub fn integrate_simulator(
+    flight: &Flight,
+    (mid_x, mid_y): (f32, f32),
+    connection_server: &ConnectionServer,
+    [width, height]: [usize; 2],
+) -> (f32, f32) {
+    let query = get_query_select_in_simulator(
+        flight.departure_date.clone(),
+        flight.origin_airport.name.clone(),
+        flight.number.clone(),
+    );
     let channel: &Receiver<Vec<String>> = connection_server.get_channel_to_receive();
     let _ = connection_server.make_query(query);
     let result = channel.recv().unwrap();
     let flight_in_simulator: Vec<&str> = result[0].split(",").collect();
     if flight_in_simulator.len() == 10 {
         // [flight , airport , destination , status , date , speed , latitude , longitude , height, timestamp]
-        if let (Ok(x), Ok(y)) = (flight_in_simulator[7].parse::<f32>(), flight_in_simulator[6].parse::<f32>()) {
+        if let (Ok(x), Ok(y)) = (
+            flight_in_simulator[7].parse::<f32>(),
+            flight_in_simulator[6].parse::<f32>(),
+        ) {
             return get_coordinate_positioning_on_map((x, y), [width, height]);
         }
     }
 
     (mid_x, mid_y)
-} 
+}

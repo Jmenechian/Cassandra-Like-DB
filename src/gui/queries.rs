@@ -61,7 +61,11 @@ pub fn get_origin_delete_query(origin_airport: &String, date: &String, flight: &
 }
 
 /// Se devuelve la query para borrar un vuelo en la tabla de origen, dependiendo de los valores ingresados.
-pub fn get_destination_delete_query(destination_airport: &String, date: &String, flight: &String) -> String {
+pub fn get_destination_delete_query(
+    destination_airport: &String,
+    date: &String,
+    flight: &String,
+) -> String {
     format!(
         "DELETE FROM destination WHERE date = {} AND airport = {} AND flight = {}",
         date, destination_airport, flight

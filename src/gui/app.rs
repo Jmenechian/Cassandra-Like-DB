@@ -13,13 +13,21 @@ use crate::{
     simulators::{
         airport::Airport,
         coordinates::{
-            get_airport_coordinates, get_angle, get_coordinate_positioning_on_map, integrate_simulator, obtain_middle_position
+            get_airport_coordinates, get_angle, get_coordinate_positioning_on_map,
+            integrate_simulator, obtain_middle_position,
         },
         flight::Flight,
     },
 };
 
-use super::{buttons_and_reactions::{get_color_insert_button, get_color_other_button, insert_button_can_be_pressed, match_and_get_queries, update_or_delete_button_can_be_pressed}, connection_server::ConnectionServer, images::{get_all_angles_for_flight, get_texture_for_flight}};
+use super::{
+    buttons_and_reactions::{
+        get_color_insert_button, get_color_other_button, insert_button_can_be_pressed,
+        match_and_get_queries, update_or_delete_button_can_be_pressed,
+    },
+    connection_server::ConnectionServer,
+    images::{get_all_angles_for_flight, get_texture_for_flight},
+};
 
 /// Estructura que representa la interfaz de usuario.
 /// Log in:
@@ -260,10 +268,8 @@ impl MapApp {
         flight_name: &String,
         _angle: f32,
     ) {
-        let plane_rect = egui::Rect::from_center_size(
-            egui::pos2(x, y),
-            egui::vec2(PLANE_SIZE, PLANE_SIZE),
-        );
+        let plane_rect =
+            egui::Rect::from_center_size(egui::pos2(x, y), egui::vec2(PLANE_SIZE, PLANE_SIZE));
 
         let uv_rect = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
 
@@ -300,7 +306,12 @@ impl MapApp {
                 (mid_x, mid_y) = (mid_x + 25.0, mid_y + 25.0);
             }
 
-            let (x, y) = integrate_simulator(&flight, (mid_x, mid_y), &self.connection_server, texture.size()); 
+            let (x, y) = integrate_simulator(
+                flight,
+                (mid_x, mid_y),
+                &self.connection_server,
+                texture.size(),
+            );
 
             // Ángulo de rotación
             let angle = get_angle(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
@@ -472,7 +483,6 @@ impl MapApp {
         egui::Area::new(Id::new(tag))
             .fixed_pos(egui::pos2(x, y))
             .show(ui.ctx(), |ui| {
-
                 let parameters = (
                     &self.selected_origin_airport.clone(),
                     &self.selected_destination_airport.clone(),
@@ -484,12 +494,8 @@ impl MapApp {
                 let up_del_button = update_or_delete_button_can_be_pressed(parameters);
 
                 if ui.add(egui::Button::new(tag).fill(color)).clicked() {
-                    let (query_origin, query_destination) = match_and_get_queries(
-                        var,
-                        insert_button,
-                        up_del_button,
-                        parameters,
-                    );
+                    let (query_origin, query_destination) =
+                        match_and_get_queries(var, insert_button, up_del_button, parameters);
 
                     if !query_origin.is_empty() && !query_destination.is_empty() {
                         let rx: &Receiver<Vec<String>> =
@@ -588,7 +594,6 @@ impl MapApp {
 impl eframe::App for MapApp {
     /// Se llama cada vez que es necesario volver a pintar la interfaz de usuario, lo que puede ocurrir muchas veces por segundo.
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
-
         // Dibujar login
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -645,11 +650,11 @@ impl eframe::App for MapApp {
                                     self.add_all_connections(airport, texture, screen_x, screen_y);
                             }
                         } // else if !self.date_selected.is_empty() && !self.selected_origin_airport.is_empty() {
-                        //     // TODO: Vemos si se agregaron vuelos por el simulador para el refresh de la pantalla.
-                        //     // Esto no funciona:
-                        //     self.reset_connection();
-                        //     let _ = self.add_all_connections(airport, texture, screen_x, screen_y);
-                        // }
+                          //     // TODO: Vemos si se agregaron vuelos por el simulador para el refresh de la pantalla.
+                          //     // Esto no funciona:
+                          //     self.reset_connection();
+                          //     let _ = self.add_all_connections(airport, texture, screen_x, screen_y);
+                          // }
                     }
 
                     self.draw_connections_with_flight(texture, ui);
