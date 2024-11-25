@@ -1,10 +1,12 @@
 use egui::TextureHandle;
 use std::collections::HashMap;
 
+/// Se devuleven todos los angulos en los que se puede dibujar un avion.
 pub fn get_all_angles_for_flight() -> Vec<i32> {
     vec![0, 45, 90, 135, 180, 225, 270, 315]
 }
 
+/// Se devuelve la textura de la imagen que corresponde al angulo de inclinacion en el que hace el recorrido el avion.
 pub fn get_texture_for_flight(
     angle: f32,
     all_textures: HashMap<i32, Option<TextureHandle>>,

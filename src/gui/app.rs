@@ -137,11 +137,11 @@ impl MapApp {
         self.connections.push((origin, destination, flight));
     }
 
-    /// Se resetean las conecciones entre aeropuesto. Se desconectan todos los aeropuestos.
+    /// Se resetean las conexiones entre aeropuesto. Se desconectan todos los aeropuestos.
     fn reset_connection(&mut self) {
         self.connections = vec![];
     }
-    /// Se agrega las conecciones que tiene el aeropuesto con los demás por los aviones que salen o regresan de este.
+    /// Se agrega las conexiones que tiene el aeropuesto con los demás por los aviones que salen o regresan de este.
     fn add_all_connections(
         &mut self,
         airport: &Airport,
@@ -286,7 +286,7 @@ impl MapApp {
         );
     }
 
-    /// Se dibuja las conecciones entre aeropuestos y su avion con el numero de avion.
+    /// Se dibuja las conexiones entre aeropuestos y su avion con el numero de avion.
     fn draw_connections_with_flight(&self, texture: &TextureHandle, ui: &mut Ui) {
         let mut last_o: &Airport = &Airport::default_new();
         let mut last_r: &Airport = &Airport::default_new();

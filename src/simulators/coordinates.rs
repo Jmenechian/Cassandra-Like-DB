@@ -94,6 +94,9 @@ pub fn get_angle(screen_x_o: f32, screen_x_d: f32, screen_y_o: f32, screen_y_d: 
     angle_degrees
 }
 
+/// Se busca si el vuelo está en la tabla del simulador. 
+/// En caso de que este, se devuelven las coordenadas que se obtengan de la tabla. 
+/// En caso contrario, se devulve los valores de la mitad del recorrido que se pasan por parametro.
 pub fn integrate_simulator(
     flight: &Flight,
     (mid_x, mid_y): (f32, f32),
