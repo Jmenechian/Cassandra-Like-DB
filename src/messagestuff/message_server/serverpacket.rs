@@ -12,6 +12,7 @@ use crate::messagestuff::{
     message_server::queryservermessage::QueryServerMessage,
     message_server::readrepairmessage::ReadRepairMessage,
     message_server::resultservermessage::ResultServerMessage,
+    encrypt::*,
 };
 use std::{io::Read, net::TcpStream};
 
@@ -59,15 +60,23 @@ impl Packet {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&byte_to_byte(self.opcode as u8));
-        bytes.extend_from_slice(&int_to_bytes(self.length));
+        //bytes.extend_from_slice(&int_to_bytes(self.length));
 
-        match &self.body {
-            ServerMessage::Gossip(msg) => bytes.extend_from_slice(&msg.to_bytes()),
-            ServerMessage::ErrorServer(msg) => bytes.extend_from_slice(&msg.to_bytes()),
-            ServerMessage::Query(msg) => bytes.extend_from_slice(&msg.to_bytes()),
-            ServerMessage::Result(msg) => bytes.extend_from_slice(&msg.to_bytes()),
-            ServerMessage::ReadRepair(msg) => bytes.extend_from_slice(&msg.to_bytes()),
-        }
+        let body_bytes = match &self.body {
+            ServerMessage::Gossip(msg) => msg.to_bytes(),
+            ServerMessage::ErrorServer(msg) => msg.to_bytes(),
+            ServerMessage::Query(msg) => msg.to_bytes(),
+            ServerMessage::Result(msg) => msg.to_bytes(),
+            ServerMessage::ReadRepair(msg) => msg.to_bytes(),
+        };
+
+        let final_body = match encrypt_body_aes128(body_bytes.clone()) {
+            Ok(encrypted_body) => encrypted_body,
+            Err(_) => body_bytes,
+        };
+        let final_length = final_body.len() as i32;
+        bytes.extend_from_slice(&int_to_bytes(final_length));
+        bytes.extend_from_slice(&final_body);
         bytes
     }
 
@@ -95,31 +104,35 @@ impl Packet {
                 "Error al leer el <body> desde Stream".to_string(),
             ));
         }
+        
+        let decrypted_body = decrypt_body_aes128(body_buffer)?;
+        let body_length =decrypted_body.len() as i32;
+
         let _body = match _opcode {
             ServerOpcode::GossipMessage => {
-                let (gossip, _) = GossipMessage::from_bytes(body_buffer)?;
+                let (gossip, _) = GossipMessage::from_bytes(decrypted_body)?;
                 ServerMessage::Gossip(gossip)
             }
             ServerOpcode::ErrorServerMessage => {
-                let (errorserver, _) = ErrorServerMessage::from_bytes(body_buffer)?;
+                let (errorserver, _) = ErrorServerMessage::from_bytes(decrypted_body)?;
                 ServerMessage::ErrorServer(errorserver)
             }
             ServerOpcode::QueryServerMessage => {
-                let (query, _) = QueryServerMessage::from_bytes(body_buffer)?;
+                let (query, _) = QueryServerMessage::from_bytes(decrypted_body)?;
                 ServerMessage::Query(query)
             }
             ServerOpcode::ResultServerMessage => {
-                let (result, _) = ResultServerMessage::from_bytes(body_buffer)?;
+                let (result, _) = ResultServerMessage::from_bytes(decrypted_body)?;
                 ServerMessage::Result(result)
             }
             ServerOpcode::ReadRepairMessage => {
-                let (readrepair, _) = ReadRepairMessage::from_bytes(body_buffer)?;
+                let (readrepair, _) = ReadRepairMessage::from_bytes(decrypted_body)?;
                 ServerMessage::ReadRepair(readrepair)
             }
         };
         Ok(Packet {
             opcode: _opcode,
-            length: _length,
+            length: body_length,
             body: _body,
         })
     }

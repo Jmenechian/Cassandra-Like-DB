@@ -81,15 +81,33 @@ impl Node {
         }
     }
 
-    pub fn get_random_neighbor(&self, my_port: String) -> Option<&NeighborNode> {
+    pub fn get_random_neighbor(&self) -> Option<&NeighborNode> {
         let mut rng = rand::thread_rng();
 
         let filtered: Vec<&NeighborNode> = self
             .neighbors
             .iter()
-            .filter(|n| n.puerto != my_port)
+            .filter(|n| n.puerto != self.puerto && n.status == Status::Connected)
             .collect();
         filtered.choose(&mut rng).copied()
+    }
+
+    pub fn disconnect_neighbor(&mut self, ip: String) {
+        if let Some(c) = ip.chars().last() {
+            let port = c.to_string();
+            if let Some(n) = self.neighbors.iter_mut().find(|n| n.puerto == port) {
+                n.disconnect_node();
+            }
+        }
+    }
+
+    pub fn connect_neighbor(&mut self, ip: String) {
+        if let Some(c) = ip.chars().last() {
+            let port = c.to_string();
+            if let Some(n) = self.neighbors.iter_mut().find(|n| n.puerto == port) {
+                n.connect_node();
+            }
+        }
     }
 
     /// Proceso la query y devuelve la tabla en formato String.

@@ -10,6 +10,7 @@ use crate::errors::my_errors::MyError;
 use crate::messagestuff::{
     message::*, message_cql::errormessage::ErrorMessage, message_cql::querymessage::QueryMessage,
     message_cql::resultmessage::ResultMessage,
+    encrypt::*,
 };
 use std::{io::Read, net::TcpStream};
 
@@ -56,13 +57,20 @@ impl Envelope {
         bytes.extend_from_slice(&byte_to_byte(self.flags));
         bytes.extend_from_slice(&short_to_bytes(self.stream));
         bytes.extend_from_slice(&byte_to_byte(self.opcode as u8));
-        bytes.extend_from_slice(&int_to_bytes(self.length));
+        //bytes.extend_from_slice(&int_to_bytes(self.length));
 
-        match &self.body {
-            CqlMessage::Query(msg) => bytes.extend_from_slice(&msg.to_bytes()),
-            CqlMessage::Result(msg) => bytes.extend_from_slice(&msg.to_bytes()),
-            CqlMessage::Error(msg) => bytes.extend_from_slice(&msg.to_bytes()),
-        }
+        let body_bytes = match &self.body {
+            CqlMessage::Query(msg) => msg.to_bytes(),
+            CqlMessage::Result(msg) => msg.to_bytes(),
+            CqlMessage::Error(msg) => msg.to_bytes(),
+        };
+        let final_body = match encrypt_body_aes128(body_bytes.clone()) {
+            Ok(encrypted_body) => encrypted_body,
+            Err(_) => body_bytes,
+        };
+        let final_length = final_body.len() as i32;
+        bytes.extend_from_slice(&int_to_bytes(final_length));
+        bytes.extend_from_slice(&final_body);
 
         bytes
     }
@@ -93,17 +101,21 @@ impl Envelope {
             let _error = format!("Error al leer el <body> desde Stream: {:?}", e);
             return Err(MyError::TcpStreamError(_error));
         }
+
+        let decrypted_body = decrypt_body_aes128(_body_buffer)?;
+        let body_length =decrypted_body.len() as i32;
+
         let _body = match _opcode {
             CqlOpcode::ErrorMessage => {
-                let (error, _) = ErrorMessage::from_bytes(_body_buffer)?;
+                let (error, _) = ErrorMessage::from_bytes(decrypted_body)?;
                 CqlMessage::Error(error)
             }
             CqlOpcode::QueryMessage => {
-                let (query, _) = QueryMessage::from_bytes(_body_buffer)?;
+                let (query, _) = QueryMessage::from_bytes(decrypted_body)?;
                 CqlMessage::Query(query)
             }
             CqlOpcode::ResultMessage => {
-                let (result, _) = ResultMessage::from_bytes(_body_buffer)?;
+                let (result, _) = ResultMessage::from_bytes(decrypted_body)?;
                 CqlMessage::Result(result)
             }
         };
@@ -112,7 +124,7 @@ impl Envelope {
             flags: _flags,
             stream: _stream_id,
             opcode: _opcode,
-            length: _length,
+            length: body_length,
             body: _body,
         })
     }
