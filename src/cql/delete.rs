@@ -2,10 +2,11 @@
 // Aca se parsea la consulta y se ejecuta
 use crate::config::TABLE_PATH;
 use crate::cql::{filter::Filter, where_clause::WhereClause};
-use crate::my_errors::MyError;
+use crate::errors::my_errors::MyError;
 use crate::utils::*;
-use std::{fs::File, io::BufRead};
 use aes_gcm::{Aes256Gcm, aead::Key};
+use std::io::BufRead;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Delete {
@@ -62,15 +63,18 @@ impl Delete {
     }
 
     // Ejecuta la consulta
-    pub fn execute_command(&mut self, encryption_key: &Key<Aes256Gcm>) -> Result<Vec<String>, MyError> {
-        let full_path = get_file_path(TABLE_PATH, &self.table);
-        let mut rdr = get_reader(TABLE_PATH, &self.table)?;
+
+    pub fn execute_command(
+        &mut self,
+        path_table: Arc<RwLock<String>>,
+    ) -> Result<Vec<String>, MyError> {
+        let mut rdr = get_reader_read(&path_table)?;
         let col_names = get_file_headers(&mut rdr)?;
+        let mut file_open = get_file_to_write(&path_table)?;
 
         // Vacia archivo completo si no hay condicion
         if self.whereclause == WhereClause::True {
-            let _ = File::create(full_path).map_err(|e| MyError::FileError(e.to_string()))?;
-            append_row(TABLE_PATH, &self.table, &col_names)?;
+            append_row(&mut file_open, &col_names)?;
             return Ok(vec!["Se elimino la tabla completa".to_string()]);
         }
 
@@ -90,7 +94,7 @@ impl Delete {
             }
         }
 
-        write_temporary_to_original(TABLE_PATH, &temp_file_name, &self.table)?;
+        write_temporary_to_original(TABLE_PATH, &temp_file_name, file_open)?;
         delete_file(&temp_file_name, TABLE_PATH)?;
         Ok(vec!["Se eliminaron las filas".to_string()])
     }

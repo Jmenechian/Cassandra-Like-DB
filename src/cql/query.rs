@@ -1,10 +1,12 @@
+use std::sync::{Arc, RwLock};
+
 use crate::cql::create_table::CreateTable;
 use crate::cql::delete::Delete;
 use crate::cql::insert::Insert;
 use crate::cql::select::Select;
 use crate::cql::update::Update;
-use crate::my_errors::MyError;
 use aes_gcm::{Aes256Gcm, aead::Key};
+use crate::errors::my_errors::MyError;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum QType {
@@ -32,15 +34,8 @@ impl Query {
         }
     }
 
-    /// Ejectua la query
-    pub fn execute(&mut self, encryption_key: &Key<Aes256Gcm>,) -> Result<Vec<String>, MyError> {
-        println!("Ejecutando Query: {}", self.query);
-        self.get_type();
-        match self.parse_query() {
-            Ok(_) => (),
-            Err(e) => return Err(e),
-        }
-        self.execute_command(encryption_key)
+    pub fn execute(&mut self, table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
+        self.execute_command(table)
     }
 
     fn get_type(&mut self) {
@@ -95,6 +90,8 @@ impl Query {
 
     // Delegates the parsing
     pub fn parse_query(&mut self) -> Result<(), MyError> {
+        self.get_type();
+
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to parse".to_string())),
             QType::Select(select) => select.parse_select(&self.query, &self.sender_node_ip),
@@ -105,15 +102,16 @@ impl Query {
         }
     }
 
-    // Delega la ejecución del comando
-    pub fn execute_command(&mut self, encryption_key: &Key<Aes256Gcm>) -> Result<Vec<String>, MyError> {
+    // Delegates the command execution
+    pub fn execute_command(&mut self, table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
+        println!("\n - Query: {:?} \n", self.qtype);
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to execute".to_string())),
-            QType::Select(select) => select.execute_command(encryption_key),
-            QType::Update(update) => update.execute_command(encryption_key),
-            QType::Insert(insert) => insert.execute_command(encryption_key),
-            QType::Delete(delete) => delete.execute_command(encryption_key),
-            QType::CreateTable(create_table) => create_table.execute_command(encryption_key),
+            QType::Select(select) => select.execute_command(table),
+            QType::Update(update) => update.execute_command(table),
+            QType::Insert(insert) => insert.execute_command(table),
+            QType::Delete(delete) => delete.execute_command(table),
+            QType::CreateTable(create_table) => create_table.execute_command(),
         }
     }
 
@@ -144,7 +142,7 @@ impl Query {
     }
 
     pub fn get_table(&self) -> String {
-        let mut table: String = match &self.qtype {
+        let table: String = match &self.qtype {
             QType::None => "".to_string(),
             QType::Select(select) => select.table.clone(),
             QType::Update(update) => update.table.clone(),
@@ -152,8 +150,6 @@ impl Query {
             QType::Delete(delete) => delete.table.clone(),
             QType::CreateTable(create_table) => create_table.table_name.clone(),
         };
-        table.pop();
-        table.pop();
-        table
+        table.trim().to_string()
     }
 }

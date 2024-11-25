@@ -1,5 +1,9 @@
 pub static PORTS_FILE: &str = "puertos.txt";
 
+pub static KEY_FILE: &str = "src/config_aes/aes_key.bin";
+
+pub static POOL_NUMBER: usize = 5;
+
 pub static SERVER_PORT: &str = "7000";
 pub static CLIENT_PORT: &str = "9042";
 
@@ -10,6 +14,7 @@ pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 pub static TABLE_PATH: &str = "src/tables";
 pub static TABLE_ORIGIN_NAME: &str = "origin";
 pub static TABLE_DESTINATION_NAME: &str = "destination";
+pub static TABLE_FLIGHT_SIMULATOR: &str = "flights_in_progress";
 
 // SIMULADOR DE VUELOS:
 pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool.
@@ -66,7 +71,7 @@ pub const LESS_THAN: i32 = 2;
 pub const NOT_NUMBER: i32 = 3;
 
 // encriptacion at-rest
-pub const ENCRIPT_DATA: bool = true; // Para testeo
+pub const ENCRIPT_DATA: bool = false; // Para testeo
 pub static KEYS_FILE:&str = "encryption_keys";
 
 

@@ -143,6 +143,7 @@ dependencies = [
 name = "aerolineas_rusticas"
 version = "0.1.0"
 dependencies = [
+ "aes",
  "aes-gcm",
  "base64 0.22.1",
  "bufstream",

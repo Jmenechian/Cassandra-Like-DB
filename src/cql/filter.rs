@@ -1,5 +1,5 @@
 use crate::cql::where_clause::WhereClause;
-use crate::my_errors::MyError;
+use crate::errors::my_errors::MyError;
 
 pub struct Filter {
     pub columns: Vec<String>,

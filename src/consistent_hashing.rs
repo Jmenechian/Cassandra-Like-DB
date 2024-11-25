@@ -4,7 +4,7 @@
 // El hashing consistente particiona los datos basándose en la clave de partición.
 
 use crate::config::RING_SIZE;
-use crate::NeighborNode;
+use crate::serverstuff::neighbor_node::NeighborNode;
 use fasthash::murmur;
 use std::collections::BTreeMap;
 

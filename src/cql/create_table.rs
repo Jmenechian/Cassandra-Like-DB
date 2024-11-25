@@ -22,12 +22,13 @@
 //   WITH CLUSTERING ORDER BY (hostname ASC, log_datetime DESC);
 
 use crate::config::{RING_SIZE, TABLE_PATH, ENCRIPT_DATA};
-use crate::my_errors::MyError;
+use crate::errors::my_errors::MyError;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use aes_gcm::{Aes256Gcm, aead::Key};
+use aes_gcm::{Aes256Gcm, aead::Key, aead::OsRng, aead::KeyInit};
 use crate::utils::*;
+use crate::messagestuff::encrypt::*;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CreateTable {
@@ -199,12 +200,17 @@ impl CreateTable {
         format
     }
 
-    fn create_encrypted_tables(&mut self, encryption_key: &Key<Aes256Gcm>) -> Result<(), MyError> {
+    fn create_encrypted_tables(&mut self) -> Result<(), MyError> {
+        // let encryption_key=  Aes256Gcm::generate_key(OsRng); 
         for i in 1..=RING_SIZE {
             // Creo nueva tabla por nodo
-            let table_name = format!("{}_{}", self.table_name, i);
-            let encrypted_columns = encrypt_row(&self.columns, encryption_key)?;
-            append_encrypted_row(TABLE_PATH, &table_name, &encrypted_columns)?;
+            let table_name = format!("{}/{}_{}.csv", TABLE_PATH,self.table_name, i);
+            let encrypted_columns: Vec<u8> = encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
+            let mut f = File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
+
+            f.write_all(&encrypted_columns)
+                .map_err(|e| MyError::FileError(e.to_string()))?;
+            writeln!(f).map_err(|e| MyError::FileError(e.to_string()))?;
         }
         Ok(())
     }
@@ -215,7 +221,6 @@ impl CreateTable {
             let path = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
             let mut f = File::create_new(path).map_err(|e| MyError::FileError(e.to_string()))?;
 
-            println!("columns:{:?}", self.columns);
             f.write_all(self.columns.join(",").as_bytes())
                 .map_err(|e| MyError::FileError(e.to_string()))?;
             writeln!(f).map_err(|e| MyError::FileError(e.to_string()))?;
@@ -225,9 +230,9 @@ impl CreateTable {
     
     
     // Se ejecuta la query
-    pub fn execute_command(&mut self, encryption_key: &Key<Aes256Gcm>) -> Result<Vec<String>, MyError> {
+    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         if ENCRIPT_DATA {
-            self.create_encrypted_tables(encryption_key)?;
+            self.create_encrypted_tables()?;
         } else {
             self.create_unencrypted_tables()?;
         }

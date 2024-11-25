@@ -4,7 +4,7 @@ use std::{
     thread,
 };
 
-use crate::{client_cql::Client, my_errors::MyError, simulators::airport::Airport};
+use crate::{client_cql::Client, errors::my_errors::MyError, simulators::airport::Airport};
 
 #[derive(Debug)]
 pub struct ConnectionServer {

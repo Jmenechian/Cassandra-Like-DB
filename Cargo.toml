@@ -23,6 +23,7 @@ image = "0.24" # Para manejar imágenes
 
 aes-gcm = "0.10.3"
 base64 = "0.22.1"
+aes = "0.8.4"
 
 
 walkers = "0.25.0"

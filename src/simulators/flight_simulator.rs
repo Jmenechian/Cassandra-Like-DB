@@ -12,8 +12,9 @@ use super::{
 use crate::{
     client_cql::Client,
     config::N_WORKERS,
-    errors::{airport_errors::AirportErrors, simulator_errors::SimulatorErrors},
-    my_errors::MyError,
+    errors::{
+        airport_errors::AirportErrors, my_errors::MyError, simulator_errors::SimulatorErrors,
+    },
     simulators::{flight_status::FlightStatus, queries::get_query_select_in_destination},
 };
 
