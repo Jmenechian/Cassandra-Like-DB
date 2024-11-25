@@ -7,6 +7,7 @@ use super::queries::{
     get_origin_delete_query, get_origin_insert_query, get_origin_update_query,
 };
 
+/// Devuelve las queries sobre las tablas de origen y destino dependiendo del query_type.
 pub fn match_and_get_queries(
     query_type: i8,
     pressed_insert: bool,
@@ -42,6 +43,7 @@ pub fn match_and_get_queries(
     (query_origin, query_destination)
 }
 
+/// Devuelve true si el botón de insert puede ser presionado, en caso contrario: false.
 pub fn insert_button_can_be_pressed(
     (origin_airport, destination_airport, date, flight, status): (
         &String,
@@ -58,6 +60,7 @@ pub fn insert_button_can_be_pressed(
         && !status.is_empty()
 }
 
+/// Devuelve true si los botones de de update y delete pueden ser presionado, en caso contrario: false.
 pub fn update_or_delete_button_can_be_pressed(
     (origin_airport, destination_airport, date, flight, _status): (
         &String,
@@ -73,6 +76,7 @@ pub fn update_or_delete_button_can_be_pressed(
         && !destination_airport.is_empty()
 }
 
+/// Devulve color verde si se envía true, en caso contrario: color rojo.
 pub fn get_color_insert_button(condition: bool) -> Color32 {
     if condition {
         Color32::from_rgb(0, 128, 0) // Green when fields are filled
@@ -81,6 +85,7 @@ pub fn get_color_insert_button(condition: bool) -> Color32 {
     }
 }
 
+/// Devulve color verde si se envía true, en caso contrario: color rojo.
 pub fn get_color_other_button(condition: bool) -> Color32 {
     if condition {
         Color32::from_rgb(0, 128, 0) // Green when fields are filled
