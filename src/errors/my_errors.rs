@@ -20,6 +20,8 @@ pub enum MyError {
     LockingError(String),
     FileError(String),
     UserError(String),
+    EncryptionError(String),
+    DecryptionError(String),
 }
 
 impl fmt::Display for MyError {
@@ -41,6 +43,8 @@ impl fmt::Display for MyError {
             MyError::LockingError(ref msg) => write!(f, "[LOCKING_ERROR]: [{}]", msg),
             MyError::FileError(ref msg) => write!(f, "[FILE_ERROR]: [{}]", msg),
             MyError::UserError(ref msg) => write!(f, "[USER_ERROR]: [{}]", msg),
+            MyError::EncryptionError(ref msg) => write!(f, "[ENCRYPTION_ERROR]: [{}]", msg),
+            MyError::DecryptionError(ref msg) => write!(f, "[DECRYPTION_ERROR]: [{}]", msg),
         }
     }
 }
@@ -68,6 +72,8 @@ impl PartialEq for MyError {
             (MyError::LockingError(a), MyError::LockingError(b)) => a == b,
             (MyError::FileError(a), MyError::FileError(b)) => a == b,
             (MyError::UserError(a), MyError::UserError(b)) => a == b,
+            (MyError::EncryptionError(a), MyError::EncryptionError(b)) => a == b,
+            (MyError::DecryptionError(a), MyError::DecryptionError(b)) => a == b,
             _ => false,
         }
     }

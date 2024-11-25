@@ -25,6 +25,7 @@ fn handle_message_query(
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
+
     let table = match send_query_to_nodes(node, querymessage.query, querymessage.consistency, show)
     {
         Ok(r) => r,

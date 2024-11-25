@@ -51,7 +51,6 @@ fn handle_message_query(
         }
     };
     let _ = msg.send_server_through(stream);
-
     Ok(())
 }
 
@@ -86,8 +85,8 @@ fn handle_message_read_repair(
         }
     };
 
-    let mut _query = Query::new(query_str, node.server_ip.clone());
 
+    let mut _query = Query::new(query_str, node.server_ip.clone());
     let rows_to_update = node.process_query(&mut _query)?;
 
     let (ap, place, date, flight, stat) = (0, 1, 2, 3, 4);

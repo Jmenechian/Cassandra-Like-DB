@@ -4,9 +4,7 @@ use crate::messagestuff::{
     message::*,
     message_server::{serverpacket::Packet, serverpacket::ServerMessage},
 };
-use crate::my_errors::*;
-use crate::serverstuff::nodo::Status;
-
+use crate::serverstuff::node_status::Status;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
 use super::node_initializer::try_connect;
@@ -47,9 +45,6 @@ fn reenviar_gossip(
     }
 }
 
-use super::node_initializer::try_connect;
-
-
 fn handle_message_gossip(
     node: Arc<RwLock<Node>>,
     gossip: &mut GossipMessage,
@@ -71,7 +66,7 @@ fn handle_message_gossip(
         None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
     };
     let mut new_neighbor = NeighborNode::new(&port.to_string());
-    match gossip.estado {
+    match gossip.status {
         Status::Connected => {new_neighbor.connect_node();}
         Status::Disconnected => {new_neighbor.disconnect_node();}
     }

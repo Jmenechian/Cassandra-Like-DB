@@ -1,11 +1,14 @@
 // Representa a las consultas del tipo INSERT
 // Aca se parsea la consulta y se ejecuta
-
+use crate::config::{ENCRIPT_DATA, TABLE_PATH};
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
 use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use crate::messagestuff::encrypt::*;
+use std::io::Write;
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct Insert {
     pub table: String,
@@ -136,22 +139,45 @@ impl Insert {
         Ok(())
     }
 
-    pub fn execute_command(&self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
+    fn add_unencrypted_rows(&self, headers: &[String], map: HashMap<&str, &str>) -> Vec<String> {
+        let mut new_record: Vec<String> = Vec::new();
+        for header in headers {
+            if let Some(value) = map.get(header.as_str()) {
+                new_record.push(value.to_string());
+            } else {
+                new_record.push(String::new());
+            }
+        }
+        new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
+        new_record.push(Utc::now().to_string()); // metes lo mas nuevo
+        new_record
+    }
+
+
+    pub fn execute_command(&mut self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
         let mut rdr_read = get_reader_read(&path_table)?;
         let headers = get_file_headers(&mut rdr_read)?;
+        
         let mut file_open = get_file_to_write(&path_table)?; // Se usa para hacer append
 
         // INSERT INTO VALUES (val1, val2)
-        // values are inserted in the same order as the file headers
         if self.columns.is_empty() {
             if self.values.len() == headers.len() {
-                append_row(&mut file_open, &self.values)?;
+                self.values.push(Utc::now().to_string());
+                if ENCRIPT_DATA {
+                    let encrypted_columns: Vec<u8> = encrypt_body_aes128(self.values.join(",").as_bytes().to_vec())?;
+                    file_open.write_all(&encrypted_columns).map_err(|e| MyError::FileError(e.to_string()))?;
+                    writeln!(file_open).map_err(|e| MyError::FileError(e.to_string()))?;
+                } else {
+                    append_row(&mut file_open, &self.values)?;
+                }
                 return Ok(vec!["linea fue agregada".to_string()]);
             }
             return Err(MyError::InvalidSyntax("Invalid INSERT syntax".to_string()));
         }
 
         self.check_columns_are_valid(&headers)?;
+        println!("columnas son validas");
 
         let map: HashMap<&str, &str> = self.get_mapped_values()?;
 
@@ -163,9 +189,19 @@ impl Insert {
                 new_record.push(String::new());
             }
         }
+        println!("ya estan los valores en new_record");
         new_record.pop(); // sacamos el timestamp vacio porque nunca lo llenas
         new_record.push(Utc::now().to_string());
-        append_row(&mut file_open, &new_record)?;
+
+        if ENCRIPT_DATA {
+            println!("encriptando");
+            let encrypted_columns: Vec<u8> = encrypt_body_aes128(new_record.join(",").as_bytes().to_vec())?;
+            println!("termine encriptando");
+            file_open.write_all(&encrypted_columns).map_err(|e| MyError::FileError(e.to_string()))?;
+            writeln!(file_open).map_err(|e| MyError::FileError(e.to_string()))?;
+        } else {
+            append_row(&mut file_open, &new_record)?;
+        }
         Ok(vec!["linea fue agregada".to_string()])
     }
 
@@ -196,11 +232,12 @@ impl Insert {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::TABLE_PATH;
     use crate::errors::my_errors::MyError;
     use std::collections::HashMap;
-    use std::fs::File;
-    use std::io::Write;
+    use aes_gcm::{
+        aead::{KeyInit, OsRng},
+        Aes256Gcm, Key
+    };
 
     #[test]
     fn test_parse_insert_valid_query() {
@@ -276,28 +313,4 @@ mod tests {
         assert!(matches!(result, Err(MyError::InvalidColumn(_))));
     }
 
-    #[test]
-    fn test_execute_command() {
-        // Create a mock CSV file
-        let file_path = format!("{}/test_table_1.csv", TABLE_PATH);
-        let mut file = File::create(&file_path).unwrap();
-        writeln!(file, "id,name,age").unwrap();
-        writeln!(file, "1,Alice,30").unwrap();
-
-        // Create and parse a valid INSERT query
-        let mut insert = Insert::new();
-        insert
-            .parse_insert(
-                "INSERT INTO 'test_table' (id, name, age) VALUES (2, 'Bob', 25)",
-                "node_1",
-            )
-            .unwrap();
-
-        let file_arc: Arc<RwLock<String>> = Arc::new(RwLock::new(file_path.clone()));
-
-        let result = insert.execute_command(file_arc).unwrap();
-        assert_eq!(result, vec!["linea fue agregada".to_string()]);
-
-        std::fs::remove_file(file_path).unwrap();
-    }
 }

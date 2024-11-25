@@ -1,10 +1,11 @@
 use crate::config::KEY_FILE;
-use crate::my_errors::MyError;
-use std::{io::Read, fs::File};
+use crate::errors::my_errors::MyError;
+use std::{io::Read, fs::File, io::Write};
 use aes::Aes128;
 use aes::cipher::{BlockEncrypt, BlockDecrypt, KeyInit, generic_array::GenericArray};
 
-fn load_key_from_file(filename: &str) -> Result<[u8;16], MyError> {
+
+pub fn load_key_from_file(filename: &str) -> Result<[u8;16], MyError> {
     let mut file = match File::open(filename) {
         Ok(f) => f,
         Err(_) => return Err(MyError::FileError("Error".to_string())),
@@ -43,6 +44,8 @@ pub fn decrypt_body_aes128(encrypted_body: Vec<u8>) -> Result<Vec<u8>, MyError> 
     }
     Ok(decrypted)
 }
+
+
 
 #[cfg(test)]
 mod tests {

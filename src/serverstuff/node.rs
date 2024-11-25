@@ -4,6 +4,7 @@ use crate::config::{
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
 use crate::serverstuff::neighbor_node::NeighborNode;
+use crate::serverstuff::node_status::Status;
 
 use rand::seq::SliceRandom;
 use std::sync::{Arc, RwLock};
@@ -67,7 +68,7 @@ impl Node {
         if let Some(pos) = self
             .neighbors
             .iter()
-            .position(|n| n.puerto == neighbor_node.puerto)
+            .position(|n| n.number == neighbor_node.number)
         {
             if self.neighbors[pos].time < neighbor_node.time {
                 self.neighbors[pos] = neighbor_node;
@@ -87,7 +88,7 @@ impl Node {
         let filtered: Vec<&NeighborNode> = self
             .neighbors
             .iter()
-            .filter(|n| n.puerto != self.puerto && n.status == Status::Connected)
+            .filter(|n| n.number != self.number && n.status == Status::Connected)
             .collect();
         filtered.choose(&mut rng).copied()
     }
@@ -95,7 +96,7 @@ impl Node {
     pub fn disconnect_neighbor(&mut self, ip: String) {
         if let Some(c) = ip.chars().last() {
             let port = c.to_string();
-            if let Some(n) = self.neighbors.iter_mut().find(|n| n.puerto == port) {
+            if let Some(n) = self.neighbors.iter_mut().find(|n| n.number == port) {
                 n.disconnect_node();
             }
         }
@@ -104,7 +105,7 @@ impl Node {
     pub fn connect_neighbor(&mut self, ip: String) {
         if let Some(c) = ip.chars().last() {
             let port = c.to_string();
-            if let Some(n) = self.neighbors.iter_mut().find(|n| n.puerto == port) {
+            if let Some(n) = self.neighbors.iter_mut().find(|n| n.number == port) {
                 n.connect_node();
             }
         }

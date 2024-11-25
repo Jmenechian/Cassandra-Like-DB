@@ -1,4 +1,4 @@
-use crate::config::PORTS_FILE;
+use crate::config::{self, PORTS_FILE, TABLE_PATH, KEYS_FILE};
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::{message::*, message_server::gossipmessage::*};
 use crate::serverstuff::neighbor_node::NeighborNode;
@@ -18,6 +18,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
+use aes_gcm::{Aes256Gcm, aead::Key, aead::OsRng, aead::KeyInit};
 
 /// Funcion de inicializacíon, donde se crea el nodo indicado y se escucha y responde por los puertos correspondientes.
 pub fn node_initialize(port: String) -> Result<(), MyError> {
@@ -30,56 +31,6 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
     //me agrego a mi mismo a vecinos
     current_node.add_neighbor(NeighborNode::new(&current_node.number));
 
-<<<<<<< HEAD:src/nodo.rs
-// Representa al nodo en el que estamos parados
-#[derive(Debug, Clone, PartialEq)]
-pub struct Node {
-    pub puerto: String,
-    pub server_ip: String, // IP donde nodo se pone a escuchar conecciones de servidores
-    pub client_ip: String, // IP donde nodo se pone a escuchar conecciones de cliente
-    pub gossip_ip: String, // IP donde nodo se pone a escuchar mensajes Gossip
-    pub file_path: String,
-    pub nodes_path: String,
-    pub neighbors: Vec<NeighborNode>, // todos los otros nodos
-}
-
-impl Node {
-    pub fn new(port: &str) -> Self {
-        Self {
-            puerto: port.to_string(),
-            server_ip: format!("127.0.0.1:700{}", port),
-            client_ip: format!("127.0.0.1:800{}", port),
-            gossip_ip: format!("127.0.0.1:900{}", port),
-            file_path: "".to_string(),
-            nodes_path: "nodes.txt".to_string(),
-            neighbors: vec![], // todos los nodos que estan en el ring
-        }
-    }
-
-    pub fn add_neighbors(&mut self, neighbor_nodes: Vec<NeighborNode>) {
-        self.neighbors = neighbor_nodes;
-    }
-
-    pub fn add_neighbor(&mut self, neighbor_node: NeighborNode) -> bool {
-        if let Some(pos) = self
-            .neighbors
-            .iter()
-            .position(|n| n.puerto == neighbor_node.puerto)
-        {
-            let existing = &self.neighbors[pos];
-            if existing.status != neighbor_node.status {
-                self.neighbors[pos] = neighbor_node;
-                return true;
-            }
-            if existing.time < neighbor_node.time {
-                self.neighbors[pos] = neighbor_node;
-                return false;
-            }
-            false
-        } else {
-            self.neighbors.push(neighbor_node);
-            true
-=======
     //empiezo gossip
     let ports = read_ports_from_file(PORTS_FILE)?;
     let my_ip = current_node.server_ip.clone();
@@ -99,45 +50,10 @@ impl Node {
             if show_g && new {
                 println!("G   Mis vecinos son: {:?}", current_node.neighbors);
             }
->>>>>>> 38015fcd3b82a00e20a0a965a81acaa7cb342d5b:src/serverstuff/node_initializer.rs
         }
         None => println!("Tengo que ser el primer nodo porque no encontre otro"),
     };
 
-<<<<<<< HEAD:src/nodo.rs
-    pub fn get_random_neighbor(&self) -> Option<&NeighborNode> {
-        let mut rng = rand::thread_rng();
-
-        let filtered: Vec<&NeighborNode> = self
-            .neighbors
-            .iter()
-            .filter(|n| n.puerto != self.puerto && n.status == Status::Connected)
-            .collect();
-        filtered.choose(&mut rng).copied()
-    }
-
-    pub fn disconnect_neighbor(&mut self, ip: String) {
-        if let Some(c) = ip.chars().last() {
-            let port = c.to_string();
-            if let Some(n) = self.neighbors.iter_mut().find(|n| n.puerto == port) {
-                n.disconnect_node();
-            }
-        }
-    }
-
-    pub fn connect_neighbor(&mut self, ip: String) {
-        if let Some(c) = ip.chars().last() {
-            let port = c.to_string();
-            if let Some(n) = self.neighbors.iter_mut().find(|n| n.puerto == port) {
-                n.connect_node();
-            }
-        }
-    }
-
-    // Proceso la query y devuelve la tabla en formato String
-    pub fn process_query(&self, query: &mut Query) -> Result<Vec<String>, MyError> {
-        query.execute()
-=======
     let server_ip = current_node.server_ip.clone();
     let client_ip = current_node.client_ip.clone();
     let gossip_ip = current_node.gossip_ip.clone();
@@ -165,7 +81,6 @@ impl Node {
             }
             None => println!("No encuentre otro nodo."),
         };
->>>>>>> 38015fcd3b82a00e20a0a965a81acaa7cb342d5b:src/serverstuff/node_initializer.rs
     }
 }
 
