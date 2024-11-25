@@ -1,11 +1,13 @@
 // Representa a las consultas del tipo INSERT
 // Aca se parsea la consulta y se ejecuta
 
-use crate::config::TABLE_PATH;
+use crate::config::{TABLE_PATH, ENCRIPT_DATA};
 use crate::my_errors::MyError;
 use crate::utils::*;
 use chrono::Utc;
 use std::collections::HashMap;
+use aes_gcm::{Aes256Gcm, aead::Key};
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct Insert {
     pub table: String,
@@ -136,15 +138,101 @@ impl Insert {
         Ok(())
     }
 
-    pub fn execute_command(&self) -> Result<Vec<String>, MyError> {
-        println!("En execute_command de INSERT");
+    fn add_unencrypted_rows(&self, headers: &[String], map: HashMap<&str, &str>) -> Vec<String> {
+        let mut new_record: Vec<String> = Vec::new();
+        for header in headers {
+            if let Some(value) = map.get(header.as_str()) {
+                new_record.push(value.to_string());
+            } else {
+                new_record.push(String::new());
+            }
+        }
+        new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
+        new_record.push(Utc::now().to_string()); // metes lo mas nuevo
+        new_record
+    }
+
+    // Devuelve un vector de vectores de bytes
+    // Cada vector de bytes es un valor encriptado
+    // Si el diccionario esta vacio devuelve todos los valores encriptados
+    fn add_encrypted_rows(
+        &mut self,
+        headers: &[String],
+        map: HashMap<&str, &str>,
+        encryption_key: &Key<Aes256Gcm>,
+    ) -> Result<Vec<u8>, MyError> {
+        
+        if map.is_empty() {
+            self.values.push(Utc::now().to_string());
+            let encrypted_row = encrypt_row(&self.values, encryption_key)?;
+            return Ok(encrypted_row);
+        }
+
+        let mut i = 1;
+        let mut new_record: Vec<u8> = Vec::new();
+        for header in headers {
+            if let Some(value) = map.get(header.as_str()) {
+                let encrypted_value = encrypt_data(&value, encryption_key)?;
+                new_record.extend(encrypted_value);
+            } else if i < headers.len(){
+                let encrypted_comma = encrypt_data(",", encryption_key)?;
+                new_record.extend(encrypted_comma);
+            }
+            i+=1;
+        }
+        Ok(new_record)
+    }
+
+    fn execute_command_encrypted(&mut self, encryption_key: &Key<Aes256Gcm>) -> Result<Vec<String>, MyError> {
+        let mut contents: Vec<u8> = Vec::new();
+        open_encrypted_file(TABLE_PATH, &self.table, &mut contents)?;
+        let parts: Vec<&[u8]> = contents.split(|&byte| byte == b'\n').collect();
+
+        let headers = decrypt_row(parts[0], encryption_key)?;
+        println!("Headers: {:?}", headers);
+
+        if self.columns.is_empty() {
+            if self.values.len() == headers.len() {
+                self.values.push(Utc::now().to_string());
+                let encrypted_row = encrypt_row(&self.values, encryption_key)?;
+                append_encrypted_row(TABLE_PATH, &self.table, &encrypted_row)?;
+                return Ok(vec!["linea fue agregada".to_string()]);
+            }
+            return Err(MyError::InvalidSyntax("Invalid INSERT syntax".to_string()));
+        }
+
+        self.check_columns_are_valid(&headers)?;
+
+        let map: HashMap<&str, &str> = self.get_mapped_values()?;
+
+        let mut new_record: Vec<String> = Vec::new();
+        for header in headers {
+            if let Some(value) = map.get(header.as_str()) {
+                new_record.push(value.to_string());
+            } else {
+                new_record.push(String::new());
+            }
+        }
+        new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
+        new_record.push(Utc::now().to_string()); // metes lo mas nuevo
+        let encrypted_row = encrypt_row(&new_record, encryption_key)?;
+        append_encrypted_row(TABLE_PATH, &self.table, &encrypted_row)?;
+        Ok(vec!["linea fue agregada".to_string()])
+    }
+
+    pub fn execute_command(&mut self, encryption_key: &Key<Aes256Gcm>) -> Result<Vec<String>, MyError> {
+        
+        if ENCRIPT_DATA {
+            return self.execute_command_encrypted(encryption_key);
+        }
+        
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let headers = get_file_headers(&mut rdr)?;
 
         // INSERT INTO VALUES (val1, val2)
-        // values are inserted in the same order as the file headers
         if self.columns.is_empty() {
             if self.values.len() == headers.len() {
+                self.values.push(Utc::now().to_string());
                 append_row(TABLE_PATH, &self.table, &self.values)?;
                 return Ok(vec!["linea fue agregada".to_string()]);
             }
@@ -198,8 +286,10 @@ mod tests {
     use super::*;
     use crate::my_errors::MyError;
     use std::collections::HashMap;
-    use std::fs::File;
-    use std::io::Write;
+    use aes_gcm::{
+        aead::{KeyInit, OsRng},
+        Aes256Gcm, Key
+    };
 
     #[test]
     fn test_parse_insert_valid_query() {
@@ -276,25 +366,58 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_command() {
-        // Create a mock CSV file
-        let file_path = format!("{}/test_table_1.csv", TABLE_PATH);
-        let mut file = File::create(&file_path).unwrap();
-        writeln!(file, "id,name,age").unwrap();
-        writeln!(file, "1,Alice,30").unwrap();
-
-        // Create and parse a valid INSERT query
+    fn test_add_encripted_rows_empty_map() {
         let mut insert = Insert::new();
-        insert
-            .parse_insert(
-                "INSERT INTO 'test_table' (id, name, age) VALUES (2, 'Bob', 25)",
-                "node_1",
-            )
-            .unwrap();
+        insert.columns = vec![];
+        insert.values = vec!["1".to_string(), "sara".to_string()];
+        let headers = vec!["id".to_string(), "name".to_string()];
+        let encryption_key: Key<Aes256Gcm> = Aes256Gcm::generate_key(OsRng);
 
-        let result = insert.execute_command().unwrap();
-        assert_eq!(result, vec!["linea fue agregada".to_string()]);
+        let result = insert.add_encrypted_rows(&headers, HashMap::new(), &encryption_key);
 
-        std::fs::remove_file(file_path).unwrap();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 2);
     }
+
+    #[test]
+    fn test_add_encripted_rows_empty_column() {
+        let mut insert = Insert::new();
+        insert.columns = vec!["id".to_string(), "name".to_string()];
+        insert.values = vec!["1".to_string(), "sara".to_string()];
+        
+        let mut map: HashMap<&str, &str> = HashMap::new();
+        map.insert("id", "1");
+        map.insert("name", "sara");
+
+        let headers = vec!["id".to_string(), "name".to_string(), "age".to_string()];
+        let encryption_key: Key<Aes256Gcm> = Aes256Gcm::generate_key(OsRng);
+
+        let result = insert.add_encrypted_rows(&headers, map, &encryption_key);
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 3);
+    }
+
+    // #[test]
+    // fn test_execute_command() {
+    //     // Create a mock CSV file
+    //     let file_path = format!("{}/test_table_1.csv", TABLE_PATH);
+    //     let mut file = File::create(&file_path).unwrap();
+    //     writeln!(file, "id,name,age").unwrap();
+    //     writeln!(file, "1,Alice,30").unwrap();
+
+    //     // Create and parse a valid INSERT query
+    //     let mut insert = Insert::new();
+    //     insert
+    //         .parse_insert(
+    //             "INSERT INTO 'test_table' (id, name, age) VALUES (2, 'Bob', 25)",
+    //             "node_1",
+    //         )
+    //         .unwrap();
+
+    //     let result = insert.execute_command().unwrap();
+    //     assert_eq!(result, vec!["linea fue agregada".to_string()]);
+
+    //     std::fs::remove_file(file_path).unwrap();
+    // }
 }

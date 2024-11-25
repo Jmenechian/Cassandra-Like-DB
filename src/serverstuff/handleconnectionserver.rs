@@ -36,8 +36,8 @@ fn handle_message_query(
             return Err(MyError::LockingError(_error));
         }
     };
-    let mut query = Query::new(query.query.clone(), node.server_ip.clone());
-    let msg = match query.execute() {
+    let mut query: Query = Query::new(query.query.clone(), node.server_ip.clone());
+    let msg = match query.execute(&node.encryption_key) {
         Ok(s) => {
             if show {
                 println!("RESULTADO, TABLA: {:?}", s);
@@ -87,7 +87,7 @@ fn handle_message_read_repair(
 
     let mut _query = Query::new(query_str, node.write().unwrap().server_ip.clone());
 
-    let rows_to_update = _query.execute()?;
+    let rows_to_update = _query.execute(&node.write().unwrap().encryption_key)?;
 
     let (ap, place, date, flight, stat) = (0, 1, 2, 3, 4);
 
@@ -108,7 +108,7 @@ fn handle_message_read_repair(
                     query.table, row_vec[stat], row_vec[ap], column, row_vec[place], row_vec[date], row_vec[flight]);
             println!("\nRR   {}\n", query_str);
             let mut query = Query::new(query_str, node.read().unwrap().server_ip.clone());
-            query.execute()?;
+            query.execute(&node.write().unwrap().encryption_key)?;
         } else {
             let query_str = format!(
                 "INSERT INTO {} (airport, {}, date, flight, status) VALUES ({}, {}, {}, {}, {})",
@@ -122,7 +122,7 @@ fn handle_message_read_repair(
             );
             println!("\nRR   {}\n", query_str);
             let mut query = Query::new(query_str, node.read().unwrap().server_ip.clone());
-            query.execute()?;
+            query.execute(&node.write().unwrap().encryption_key)?;
         }
     }
 
@@ -136,7 +136,7 @@ fn handle_message_read_repair(
             );
             println!("\nRR   {}\n", query_str);
             let mut query = Query::new(query_str, node.read().unwrap().server_ip.clone());
-            query.execute()?;
+            query.execute(&node.write().unwrap().encryption_key)?;
         }
     }
     Ok(())

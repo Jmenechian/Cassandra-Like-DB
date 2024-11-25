@@ -5,6 +5,7 @@ use crate::cql::{filter::Filter, where_clause::WhereClause};
 use crate::my_errors::MyError;
 use crate::utils::*;
 use std::{fs::File, io::BufRead};
+use aes_gcm::{Aes256Gcm, aead::Key};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Delete {
@@ -61,7 +62,7 @@ impl Delete {
     }
 
     // Ejecuta la consulta
-    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
+    pub fn execute_command(&mut self, encryption_key: &Key<Aes256Gcm>) -> Result<Vec<String>, MyError> {
         let full_path = get_file_path(TABLE_PATH, &self.table);
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let col_names = get_file_headers(&mut rdr)?;

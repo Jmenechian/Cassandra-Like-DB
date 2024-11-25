@@ -4,6 +4,7 @@ use crate::cql::insert::Insert;
 use crate::cql::select::Select;
 use crate::cql::update::Update;
 use crate::my_errors::MyError;
+use aes_gcm::{Aes256Gcm, aead::Key};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum QType {
@@ -31,14 +32,15 @@ impl Query {
         }
     }
 
-    pub fn execute(&mut self) -> Result<Vec<String>, MyError> {
-        println!("En execute Query");
+    /// Ejectua la query
+    pub fn execute(&mut self, encryption_key: &Key<Aes256Gcm>,) -> Result<Vec<String>, MyError> {
+        println!("Ejecutando Query: {}", self.query);
         self.get_type();
         match self.parse_query() {
             Ok(_) => (),
             Err(e) => return Err(e),
         }
-        self.execute_command()
+        self.execute_command(encryption_key)
     }
 
     fn get_type(&mut self) {
@@ -103,16 +105,15 @@ impl Query {
         }
     }
 
-    // Delegates the command execution
-    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
-        println!("\n - Query: {:?} \n", self.qtype);
+    // Delega la ejecución del comando
+    pub fn execute_command(&mut self, encryption_key: &Key<Aes256Gcm>) -> Result<Vec<String>, MyError> {
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to execute".to_string())),
-            QType::Select(select) => select.execute_command(),
-            QType::Update(update) => update.execute_command(),
-            QType::Insert(insert) => insert.execute_command(),
-            QType::Delete(delete) => delete.execute_command(),
-            QType::CreateTable(create_table) => create_table.execute_command(),
+            QType::Select(select) => select.execute_command(encryption_key),
+            QType::Update(update) => update.execute_command(encryption_key),
+            QType::Insert(insert) => insert.execute_command(encryption_key),
+            QType::Delete(delete) => delete.execute_command(encryption_key),
+            QType::CreateTable(create_table) => create_table.execute_command(encryption_key),
         }
     }
 

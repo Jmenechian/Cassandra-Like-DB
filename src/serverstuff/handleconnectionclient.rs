@@ -30,19 +30,9 @@ fn handle_message_query(
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
-    // cambiamos la query en un insert/update con el timestamp
-    // let mut query = Query::check(querymessage.query);
-
-    //idea:
-    // if query.get_type == insert,update
-    // insert -> (airport, destination ... pusheas timestamp aca)
-    // values.push UTC::now().to_string()
-
-    // para update agregas el timestamp durante el set y listo supongo
-
     let table = match send_query_to_nodes(
         node,
-        querymessage.query, //.clone tenia antes nose  <=== aca metes la nueva query
+        querymessage.query,
         querymessage.consistency,
         show,
     ) {
@@ -216,7 +206,7 @@ pub fn send_query_to_nodes(
 
     // Si es un create table, lo ejecuto y devuelvo vacio
     if query.query.contains("CREATE TABLE") {
-        match query.execute() {
+        match query.execute(&node.encryption_key) {
             Ok(_) => return Ok(vec!["Se crean las tablas.".to_string()]),
             Err(e) => {
                 let _error = format!("Error al procesar la query: {:?}", e);

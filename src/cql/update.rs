@@ -7,6 +7,7 @@ use crate::my_errors::MyError;
 use crate::utils::*;
 use std::collections::HashMap;
 use std::io::BufRead;
+use aes_gcm::{Aes256Gcm, aead::Key};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Update {
@@ -135,8 +136,7 @@ impl Update {
     }
 
     // Executes the query
-    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
-        println!("{:?}", self);
+    pub fn execute_command(&mut self, encryption_key: &Key<Aes256Gcm>) -> Result<Vec<String>, MyError> {
         let mut rdr = get_reader(TABLE_PATH, &self.table)?;
         let col_names = get_file_headers(&mut rdr)?;
         self.check_columns_are_valid(&col_names)?;

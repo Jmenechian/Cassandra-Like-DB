@@ -65,6 +65,11 @@ pub const GREATER_THAN: i32 = 1;
 pub const LESS_THAN: i32 = 2;
 pub const NOT_NUMBER: i32 = 3;
 
+// encriptacion at-rest
+pub const ENCRIPT_DATA: bool = true; // Para testeo
+pub static KEYS_FILE:&str = "encryption_keys";
+
+
 // OPCODE
 // 0x00    ERROR
 // 0x01    STARTUP

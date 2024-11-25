@@ -1,4 +1,5 @@
-use crate::config::{self, PORTS_FILE};
+use crate::config::{self, PORTS_FILE, TABLE_PATH, KEYS_FILE};
+use crate::utils::{get_reader, append_row};
 use crate::cql::query::Query;
 use crate::messagestuff::{message::*, message_server::gossipmessage::*};
 use crate::my_errors::*;
@@ -17,6 +18,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
+use aes_gcm::{Aes256Gcm, aead::Key, aead::OsRng, aead::KeyInit};
 
 #[derive(Debug, Clone, PartialEq, Copy)]
 #[repr(u8)]
@@ -45,6 +47,7 @@ pub struct Node {
     pub file_path: String,
     pub nodes_path: String,
     pub neighbors: Vec<NeighborNode>, // todos los otros nodos
+    pub encryption_key: Key<Aes256Gcm>, // Clave simetrica de encriptacion
 }
 
 impl Node {
@@ -57,6 +60,7 @@ impl Node {
             file_path: "".to_string(),
             nodes_path: "nodes.txt".to_string(),
             neighbors: vec![], // todos los nodos que estan en el ring
+            encryption_key: Aes256Gcm::generate_key(OsRng), // llave random
         }
     }
 
@@ -95,8 +99,24 @@ impl Node {
 
     // Proceso la query y devuelve la tabla en formato String
     pub fn process_query(&self, query: &mut Query) -> Result<Vec<String>, MyError> {
-        query.execute()
+        query.execute(&self.encryption_key)
     }
+
+    // pub fn get_encryption_key(&self) -> Key<Aes256Gcm> {
+    //     let rdr: BufReader<File> = get_reader(TABLE_PATH, KEYS_FILE)?;
+    //     let key: Key<Aes256Gcm>;
+    //     for line in rdr.lines() {
+    //         let line = line?;
+    //         let parts = line.split(",").collect();
+    //         if parts[0] == self.puerto {
+    //             key = Key::from_slice(parts[1..]);
+    //             return key;
+    //         }
+    //     }
+    //     key = Aes256Gcm::generate_key(OsRng);
+    //     append_row(TABLE_PATH, KEYS_FILE, &vec![self.puerto, key.as_slice().to_string()]);
+    //     key
+    // }
 }
 
 // Lee los puertos del archivo
