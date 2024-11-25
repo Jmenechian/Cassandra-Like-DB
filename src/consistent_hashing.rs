@@ -1,17 +1,16 @@
-// El hashing consistente permite la distribución de datos en un clúster,
-// minimizando la reorganización cuando se añaden o eliminan nodos.
-//
-// El hashing consistente particiona los datos basándose en la clave de partición.
-
 use crate::config::RING_SIZE;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use fasthash::murmur;
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
-// Estructura que guarda los nodos miembros de un anillo y el factor de replicación.
-// Anillo de nodos: Se utiliza un arbol binario que permite encontrar los nodos en el anillo, se guarda:
-// el hash de la Adress (IP:puerto) del nodo normalizada por la cantidad de nodos, y el nodo.
+/// El hashing consistente permite la distribución de datos en un clúster,
+/// minimizando la reorganización cuando se añaden o eliminan nodos.
+//
+/// El hashing consistente particiona los datos basándose en la clave de partición.
+/// Estructura que guarda los nodos miembros de un anillo y el factor de replicación.
+/// Anillo de nodos: Se utiliza un arbol binario que permite encontrar los nodos en el anillo, se guarda:
+/// el hash de la Adress (IP:puerto) del nodo normalizada por la cantidad de nodos, y el nodo.
 pub struct ConsistentHash<NeighborNode> {
     ring: BTreeMap<usize, NeighborNode>, // Anillo de nodos con su hash
     rf: usize,                           // Cantidad de réplicas
@@ -27,15 +26,15 @@ impl ConsistentHash<NeighborNode> {
         }
     }
 
-    // Función para calcular el hash de un nodo
-    // Aplicamos el hash a la dirección del nodo y normalizamos este valor en el anillo de nodos.
-    // Esto nos da la posicion del nodo en el anillo.
+    /// Función para calcular el hash de un nodo
+    /// Aplicamos el hash a la dirección del nodo y normalizamos este valor en el anillo de nodos.
+    /// Esto nos da la posicion del nodo en el anillo.
     pub fn hash(&self, key: &str) -> usize {
         let tocken: usize = murmur::hash32(key).try_into().unwrap_or(0);
         tocken % self.total
     }
 
-    // Agregar un nodo al anillo
+    /// Agregar un nodo al anillo
     pub fn add_node(&mut self, node: NeighborNode) {
         //self.total += 1;
         let mut hash = self.hash(&node.server_ip);
@@ -45,7 +44,7 @@ impl ConsistentHash<NeighborNode> {
         self.ring.insert(hash, node.clone());
     }
 
-    // Agregar un nodo al anillo
+    /// Agregar un nodo al anillo
     pub fn add_nodes(&mut self, nodes: Vec<NeighborNode>) {
         //self.total += nodes.len();
         for node in nodes {
@@ -57,7 +56,7 @@ impl ConsistentHash<NeighborNode> {
         }
     }
 
-    // Eliminar un nodo del anillo
+    /// Eliminar un nodo del anillo
     pub fn remove_node(&mut self, node: &NeighborNode) {
         for i in 0..self.rf {
             let hash = self.hash(&format!("{}-{}", self.hash(&node.server_ip), i));
@@ -65,13 +64,13 @@ impl ConsistentHash<NeighborNode> {
         }
     }
 
-    // Encontrar los nodos responsables de una clave
-    // Clave: string con los valores que se buscan en la query que corresponden a las columnas de partitions, separados por coma.
-    // Ejemplo: en las tablas de Estados de Vuelo: "Aeropuerto,Date"
+    /// Encontrar los nodos responsables de una clave
+    /// Clave: string con los valores que se buscan en la query que corresponden a las columnas de partitions, separados por coma.
+    /// Ejemplo: en las tablas de Estados de Vuelo: "Aeropuerto,Date"
     //
-    // Para encontrar los nodos propietarios de una clave primero aplicamos un hash a esa clave para generar un token,
-    // luego recorremos el anillo hasta que encontramos tres nodos distintos (si RF=3), momento en el cual hemos encontrado
-    // todas las réplicas de esa clave.
+    /// Para encontrar los nodos propietarios de una clave primero aplicamos un hash a esa clave para generar un token,
+    /// luego recorremos el anillo hasta que encontramos tres nodos distintos (si RF=3), momento en el cual hemos encontrado
+    /// todas las réplicas de esa clave.
     pub fn get_nodes(&self, key: &str) -> Vec<NeighborNode> {
         //caso borde, solo 2 nodos conectados
         let mut nodes: Vec<NeighborNode> = vec![];

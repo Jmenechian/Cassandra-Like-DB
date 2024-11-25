@@ -1,26 +1,3 @@
-// Representa las consultas del tipo CREATE TABLE
-// Aca se parsea la consulta y se ejecuta
-// Asumimos :
-//          - Palabras claves CQL en mayusculas
-//          - No se pueden crear tablas con nombres que contengan espacios
-//          - No se pueden crear tablas con nombres de columnas que contengan espacios
-//          - PRIMARY KEY se setea al final, despues de todas las columnas
-//          - Nodo que habla con cliente crea las 8 tablas, hay un solo archivo de metadata
-//          - Tira error si tabla ya existe
-//
-// Ejemplo:
-// CREATE TABLE application_logs (
-//     id                    INT,
-//     app_name              VARCHAR,
-//     hostname              VARCHAR,
-//     log_datetime          TIMESTAMP,
-//     env                   VARCHAR,
-//     log_level             VARCHAR,
-//     log_message           TEXT,
-//     PRIMARY KEY ((app_name,env), hostname, log_datetime)
-//   )
-//   WITH CLUSTERING ORDER BY (hostname ASC, log_datetime DESC);
-
 use crate::config::{RING_SIZE, TABLE_PATH};
 use crate::errors::my_errors::MyError;
 use std::collections::HashMap;
@@ -28,6 +5,28 @@ use std::fs::File;
 use std::io::Write;
 
 #[derive(Debug, PartialEq, Eq)]
+/// Representa las consultas del tipo CREATE TABLE
+/// Aca se parsea la consulta y se ejecuta
+/// Asumimos :
+///          - Palabras claves CQL en mayusculas
+///          - No se pueden crear tablas con nombres que contengan espacios
+///          - No se pueden crear tablas con nombres de columnas que contengan espacios
+///          - PRIMARY KEY se setea al final, despues de todas las columnas
+///          - Nodo que habla con cliente crea las 8 tablas, hay un solo archivo de metadata
+///          - Tira error si tabla ya existe
+///
+/// Ejemplo:
+/// CREATE TABLE application_logs (
+///     id                    INT,
+///     app_name              VARCHAR,
+///     hostname              VARCHAR,
+///     log_datetime          TIMESTAMP,
+///     env                   VARCHAR,
+///     log_level             VARCHAR,
+///     log_message           TEXT,
+///     PRIMARY KEY ((app_name,env), hostname, log_datetime)
+///   )
+///   WITH CLUSTERING ORDER BY (hostname ASC, log_datetime DESC);
 pub struct CreateTable {
     pub if_not_exists: bool, // si contiene [IF NOT EXISTS] en la query
     pub table_name: String,
@@ -198,7 +197,7 @@ impl CreateTable {
         format
     }
 
-    // Se ejecuta la query
+    /// Se ejecuta la query
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         for i in 1..=RING_SIZE {
             // Creo nueva tabla por nodo
