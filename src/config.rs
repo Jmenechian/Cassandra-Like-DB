@@ -5,31 +5,45 @@ pub static KEY_FILE: &str = "src/config_aes/aes_key.bin";
 pub static POOL_NUMBER: usize = 5;
 
 pub static SERVER_PORT: &str = "7000";
-
 pub static CLIENT_PORT: &str = "9042";
 
 pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Hashing.
 
-pub static TABLE_PATH: &str = "src/tables";
-
-pub static TABLE_ORIGIN_NAME: &str = "origin";
-
-pub static TABLE_DESTINATION_NAME: &str = "destination";
-
-pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool
-
 pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 
-//GUI
+pub static TABLE_PATH: &str = "src/tables";
+pub static TABLE_ORIGIN_NAME: &str = "origin";
+pub static TABLE_DESTINATION_NAME: &str = "destination";
+pub static TABLE_FLIGHT_SIMULATOR: &str = "flights_in_progress";
 
+// SIMULADOR DE VUELOS:
+pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool.
+pub static FLIGHT_STEP: f32 = 10.0; // Cantidad de pasos que da un avión hasta la mitad del vuelo.
+pub static CRUISING_SPEED: f32 = 840.0; // Velocidad crucero de un avion, en km/h
+pub static STEPS_AT_CRUISING_SPEED: f32 = 2.0; // Mitad de pasos en los que el avion viajara a la velocidad crucero.
+pub static CRUISING_HEIGHT: f32 = 10000.0; // Altura crucero de 10mil metros.
+
+//GUI:
 pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";
-
 pub static MAP_PATH: &str = "src/gui/assets/map.png";
 pub static PLANE_PATH: &str = "src/gui/assets/air-plane.png";
+pub static TABLE_USERS_NAME: &str = "users";
 
 pub static RADIUS_CLICK_AIRPORT: f32 = 15.0; // Radio del botón
 pub static RADIUS_PAINT_AIRPORT: f32 = 5.0; //
 pub static PLANE_SIZE: f32 = 50.0;
+
+//GUI OPTIONAL
+pub static AIRPORT: i8 = 0;
+pub static ORIGINDESTINATION: i8 = 1;
+pub static AIRPORT2: i8 = 2;
+pub static DATE: i8 = 3;
+pub static FLIGHT: i8 = 4;
+pub static STATUS: i8 = 5;
+pub static SELECT: i8 = 6;
+pub static UPDATE: i8 = 7;
+pub static INSERT: i8 = 8;
+pub static DELETE: i8 = 9;
 
 // OPCODE
 pub const QUERY: u8 = 0x07;

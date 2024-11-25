@@ -1,8 +1,8 @@
 // Coleccion de traits y funciones que usan los otros modulos de mensajeria.
 
+use crate::errors::my_errors::MyError;
 use crate::messagestuff::message_cql::cqlenvelope::IntoEnvelope;
 use crate::messagestuff::message_server::serverpacket::IntoPacket;
-use crate::my_errors::MyError;
 use std::{io::Write, net::TcpStream};
 pub trait Serialize: std::fmt::Debug {
     fn to_bytes(&self) -> Vec<u8>;

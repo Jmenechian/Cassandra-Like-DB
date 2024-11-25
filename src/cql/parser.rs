@@ -4,7 +4,7 @@
 use crate::cql::lexer::*;
 use crate::cql::relation::Relation;
 use crate::cql::where_clause::WhereClause;
-use crate::my_errors::MyError;
+use crate::errors::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub struct Pos {

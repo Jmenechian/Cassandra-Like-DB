@@ -1,9 +1,7 @@
 pub mod config;
 pub mod consistent_hashing;
-pub mod my_errors;
-pub mod neighbor_node;
-pub mod nodo;
 pub mod utils;
+
 pub mod cql {
     pub mod create_table;
     pub mod delete;
@@ -17,14 +15,21 @@ pub mod cql {
     pub mod update;
     pub mod where_clause;
 }
+
 pub mod clientstuff {
     pub mod client_cql;
 }
+
 pub mod serverstuff {
     pub mod handleconnectionclient;
     pub mod handleconnectiongossip;
     pub mod handleconnectionserver;
+    pub mod neighbor_node;
+    pub mod node;
+    pub mod node_initializer;
+    pub mod node_status;
 }
+
 pub mod messagestuff {
     pub mod message;
     pub mod encrypt;
@@ -49,23 +54,30 @@ pub mod messagestuff {
 }
 
 pub use cql::query::Query;
-pub use nodo::Node;
 
 pub use clientstuff::client_cql;
 pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
 
 pub use consistent_hashing::ConsistentHash;
-pub use neighbor_node::NeighborNode;
 
-//GUI
 pub mod gui {
     pub mod app;
-    pub mod painted {
-        pub mod airport;
-        pub mod airport_coordinates;
-        pub mod draw_flights;
-        pub mod draw_lines;
-        pub mod flight;
-    }
+    pub mod connection_server;
+    pub mod user;
 }
-//pub use gui::app::MapApp;
+
+pub mod simulators {
+    pub mod airport;
+    pub mod airport_coordinates;
+    pub mod flight;
+    pub mod flight_simulator;
+    pub mod flight_status;
+    pub mod queries;
+    pub mod user_input;
+}
+
+pub mod errors {
+    pub mod airport_errors;
+    pub mod my_errors;
+    pub mod simulator_errors;
+}

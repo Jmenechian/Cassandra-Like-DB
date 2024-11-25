@@ -22,7 +22,7 @@
 //   WITH CLUSTERING ORDER BY (hostname ASC, log_datetime DESC);
 
 use crate::config::{RING_SIZE, TABLE_PATH};
-use crate::my_errors::MyError;
+use crate::errors::my_errors::MyError;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -205,7 +205,6 @@ impl CreateTable {
             let path = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
             let mut f = File::create_new(path).map_err(|e| MyError::FileError(e.to_string()))?;
 
-            println!("columns:{:?}", self.columns);
             f.write_all(self.columns.join(",").as_bytes())
                 .map_err(|e| MyError::FileError(e.to_string()))?;
             writeln!(f).map_err(|e| MyError::FileError(e.to_string()))?;

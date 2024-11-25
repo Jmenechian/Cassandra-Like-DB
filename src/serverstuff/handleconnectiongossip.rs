@@ -1,18 +1,15 @@
-// Handler que se encarga de manejar el servidor cuando se comunica por Gossip.
-//
-// La funcion principal es `handle_connection_gossip` que recibe un nodo, un stream y un booleano.
-// El resto son funciones auxiliares.
-
+use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
 use crate::messagestuff::{
     message::*,
     message_server::{serverpacket::Packet, serverpacket::ServerMessage},
 };
 use crate::my_errors::*;
-use crate::nodo::try_connect;
-use crate::nodo::Node;
-use crate::nodo::Status;
-use crate::NeighborNode;
+use crate::serverstuff::nodo::Status;
+
+use crate::serverstuff::neighbor_node::NeighborNode;
+use crate::serverstuff::node::Node;
+use super::node_initializer::try_connect;
 use rand::seq::SliceRandom;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
@@ -39,7 +36,7 @@ fn reenviar_gossip(
             }
             let gossip_msg = GossipMessage {
                 ip: n.server_ip.clone(),
-                estado: Status::Disconnected,
+                status: Status::Disconnected,
                 ttl: 5_u8,
             };
             reenviar_gossip(node, gossip, show)?;
@@ -49,6 +46,9 @@ fn reenviar_gossip(
         Err(MyError::Error("No tengo vecinos conectados".to_string()))
     }
 }
+
+use super::node_initializer::try_connect;
+
 
 fn handle_message_gossip(
     node: Arc<RwLock<Node>>,
@@ -65,6 +65,7 @@ fn handle_message_gossip(
         }
     };
     let ip: String = gossip.ip.clone();
+
     let port = match ip.chars().last() {
         Some(c) => c,
         None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
@@ -90,6 +91,8 @@ fn handle_message_gossip(
     Ok(())
 }
 
+/// Handler que se encarga de manejar el servidor cuando se comunica por Gossip.
+/// Funcion principal que recibe un nodo, un stream y un booleano.
 pub fn handle_connection_gossip(
     node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
@@ -122,6 +125,7 @@ pub fn handle_connection_gossip(
     Ok(())
 }
 
+/// Nos conectamos con un nodo al azar y devolvemos el stream.
 pub fn connect_to_random_gossip(
     ports: Vec<u16>,
     my_port: &String,

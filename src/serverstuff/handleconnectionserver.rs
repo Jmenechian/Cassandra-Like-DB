@@ -1,10 +1,6 @@
-// Handler que se encarga de manejar la conexion del servidor con si mismo.
-//
-// La funcion principal es `handle_connection_server` que recibe un nodo, un stream y un booleano.
-// El resto son funciones auxiliares.
-
 use crate::config::TABLE_ORIGIN_NAME;
 use crate::cql::query::Query;
+use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::message_server::resultservermessage::IntoResultServerMessage;
 use crate::messagestuff::message_server::resultvoidservermsg::ResultVoidServerMessage;
@@ -15,8 +11,7 @@ use crate::messagestuff::{
         serverpacket::Packet, serverpacket::ServerMessage,
     },
 };
-use crate::my_errors::*;
-use crate::nodo::Node;
+use crate::serverstuff::node::Node;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
@@ -36,8 +31,9 @@ fn handle_message_query(
             return Err(MyError::LockingError(_error));
         }
     };
+
     let mut query = Query::new(query.query.clone(), node.server_ip.clone());
-    let msg = match query.execute() {
+    let msg = match node.process_query(&mut query) {
         Ok(s) => {
             if show {
                 println!("RESULTADO, TABLA: {:?}", s);
@@ -69,22 +65,30 @@ fn get_primary_key(row: &str) -> Vec<String> {
     primary_keys
 }
 
-// Hay que revisar LOOK_NEWER para qu devuelva por FILAS y no por nodos
-// airport,destination,date,flight,status,timestamp
 fn handle_message_read_repair(
     node: Arc<RwLock<Node>>,
     query: ReadRepairMessage,
 ) -> Result<(), MyError> {
+    if query.rows_to_keep.is_empty() {
+        return Ok(());
+    }
     let primary_keys = get_primary_key(&query.rows_to_keep[0]);
 
     let query_str = format!(
-        "SELECT * FROM {} WHERE airport = {} AND date = {} AND flight = {}",
-        query.table, primary_keys[0], primary_keys[1], primary_keys[2]
+        "SELECT * FROM {} WHERE airport = {} AND date = {}",
+        query.table, primary_keys[0], primary_keys[1]
     );
 
-    let mut _query = Query::new(query_str, node.read().unwrap().server_ip.clone());
+    let node = match node.read() {
+        Ok(n) => n,
+        Err(e) => {
+            return Err(MyError::LockingError(e.to_string()));
+        }
+    };
 
-    let rows_to_update = _query.execute()?;
+    let mut _query = Query::new(query_str, node.server_ip.clone());
+
+    let rows_to_update = node.process_query(&mut _query)?;
 
     let (ap, place, date, flight, stat) = (0, 1, 2, 3, 4);
 
@@ -97,13 +101,15 @@ fn handle_message_read_repair(
     for row in &query.rows_to_keep {
         let row_vec = row.split(",").collect::<Vec<&str>>();
 
+        println!("rows_to_update: {:?}", rows_to_update);
+
         if contains_row(&rows_to_update, row) {
             let query_str = format!(
-                    "UPDATE {} SET status = {} WHERE airport = {} AND {} = {} AND date = {} AND flight = {} ",
+                    "UPDATE {} SET status = {} WHERE airport = {} AND {} = {} AND date = {} AND flight = {}",
                     query.table, row_vec[stat], row_vec[ap], column, row_vec[place], row_vec[date], row_vec[flight]);
             println!("\nRR   {}\n", query_str);
-            let mut query = Query::new(query_str, node.read().unwrap().server_ip.clone());
-            query.execute()?;
+            let mut query = Query::new(query_str, node.server_ip.clone());
+            node.process_query(&mut query)?;
         } else {
             let query_str = format!(
                 "INSERT INTO {} (airport, {}, date, flight, status) VALUES ({}, {}, {}, {}, {})",
@@ -116,8 +122,8 @@ fn handle_message_read_repair(
                 row_vec[stat]
             );
             println!("\nRR   {}\n", query_str);
-            let mut query = Query::new(query_str, node.read().unwrap().server_ip.clone());
-            query.execute()?;
+            let mut query = Query::new(query_str, node.server_ip.clone());
+            node.process_query(&mut query)?;
         }
     }
 
@@ -130,29 +136,27 @@ fn handle_message_read_repair(
                 query.table, row_vec[ap], column, row_vec[place], row_vec[date], row_vec[flight]
             );
             println!("\nRR   {}\n", query_str);
-            let mut query = Query::new(query_str, node.read().unwrap().server_ip.clone());
-            query.execute()?;
+            let mut query = Query::new(query_str, node.server_ip.clone());
+            node.process_query(&mut query)?;
         }
     }
     Ok(())
 }
 
 fn contains_row(rows: &Vec<String>, row: &str) -> bool {
-    let mut vec_row = row.split(",").collect::<Vec<&str>>();
-    vec_row.pop(); //remove timestamp
-
+    let row_to_compare = get_primary_key(row);
     for r in rows {
-        let mut vec_r = r.split(",").collect::<Vec<&str>>();
-        vec_r.pop();
-        println!("vec_r: {:?} vec_row: {:?}", vec_r, vec_row);
+        let keep_row = get_primary_key(r);
 
-        if vec_r == vec_row {
+        if row_to_compare == keep_row {
             return true;
         }
     }
     false
 }
 
+/// Handler que se encarga de manejar la conexion del servidor con si mismo.
+/// Funcion principal que recibe un nodo, un stream y un booleano.
 pub fn handle_connection_server(
     node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
@@ -164,10 +168,8 @@ pub fn handle_connection_server(
                 println!("S   El packet recibido es: {:?}", packet);
             }
             match packet.body {
-                ServerMessage::Query(query) => {
-                    handle_message_query(node.clone(), query, stream, show)
-                }
-                ServerMessage::ReadRepair(msg) => handle_message_read_repair(node.clone(), msg),
+                ServerMessage::Query(query) => handle_message_query(node, query, stream, show),
+                ServerMessage::ReadRepair(msg) => handle_message_read_repair(node, msg),
                 _ => {
                     let _error = "Error entre server y servers".to_string();
                     if show {

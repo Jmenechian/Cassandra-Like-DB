@@ -6,12 +6,12 @@
 // - `CqlMessage`: Contiene al mensaje en si
 
 use crate::config;
+use crate::errors::my_errors::MyError;
 use crate::messagestuff::{
     message::*, message_cql::errormessage::ErrorMessage, message_cql::querymessage::QueryMessage,
     message_cql::resultmessage::ResultMessage,
     encrypt::*,
 };
-use crate::my_errors::MyError;
 use std::{io::Read, net::TcpStream};
 
 #[derive(Copy, Clone, Debug)]

@@ -1,12 +1,12 @@
+use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::serverpacket::*;
-use crate::my_errors::MyError;
-use crate::nodo::Status;
+use crate::serverstuff::node_status::Status;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct GossipMessage {
     pub ip: String,
-    pub estado: Status,
+    pub status: Status,
     pub ttl: u8,
 }
 
@@ -24,7 +24,7 @@ impl Serialize for GossipMessage {
     fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&string_to_bytes(self.ip.clone()));
-        bytes.extend_from_slice(&byte_to_byte(self.estado as u8));
+        bytes.extend_from_slice(&byte_to_byte(self.status as u8));
         bytes.extend_from_slice(&byte_to_byte(self.ttl));
         bytes
     }
@@ -40,7 +40,7 @@ impl Serialize for GossipMessage {
         Ok((
             GossipMessage {
                 ip: _ip,
-                estado: _status,
+                status: _status,
                 ttl: _ttl,
             },
             resto,

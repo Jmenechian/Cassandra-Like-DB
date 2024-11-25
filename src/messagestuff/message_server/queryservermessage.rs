@@ -1,6 +1,6 @@
+use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_server::serverpacket::*;
-use crate::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
 pub struct QueryServerMessage {
