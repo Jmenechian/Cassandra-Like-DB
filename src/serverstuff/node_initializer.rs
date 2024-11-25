@@ -1,4 +1,4 @@
-use crate::config::PORTS_FILE;
+use crate::config::{self, PORTS_FILE, TABLE_PATH, KEYS_FILE};
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::{message::*, message_server::gossipmessage::*};
 use crate::serverstuff::neighbor_node::NeighborNode;
@@ -18,6 +18,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
+use aes_gcm::{Aes256Gcm, aead::Key, aead::OsRng, aead::KeyInit};
 
 /// Funcion de inicializacíon, donde se crea el nodo indicado y se escucha y responde por los puertos correspondientes.
 pub fn node_initialize(port: String) -> Result<(), MyError> {
@@ -87,16 +88,16 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
 fn read_ports_from_file(filename: &str) -> Result<Vec<u16>, MyError> {
     let file = match File::open(filename) {
         Ok(f) => f,
-        Err(e) => return Err(MyError::FileError(e.to_string())),
+        Err(e) => return Err(MyError::FileError(format!("Error 1 {:?}, en archivo: {:?}, dir: {:?}",e, filename, std::env::current_dir()))),
     };
     let reader = BufReader::new(file);
     reader
         .lines()
         .map(|l| {
-            let l_string = l.map_err(|e| MyError::FileError(e.to_string()))?;
+            let l_string = l.map_err(|e| MyError::FileError(format!("Error 2 {:?}",e)))?;
             l_string
                 .parse::<u16>()
-                .map_err(|e| MyError::FileError(e.to_string()))
+                .map_err(|e| MyError::FileError(format!("Error 3 {:?}",e)))
         })
         .collect()
 }

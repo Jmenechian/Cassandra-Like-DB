@@ -1,12 +1,15 @@
 // Funciones auxiliares para el manejo de archivos y strings
 
-use crate::errors::my_errors::MyError;
+use crate::{config::ENCRIPT_DATA, errors::my_errors::MyError};
 use std::{
-    fs::{File, OpenOptions},
-    io::{BufRead, BufReader, Seek, SeekFrom, Write},
+    fs::{File, OpenOptions, remove_file},
+    io::{BufRead, BufReader, Seek, SeekFrom, Write, Read},
     iter::Peekable,
     sync::{Arc, RwLock},
 };
+
+use base64::{engine::general_purpose, Engine};
+use crate::messagestuff::encrypt::*;
 
 /// Returns the full quote inside ' 'S
 pub fn get_full_quote(parts: &[&str], index: usize) -> String {
@@ -96,7 +99,14 @@ fn open_file(path: String) -> Result<File, MyError> {
 pub fn get_file_headers<R: std::io::BufRead>(rdr: &mut R) -> Result<Vec<String>, MyError> {
     let mut headers_line = String::new();
     rdr.read_line(&mut headers_line)
-        .map_err(|e| MyError::FileError(e.to_string()))?;
+        .map_err(|e| MyError::FileError("Error n get_File_headers".to_string()))?;
+
+    if ENCRIPT_DATA {
+        println!("desecrypting headers");
+        let decrypt_header: Vec<u8> = decrypt_body_aes128(headers_line.as_bytes().to_vec())?;
+        headers_line = String::from_utf8(decrypt_header).map_err(|e| MyError::FileError(e.to_string()))?;
+        println!("termine desencripting headers");
+    }
 
     let headers: Vec<String> = headers_line
         .trim()
@@ -124,12 +134,15 @@ pub fn write_rows(path: &str, table_name: &str, records: &Vec<Vec<String>>) -> R
     Ok(())
 }
 
+
 /// Appends row to file
 /// Expects file to end with a newline
 pub fn append_row(file: &mut File, records: &[String]) -> Result<(), MyError> {
     writeln!(file, "{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }
+
+
 
 /// Apppends row to already opened file
 /// Expects file to end with a newline
@@ -186,3 +199,4 @@ fn empty_table(table: &File) -> Result<(), MyError> {
         .map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }
+

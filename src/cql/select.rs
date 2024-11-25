@@ -1,11 +1,12 @@
 // Representa las consultas del tipo SELECT
 // Aca se parsea la consulta y se ejecuta
-
+use crate::config::{TABLE_PATH, ENCRIPT_DATA};
 use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
 use std::io::BufRead;
+use aes_gcm::{Aes256Gcm, aead::Key};
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
@@ -108,17 +109,40 @@ impl Select {
         Ok(())
     }
 
+
+    // fn execute_command_encrypted(&self, encryption_key: &Key<Aes256Gcm>) -> Result<Vec<String>, MyError> {
+    //     let mut contents: Vec<u8> = Vec::new();
+    //     open_encrypted_file(TABLE_PATH, &self.table, &mut contents)?;
+    //     let parts: Vec<&[u8]> = contents.split(|&byte| byte == b'\n').collect();
+
+    //     let col_names = decrypt_row(parts[0], encryption_key)?;
+    //     let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
+        
+    //     let mut tabla: Vec<String> = Vec::new();
+    //     for line in parts.iter().skip(1) {
+    //         let row = decrypt_row(line, encryption_key)?;
+    //         if filter.filter(&row) {
+    //             tabla.push(row.join(","));
+    //         }
+    //     }
+    //   Ok(tabla)
+    // }
+
     /// Se ejecuta la query sobre la tabla.
     pub fn execute_command(
         &mut self,
         path_table: Arc<RwLock<String>>,
     ) -> Result<Vec<String>, MyError> {
+        
         let mut rdr = get_reader_read(&path_table)?;
+        // if ENCRIPT_DATA {
+        //     return self.execute_command_encrypted(encryption_key);
+        // }
+        
         let col_names = get_file_headers(&mut rdr)?;
-
-        let mut tabla: Vec<String> = Vec::new();
         let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
 
+        let mut tabla: Vec<String> = Vec::new();
         for line in rdr.lines() {
             let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
             let row: Vec<String> = line

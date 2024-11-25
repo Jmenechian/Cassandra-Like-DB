@@ -1,8 +1,11 @@
-use crate::config::{RING_SIZE, TABLE_PATH};
+use crate::config::{RING_SIZE, TABLE_PATH, ENCRIPT_DATA};
 use crate::errors::my_errors::MyError;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
+use aes_gcm::{Aes256Gcm, aead::Key, aead::OsRng, aead::KeyInit};
+use crate::utils::*;
+use crate::messagestuff::encrypt::*;
 
 #[derive(Debug, PartialEq, Eq)]
 /// Representa las consultas del tipo CREATE TABLE
@@ -66,8 +69,8 @@ impl CreateTable {
 
         self.if_not_exists = query.contains("IF NOT EXISTS");
 
-        // por ahora no acepta nombre de tablas con espacios
-        // por ahora no acepta nombres de columnas con espacios
+        // no acepta nombre de tablas con espacios
+        // no acepta nombres de columnas con espacios
         if self.if_not_exists {
             self.table_name = parts[5].to_string().replace("'", "");
             self.column_type = self.set_columns(parts[6..].join(" "));
@@ -112,7 +115,6 @@ impl CreateTable {
     }
 
     fn set_primary_key(&self, primary_key_str: String) -> (Vec<String>, Vec<String>) {
-        //  WITH CLUSTERING ORDER BY
         let mut parts: Vec<&str> = primary_key_str.split_whitespace().collect();
         if let Some(ob_index) = parts.iter().position(|&x| x.contains("WITH")) {
             parts = parts[..ob_index].to_vec();
@@ -197,8 +199,22 @@ impl CreateTable {
         format
     }
 
-    /// Se ejecuta la query
-    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
+    fn create_encrypted_tables(&mut self) -> Result<(), MyError> {
+        // let encryption_key=  Aes256Gcm::generate_key(OsRng); 
+        for i in 1..=RING_SIZE {
+            // Creo nueva tabla por nodo
+            let table_name = format!("{}/{}_{}.csv", TABLE_PATH,self.table_name, i);
+            let encrypted_columns: Vec<u8> = encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
+            let mut f = File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
+
+            f.write_all(&encrypted_columns)
+                .map_err(|e| MyError::FileError(e.to_string()))?;
+            writeln!(f).map_err(|e| MyError::FileError(e.to_string()))?;
+        }
+        Ok(())
+    }
+
+    fn create_unencrypted_tables(&mut self) -> Result<(), MyError> {
         for i in 1..=RING_SIZE {
             // Creo nueva tabla por nodo
             let path = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
@@ -208,7 +224,18 @@ impl CreateTable {
                 .map_err(|e| MyError::FileError(e.to_string()))?;
             writeln!(f).map_err(|e| MyError::FileError(e.to_string()))?;
         }
-
+        Ok(())
+    }
+    
+    
+    // Se ejecuta la query
+    pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
+        if ENCRIPT_DATA {
+            self.create_encrypted_tables()?;
+        } else {
+            self.create_unencrypted_tables()?;
+        }
+        
         // Creo un solo archivo de metadata
         let path_metadata = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, "metadata");
         let mut f_metadata =

@@ -4,21 +4,53 @@ use crate::messagestuff::{
     message::*,
     message_server::{serverpacket::Packet, serverpacket::ServerMessage},
 };
+use crate::serverstuff::node_status::Status;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
+use super::node_initializer::try_connect;
 use rand::seq::SliceRandom;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
-use super::node_initializer::try_connect;
+fn reenviar_gossip(
+    node: & mut std::sync::RwLockWriteGuard<'_, Node>,
+    gossip: GossipMessage,
+    show: bool,
+) -> Result<(), MyError> {
+    if let Some(n) = node.get_random_neighbor() {
+        if show {
+            println!("G    El vecino aleatorio es: \n{:?}\nG    Le mando el mensaje: \n{:?}", n, gossip);
+        }
+        if let Some(mut stream) = try_connect(n.gossip_ip.clone()) {
+            if let Err(e) = gossip.clone().send_server_through(&mut stream) {
+                if show {
+                    println!("G   Error al eviarle mensaje gossip: {:?}", e);
+                }
+            }
+            Ok(())
+        } else {
+            if show {
+                println!("G   No me pude conectar con: {:?}, tiene que estar desconectado", n.server_ip);
+            }
+            let gossip_msg = GossipMessage {
+                ip: n.server_ip.clone(),
+                status: Status::Disconnected,
+                ttl: 5_u8,
+            };
+            reenviar_gossip(node, gossip, show)?;
+            reenviar_gossip(node, gossip_msg, show)
+        }
+    } else {
+        Err(MyError::Error("No tengo vecinos conectados".to_string()))
+    }
+}
 
 fn handle_message_gossip(
     node: Arc<RwLock<Node>>,
     gossip: &mut GossipMessage,
     show: bool,
 ) -> Result<(), MyError> {
-    let ip: String = gossip.ip.clone();
-    let mut node = match node.write() {
+    let mut node_guard: std::sync::RwLockWriteGuard<'_, Node> = match node.write() {
         Ok(n) => n,
         Err(e) => {
             if show {
@@ -27,33 +59,30 @@ fn handle_message_gossip(
             return Err(MyError::LockingError("No puedo usar el nodo".to_string()));
         }
     };
+    let ip: String = gossip.ip.clone();
 
-    if let Some(true) = gossip.decrease_ttl() {
-        if let Some(n) = node.get_random_neighbor(node.number.clone()) {
-            if let Some(mut stream) = try_connect(n.gossip_ip.clone()) {
-                if let Err(e) = gossip.clone().send_server_through(&mut stream) {
-                    if show {
-                        println!("G   Error al eviarle mensaje gossip: {:?}", e);
-                    }
-                }
-            } else {
-                let _error = "Error al conectarse al vecino".to_string();
-                if show {
-                    println!("G   {:?}", _error);
-                }
-                // Desconectar el nodod de vecinos
-                return Err(MyError::TcpStreamError(_error));
-            }
-        }
-    }
     let port = match ip.chars().last() {
         Some(c) => c,
         None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
     };
-    let new = node.add_neighbor(NeighborNode::new(&port.to_string()));
-    if show && new {
-        println!("G   Mis vecinos son: {:?}", node.neighbors);
+    let mut new_neighbor = NeighborNode::new(&port.to_string());
+    match gossip.status {
+        Status::Connected => {new_neighbor.connect_node();}
+        Status::Disconnected => {new_neighbor.disconnect_node();}
     }
+    if node_guard.add_neighbor(new_neighbor) {
+        if show {
+            println!("G   Mis vecinos son:");
+            for neighbor in &node_guard.neighbors {
+                println!("{:?}", neighbor);
+            }
+        }
+    } else {
+        if let Some(false) = gossip.decrease_ttl() {
+            return Ok(())
+        }
+    }
+    reenviar_gossip(&mut node_guard, gossip.clone(), show)?;
     Ok(())
 }
 
@@ -64,9 +93,6 @@ pub fn handle_connection_gossip(
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
-    if show {
-        println!("G   Entro al handle_connection_gossip");
-    }
     match Packet::from_stream(stream) {
         Ok(packet) => {
             if show {

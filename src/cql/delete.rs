@@ -2,6 +2,7 @@ use crate::config::TABLE_PATH;
 use crate::cql::{filter::Filter, where_clause::WhereClause};
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
+use aes_gcm::{Aes256Gcm, aead::Key};
 use std::io::BufRead;
 use std::sync::{Arc, RwLock};
 
