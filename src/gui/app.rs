@@ -254,14 +254,14 @@ impl MapApp {
     fn draw_plane(
         &self,
         painter: &Painter,
-        mid_x: f32,
-        mid_y: f32,
+        x: f32,
+        y: f32,
         plane_texture_id: TextureId,
         flight_name: &String,
         _angle: f32,
     ) {
         let plane_rect = egui::Rect::from_center_size(
-            egui::pos2(mid_x, mid_y),
+            egui::pos2(x, y),
             egui::vec2(PLANE_SIZE, PLANE_SIZE),
         );
 
@@ -270,7 +270,7 @@ impl MapApp {
         painter.image(plane_texture_id, plane_rect, uv_rect, Color32::WHITE);
 
         // Posicionar el nombre
-        let name_pos = egui::pos2(mid_x + 30.0, mid_y); // Ajusta la posicion segun la imagen del avion
+        let name_pos = egui::pos2(x + 30.0, y); // Ajusta la posicion segun la imagen del avion
         painter.text(
             name_pos,
             egui::Align2::LEFT_CENTER,
@@ -300,7 +300,7 @@ impl MapApp {
                 (mid_x, mid_y) = (mid_x + 25.0, mid_y + 25.0);
             }
 
-            let (x, y) = integrate_simulator(&flight, (mid_x, mid_y)); 
+            let (x, y) = integrate_simulator(&flight, (mid_x, mid_y), &self.connection_server, texture.size()); 
 
             // Ángulo de rotación
             let angle = get_angle(screen_x_o, screen_x_d, screen_y_o, screen_y_d);
@@ -644,7 +644,12 @@ impl eframe::App for MapApp {
                                 let _ =
                                     self.add_all_connections(airport, texture, screen_x, screen_y);
                             }
-                        }
+                        } // else if !self.date_selected.is_empty() && !self.selected_origin_airport.is_empty() {
+                        //     // TODO: Vemos si se agregaron vuelos por el simulador para el refresh de la pantalla.
+                        //     // Esto no funciona:
+                        //     self.reset_connection();
+                        //     let _ = self.add_all_connections(airport, texture, screen_x, screen_y);
+                        // }
                     }
 
                     self.draw_connections_with_flight(texture, ui);
@@ -655,6 +660,8 @@ impl eframe::App for MapApp {
                 self.super_function(ui, texture);
             }
         });
+        // Actualizamos la pantalla para que se muestre la nueva posición de los vuelos del simulador.
+        ctx.request_repaint();
     }
 }
 
