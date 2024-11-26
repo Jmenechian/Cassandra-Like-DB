@@ -5,6 +5,7 @@ use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
+use crate::messagestuff::encrypt::*;
 use std::io::BufRead;
 use aes_gcm::{Aes256Gcm, aead::Key};
 use std::sync::{Arc, RwLock};
@@ -134,25 +135,44 @@ impl Select {
         path_table: Arc<RwLock<String>>,
     ) -> Result<Vec<String>, MyError> {
         
-        let mut rdr = get_reader_read(&path_table)?;
+     
         // if ENCRIPT_DATA {
         //     return self.execute_command_encrypted(encryption_key);
         // }
-        
-        let col_names = get_file_headers(&mut rdr)?;
-        let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
-
+        let my_path: Arc<RwLock<String>> = path_table.clone();
+        let headers: Vec<String>;
         let mut tabla: Vec<String> = Vec::new();
-        for line in rdr.lines() {
-            let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
-            let row: Vec<String> = line
-                .split(",")
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>();
-            if filter.filter(&row) {
-                tabla.push(line);
+        if ENCRIPT_DATA {
+            let file_lines =  read_encrypted_file(my_path)?;
+            let decrepted_columns = match file_lines.get(0) {
+                Some(v) => v,
+                None => return Err(MyError::Error("Error".to_string())),
+            };
+            headers = decrepted_columns.split(",").map(|s| s.to_string()).collect::<Vec<String>>();
+            let filter = Filter::new(headers.clone(), self.whereclause.clone())?;
+            for line in &file_lines[1..] {
+                let row = line.split(",").map(|s| s.to_string()).collect::<Vec<String>>();
+                if filter.filter(&row) {
+                    tabla.push(line.clone());
+                }
+            }
+        } else {
+            let mut rdr_read = get_reader_read(&my_path)?;
+            headers = get_file_headers(&mut rdr_read)?;
+            let filter = Filter::new(headers.clone(), self.whereclause.clone())?;
+
+            for line in rdr_read.lines() {
+                let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
+                let row: Vec<String> = line
+                    .split(",")
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>();
+                if filter.filter(&row) {
+                    tabla.push(line);
+                }
             }
         }
+
         Ok(tabla)
     }
 

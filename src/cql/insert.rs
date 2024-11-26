@@ -155,9 +155,20 @@ impl Insert {
 
 
     pub fn execute_command(&mut self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
-        let mut rdr_read = get_reader_read(&path_table)?;
-        let headers = get_file_headers(&mut rdr_read)?;
-        
+        let my_path: Arc<RwLock<String>> = path_table.clone();
+        let headers: Vec<String>;
+        if ENCRIPT_DATA {
+            let file_lines =  read_encrypted_file(my_path)?;
+            let decrepted_columns = match file_lines.get(0) {
+                Some(v) => v,
+                None => return Err(MyError::Error("Error".to_string())),
+            };
+            headers = decrepted_columns.split(",").map(|s| s.to_string()).collect::<Vec<String>>();
+        } else {
+            let mut rdr_read = get_reader_read(&my_path)?;
+            headers = get_file_headers(&mut rdr_read)?;
+        }
+
         let mut file_open = get_file_to_write(&path_table)?; // Se usa para hacer append
 
         // INSERT INTO VALUES (val1, val2)

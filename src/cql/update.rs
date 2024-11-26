@@ -5,6 +5,9 @@ use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
+use crate::config::ENCRIPT_DATA;
+use crate::messagestuff::encrypt::*;
+use std::error::Error;
 use std::collections::HashMap;
 use std::io::BufRead;
 use aes_gcm::{Aes256Gcm, aead::Key};
@@ -142,18 +145,35 @@ impl Update {
         &mut self,
         path_table: Arc<RwLock<String>>,
     ) -> Result<Vec<String>, MyError> {
-        
-        let mut rdr = get_reader_read(&path_table)?;
-        let col_names = get_file_headers(&mut rdr)?;
-        self.check_columns_are_valid(&col_names)?;
+        let my_path: Arc<RwLock<String>> = path_table.clone();
+        let headers: Vec<String>;
+        let mut lines: Vec<Result<String, MyError>> = Vec::new();
+        if ENCRIPT_DATA {
+            let file_lines =  read_encrypted_file(my_path)?;
+            let decrepted_columns = match file_lines.get(0) {
+                Some(v) => v,
+                None => return Err(MyError::Error("Error".to_string())),
+            };
+            headers = decrepted_columns.split(",").map(|s| s.to_string()).collect::<Vec<String>>();
+            for line in &file_lines[1..] {
+                lines.push(Ok(line.clone()));
+            }
+        } else {
+            let mut rdr_read = get_reader_read(&my_path)?;
+            headers = get_file_headers(&mut rdr_read)?;
+            self.check_columns_are_valid(&headers)?;
+            
+
+            
+
+            // Save old rows and updated rows
+            
+            let lines = rdr_read.lines();
+        }
         let file_open = get_file_to_write(&path_table)?;
-
         let (mut temp_file, temp_file_name) = create_temporary_file(TABLE_PATH, &self.table)?;
-        append_row_with_file(&mut temp_file, &col_names)?;
-
-        // Save old rows and updated rows
-        let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
-        let lines = rdr.lines();
+        append_row_with_file(&mut temp_file, &headers)?;
+        let filter = Filter::new(headers.clone(), self.whereclause.clone())?;
         for line in lines {
             let line = line.map_err(|e| MyError::Error(e.to_string()))?;
             let mut row: Vec<String> = line
@@ -170,7 +190,7 @@ impl Update {
 
             // Modify the row based on the SET clause
             for (header_index, value) in row.iter_mut().enumerate() {
-                if let Some(header_name) = col_names.get(header_index) {
+                if let Some(header_name) = headers.get(header_index) {
                     if let Some(new_value) = self.set.get(header_name) {
                         updated_row.push(new_value.to_string());
                     } else {

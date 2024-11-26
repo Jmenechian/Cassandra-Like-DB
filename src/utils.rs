@@ -101,13 +101,6 @@ pub fn get_file_headers<R: std::io::BufRead>(rdr: &mut R) -> Result<Vec<String>,
     rdr.read_line(&mut headers_line)
         .map_err(|e| MyError::FileError("Error n get_File_headers".to_string()))?;
 
-    if ENCRIPT_DATA {
-        println!("desecrypting headers");
-        let decrypt_header: Vec<u8> = decrypt_body_aes128(headers_line.as_bytes().to_vec())?;
-        headers_line = String::from_utf8(decrypt_header).map_err(|e| MyError::FileError(e.to_string()))?;
-        println!("termine desencripting headers");
-    }
-
     let headers: Vec<String> = headers_line
         .trim()
         .split(',')
@@ -187,8 +180,13 @@ pub fn write_temporary_to_original(
     for line in lines {
         let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
         let record: Vec<String> = line.trim().split(",").map(|s| s.to_string()).collect();
-
-        append_row(&mut original_table, &record).map_err(|e| MyError::FileError(e.to_string()))?;
+        if ENCRIPT_DATA {
+            let encrypted_line: Vec<u8> = encrypt_body_aes128(record.join(",").as_bytes().to_vec())?;
+            original_table.write_all(&encrypted_line).map_err(|e| MyError::FileError(e.to_string()))?;
+            writeln!(original_table).map_err(|e| MyError::FileError(e.to_string()))?;
+        } else {
+            append_row(&mut original_table, &record).map_err(|e| MyError::FileError(e.to_string()))?;
+        }
     }
     Ok(())
 }
