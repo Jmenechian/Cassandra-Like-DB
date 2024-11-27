@@ -100,6 +100,7 @@ impl ConsistentHash<NeighborNode> {
                 }
             }
         }
+        
         nodes
     }
 }
