@@ -37,6 +37,13 @@ pub fn get_query_select_in_destination(date: String, airport: String, flight: St
     )
 }
 
+pub fn get_query_select_in_simulator(date: String, airport: String, flight: String) -> String {
+    format!(
+        "SELECT * FROM flights_in_progress WHERE date = {} AND airport = {} AND flight = {}",
+        date, airport, flight
+    )
+}
+
 pub fn get_query_update_in_origin(flight: &Flight) -> String {
     format!(
         "UPDATE origin SET status = {} WHERE flight = {} AND airport = {} AND date = {}",

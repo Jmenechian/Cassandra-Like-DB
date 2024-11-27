@@ -1,6 +1,6 @@
 use super::{
     airport::Airport,
-    airport_coordinates::{get_angle, obtain_middle_position},
+    coordinates::{get_angle, obtain_middle_position},
     flight_status::FlightStatus,
 };
 use crate::{
