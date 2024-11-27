@@ -3,6 +3,7 @@
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::message_cql::cqlenvelope::IntoEnvelope;
 use crate::messagestuff::message_server::serverpacket::IntoPacket;
+use core::slice;
 use std::{io::Write, net::TcpStream};
 pub trait Serialize: std::fmt::Debug {
     fn to_bytes(&self) -> Vec<u8>;
@@ -214,4 +215,95 @@ pub fn longstring_from_bytes(bytes: Vec<u8>) -> Result<(String, Vec<u8>), MyErro
         }
     };
     Ok((_string, resto[length as usize..].to_vec()))
+}
+
+//[string list]: [short] n, followed by n [string].
+pub fn stringlist_to_bytes(strings: Vec<String>) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    let length = strings.len() as u16;
+    bytes.extend_from_slice(&short_to_bytes(length));
+    for s in strings {
+        bytes.extend_from_slice(&string_to_bytes(s));
+    }
+    bytes
+}
+
+pub fn stringlist_from_bytes(bytes: Vec<u8>) -> Result<(Vec<String>, Vec<u8>), MyError> {
+    if bytes.len() < 2 {
+        return Err(MyError::TcpStreamError(
+            "No hay suficientes bytes para leer la longitud del Vec<String>".to_string(),
+        ));
+    }
+    let (length, resto) = short_from_bytes(bytes)?;
+    let mut stringlist = Vec::new();
+    let mut _bytes = resto;
+    for _ in 0..length {
+        let (string, resto) = string_from_bytes(_bytes)?;
+        stringlist.push(string);
+        _bytes = resto;
+    }
+
+    Ok((stringlist, _bytes))
+}
+
+//[string map]: [short] n, followed by n pair <k><v> where <k> and <v> are [string].
+pub fn stringmap_to_bytes(map: Vec<(String, String)>) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    let length = map.len() as u16;
+    bytes.extend_from_slice(&short_to_bytes(length));
+    for (k, v) in map {
+        bytes.extend_from_slice(&string_to_bytes(k));
+        bytes.extend_from_slice(&string_to_bytes(v));
+    }
+    bytes
+}
+
+pub fn stringmap_from_bytes(bytes: Vec<u8>) -> Result<(Vec<(String, String)>, Vec<u8>), MyError> {
+    if bytes.len() < 2 {
+        return Err(MyError::TcpStreamError(
+            "No hay suficientes bytes para leer la longitud del Vec<String>".to_string(),
+        ));
+    }
+    let (length, resto) = short_from_bytes(bytes)?;
+    let mut map = Vec::new();
+    let mut _bytes = resto;
+    for _ in 0..length {
+        let (k, resto) = string_from_bytes(_bytes)?;
+        _bytes = resto;
+        let (v, resto) = string_from_bytes(_bytes)?;
+        map.push((k, v));
+        _bytes = resto;
+    }
+    Ok((map, _bytes))
+}
+
+//[string multimap]: [short] n, followed by n pair <k><v> where <k> is a[string] and <v> is a [string list].
+pub fn stringmultimap_to_bytes(multimap: Vec<(String, Vec<String>)>) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    let length = multimap.len() as u16;
+    bytes.extend_from_slice(&short_to_bytes(length));
+    for (s, slice) in multimap {
+        bytes.extend_from_slice(&string_to_bytes(s));
+        bytes.extend_from_slice(&stringlist_to_bytes(slice));
+    }
+    bytes
+}
+
+pub fn stringmultimap_from_bytes(bytes: Vec<u8>) -> Result<(Vec<(String, Vec<String>)>, Vec<u8>), MyError> {
+    if bytes.len() < 2 {
+        return Err(MyError::TcpStreamError(
+            "No hay suficientes bytes para leer la longitud del Vec<String>".to_string(),
+        ));
+    }
+    let (length, resto) = short_from_bytes(bytes)?;
+    let mut stringmap = Vec::new();
+    let mut _bytes = resto;
+    for _ in 0..length {
+        let (string, resto) = string_from_bytes(_bytes)?;
+        _bytes = resto;
+        let (stringlist, resto) = stringlist_from_bytes(_bytes)?;
+        stringmap.push((string, stringlist));
+        _bytes = resto;
+    }
+    Ok((stringmap, _bytes))
 }

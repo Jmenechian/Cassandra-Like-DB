@@ -6,9 +6,16 @@ use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
     message::*,
-    message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultvoidmessage::*},
+    message_cql::{
+        cqlenvelope::*, 
+        errormessage::*, 
+        resultrowsmessage::*, 
+        resultvoidmessage::*,
+        supportedmessage::*
+    },
     message_server::{
-        queryservermessage::QueryServerMessage, resultservermessage::*, serverpacket::Packet,
+        queryservermessage::QueryServerMessage, 
+        resultservermessage::*, serverpacket::Packet,
         serverpacket::ServerMessage,
     },
 };
@@ -75,6 +82,23 @@ fn handle_message_error(stream: &mut TcpStream, _error: String, show: bool) {
     }
 }
 
+fn handle_message_option(stream: &mut TcpStream, show: bool) {
+    let mut _mutimap: Vec<(String, Vec<String>)> = Vec::new();
+    let cql_version = ("CQL_VERSION".to_string(), vec!["3.0.0".to_string()]);
+    _mutimap.push(cql_version);
+    let compression = ("COMPRESSION".to_string(), Vec::<String>::new());
+    _mutimap.push(compression);
+    let msg = SupportedMessage {
+        multimap: _mutimap,
+    };
+    
+    if let Err(e) = msg.send_through(stream) {
+        if show {
+            println!("C   Error al enviarle un ErrorMessage al cliente: {:?}", e);
+        }
+    }
+}
+
 /// Handler que se encarga de manejar la conexion del servidor con el cliente.
 /// Funcion principal que recibe un nodo, un stream y un booleano.
 pub fn handle_connection_client(
@@ -91,6 +115,9 @@ pub fn handle_connection_client(
                 match env.body {
                     CqlMessage::Query(querymessage) => {
                         handle_message_query(&node, querymessage, stream, show)?;
+                    }
+                    CqlMessage::Option(optionmessage) => {
+                        handle_message_option(stream, show);
                     }
                     _ => {
                         handle_message_error(

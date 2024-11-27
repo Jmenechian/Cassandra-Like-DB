@@ -8,11 +8,18 @@
 use crate::config;
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::{
-    message::*, message_cql::errormessage::ErrorMessage, message_cql::querymessage::QueryMessage,
+    message::*, 
+    message_cql::errormessage::ErrorMessage, 
+    message_cql::querymessage::QueryMessage,
     message_cql::resultmessage::ResultMessage,
+    message_cql::optionmessage::OptionMessage,
+    message_cql::readymessage::ReadyMessage,
+    message_cql::startupmessage::StartupMessage,
     encrypt::*,
 };
 use std::{io::Read, net::TcpStream};
+
+use super::supportedmessage::SupportedMessage;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -20,6 +27,10 @@ pub enum CqlOpcode {
     QueryMessage = config::QUERY,
     ErrorMessage = config::ERROR,
     ResultMessage = config::RESULT,
+    OptionMessage = config::OPTIONS,
+    SupportedMessage = config::SUPPORTED,
+    StartupMessage = config::STARTUP,
+    ReadyMessage = config::READY,
 }
 
 impl CqlOpcode {
@@ -28,7 +39,11 @@ impl CqlOpcode {
             config::QUERY => Ok(CqlOpcode::QueryMessage),
             config::ERROR => Ok(CqlOpcode::ErrorMessage),
             config::RESULT => Ok(CqlOpcode::ResultMessage),
-            _ => Err(MyError::CqlMessageError("Invalid Opcode".to_string())),
+            config::OPTIONS => Ok(CqlOpcode::OptionMessage),
+            config::SUPPORTED => Ok(CqlOpcode::SupportedMessage),
+            config::STARTUP => Ok(CqlOpcode::StartupMessage),
+            config::READY => Ok(CqlOpcode::ReadyMessage),
+            _ => Err(MyError::CqlMessageError(format!("Invalid Opcode: {:?}", value))),
         }
     }
 }
@@ -38,6 +53,10 @@ pub enum CqlMessage {
     Query(QueryMessage),
     Result(ResultMessage),
     Error(ErrorMessage),
+    Option(OptionMessage),
+    Supported(SupportedMessage),
+    Startup(StartupMessage),
+    Ready(ReadyMessage),
 }
 
 #[derive(Debug)]
@@ -57,18 +76,27 @@ impl Envelope {
         bytes.extend_from_slice(&byte_to_byte(self.flags));
         bytes.extend_from_slice(&short_to_bytes(self.stream));
         bytes.extend_from_slice(&byte_to_byte(self.opcode as u8));
-        //bytes.extend_from_slice(&int_to_bytes(self.length));
-
-        let body_bytes = match &self.body {
+        let mut final_body =  match &self.body {
             CqlMessage::Query(msg) => msg.to_bytes(),
             CqlMessage::Result(msg) => msg.to_bytes(),
             CqlMessage::Error(msg) => msg.to_bytes(),
+            CqlMessage::Option(msg) => msg.to_bytes(),
+            CqlMessage::Supported(msg )  => msg.to_bytes(),
+            CqlMessage::Startup(msg) => msg.to_bytes(),
+            CqlMessage::Ready(msg) => msg.to_bytes(),
         };
-        let final_body = match encrypt_body_aes128(body_bytes.clone()) {
-            Ok(encrypted_body) => encrypted_body,
-            Err(_) => body_bytes,
-        };
-        let final_length = final_body.len() as i32;
+        let final_length ;
+        if false {
+            final_body = match encrypt_body_aes128(final_body.clone()) {
+                Ok(encrypted_body) => encrypted_body,
+                Err(_) => final_body,
+            };
+            final_length = final_body.len() as i32;
+        } else {
+            final_length = self.length;
+        }
+        
+        
         bytes.extend_from_slice(&int_to_bytes(final_length));
         bytes.extend_from_slice(&final_body);
 
@@ -117,6 +145,22 @@ impl Envelope {
             CqlOpcode::ResultMessage => {
                 let (result, _) = ResultMessage::from_bytes(decrypted_body)?;
                 CqlMessage::Result(result)
+            }
+            CqlOpcode::OptionMessage => {
+                let (option, _) = OptionMessage::from_bytes(decrypted_body)?;
+                CqlMessage::Option(option)
+            }
+            CqlOpcode::SupportedMessage => {
+                let(supported, _) = SupportedMessage::from_bytes(decrypted_body)?;
+                CqlMessage::Supported(supported)
+            }
+            CqlOpcode::StartupMessage => {
+                let(startup, _) = StartupMessage::from_bytes(decrypted_body)?;
+                CqlMessage::Startup(startup)
+            }
+            CqlOpcode::ReadyMessage => {
+                let(ready, _) = ReadyMessage::from_bytes(decrypted_body)?;
+                CqlMessage::Ready(ready)
             }
         };
         Ok(Envelope {

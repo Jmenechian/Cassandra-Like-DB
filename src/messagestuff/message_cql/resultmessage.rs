@@ -9,6 +9,7 @@ use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::{
     cqlenvelope::*, resultrowsmessage::ResultRowsMessage, resultvoidmessage::ResultVoidMessage,
 };
+use crate::config::*;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]
@@ -79,7 +80,7 @@ impl IntoEnvelope for ResultMessage {
     fn into_envelope(self) -> Envelope {
         let _body = self.to_bytes();
         Envelope {
-            version: 0x85_u8,
+            version: RESPONSE,
             flags: 0_u8,
             stream: 0_u16,
             opcode: CqlOpcode::ResultMessage,

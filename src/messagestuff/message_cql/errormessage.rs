@@ -1,6 +1,7 @@
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::cqlenvelope::*;
+use crate::config::*;
 
 #[derive(Debug, PartialEq)]
 pub struct ErrorMessage {
@@ -34,7 +35,7 @@ impl IntoEnvelope for ErrorMessage {
     fn into_envelope(self) -> Envelope {
         let _body = self.to_bytes();
         Envelope {
-            version: 0x85_u8, //0x85 as u8,
+            version: RESPONSE,
             flags: 0_u8,      //0 as u8,
             stream: 0_u16,    //0 as u16,
             opcode: CqlOpcode::ErrorMessage,

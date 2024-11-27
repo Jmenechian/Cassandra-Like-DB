@@ -40,6 +40,10 @@ pub mod messagestuff {
         pub mod resultmessage;
         pub mod resultrowsmessage;
         pub mod resultvoidmessage;
+        pub mod optionmessage;
+        pub mod supportedmessage;
+        pub mod readymessage;
+        pub mod startupmessage;
     }
     pub mod message_server {
         pub mod errorservermessage;

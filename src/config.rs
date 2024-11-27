@@ -45,10 +45,18 @@ pub static UPDATE: i8 = 7;
 pub static INSERT: i8 = 8;
 pub static DELETE: i8 = 9;
 
+
+pub const REQUEST: u8 = 0x03;
+pub const RESPONSE: u8 = 0x83;
+
 // OPCODE
 pub const QUERY: u8 = 0x07;
 pub const ERROR: u8 = 0x00;
+pub const OPTIONS: u8 =0x05;
 pub const RESULT: u8 = 0x08;
+pub const SUPPORTED: u8 = 0x06;
+pub const STARTUP: u8 = 0x01;
+pub const READY: u8 = 0x02;
 
 pub const GOSSIP: u8 = 0x11;
 pub const READ_REPAIR: u8 = 0x12;
