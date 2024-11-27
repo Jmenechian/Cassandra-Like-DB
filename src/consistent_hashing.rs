@@ -36,31 +36,24 @@ impl ConsistentHash<NeighborNode> {
 
     /// Agregar un nodo al anillo
     pub fn add_node(&mut self, node: NeighborNode) {
-        //self.total += 1;
         let mut hash = self.hash(&node.server_ip);
+
         while self.ring.contains_key(&hash) {
+            if let Some(node_in_ring) = self.ring.get(&hash) {
+                if *node_in_ring == node {
+                    return;
+                }
+            }
             hash += 1;
         }
+
         self.ring.insert(hash, node.clone());
     }
 
     /// Agregar un nodo al anillo
     pub fn add_nodes(&mut self, nodes: Vec<NeighborNode>) {
-        //self.total += nodes.len();
         for node in nodes {
-            let mut hash = self.hash(&node.server_ip);
-            while self.ring.contains_key(&hash) {
-                hash += 1;
-            }
-            self.ring.insert(hash, node.clone());
-        }
-    }
-
-    /// Eliminar un nodo del anillo
-    pub fn remove_node(&mut self, node: &NeighborNode) {
-        for i in 0..self.rf {
-            let hash = self.hash(&format!("{}-{}", self.hash(&node.server_ip), i));
-            self.ring.remove(&hash);
+            self.add_node(node);
         }
     }
 
@@ -72,7 +65,7 @@ impl ConsistentHash<NeighborNode> {
     /// luego recorremos el anillo hasta que encontramos tres nodos distintos (si RF=3), momento en el cual hemos encontrado
     /// todas las réplicas de esa clave.
     pub fn get_nodes(&self, key: &str) -> Vec<NeighborNode> {
-        //caso borde, solo 2 nodos conectados
+        //caso borde, 1 o 2 nodos conectados
         let mut nodes: Vec<NeighborNode> = vec![];
 
         if self.ring.is_empty() {
@@ -92,7 +85,7 @@ impl ConsistentHash<NeighborNode> {
             }
         }
 
-        if nodes.len() < 3 {
+        if nodes.len() < self.rf {
             let result = self.ring.range(0..);
 
             for node in result {
@@ -106,6 +99,7 @@ impl ConsistentHash<NeighborNode> {
                 }
             }
         }
+        
         nodes
     }
 }
@@ -113,34 +107,6 @@ impl ConsistentHash<NeighborNode> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    pub fn view_nodes_by_key() {
-        // Función para obtener los nodos en los que se debería guardar a mano un vuelo a partir de su key (valores de las particiones).
-        let key = "AEP,12-12-24".to_string();
-
-        let rf = 3;
-
-        let node_1 = NeighborNode::new("1");
-        let node_2 = NeighborNode::new("2");
-        let node_3 = NeighborNode::new("3");
-        let node_4 = NeighborNode::new("4");
-        let node_5 = NeighborNode::new("5");
-        let node_6 = NeighborNode::new("6");
-        let node_7 = NeighborNode::new("7");
-        let node_8 = NeighborNode::new("8");
-
-        let nodes: Vec<NeighborNode> = vec![
-            node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8,
-        ];
-
-        let mut hashing = ConsistentHash::new(rf);
-        hashing.add_nodes(nodes);
-
-        let nodes_result = hashing.get_nodes(&key);
-
-        println!("\n \t - Key: {} - Nodes: {:?}", key, nodes_result);
-    }
 
     #[test]
     pub fn test_return_nodes_from_key_with_consistent_hash() {

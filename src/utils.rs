@@ -99,7 +99,7 @@ fn open_file(path: String) -> Result<File, MyError> {
 pub fn get_file_headers<R: std::io::BufRead>(rdr: &mut R) -> Result<Vec<String>, MyError> {
     let mut headers_line = String::new();
     rdr.read_line(&mut headers_line)
-        .map_err(|e| MyError::FileError("Error n get_File_headers".to_string()))?;
+        .map_err(|_| MyError::FileError("Error n get_File_headers".to_string()))?;
 
     if ENCRIPT_DATA {
         println!("desecrypting headers");
