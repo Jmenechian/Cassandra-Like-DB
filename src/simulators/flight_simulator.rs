@@ -1,6 +1,6 @@
 use super::{
     airport::Airport,
-    airport_coordinates::get_airport_coordinates,
+    coordinates::get_airport_coordinates,
     flight::Flight,
     queries::{
         get_query_create_simulator_table, get_query_insert_in_destination,

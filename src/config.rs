@@ -26,7 +26,7 @@ pub static CRUISING_HEIGHT: f32 = 10000.0; // Altura crucero de 10mil metros.
 //GUI:
 pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";
 pub static MAP_PATH: &str = "src/gui/assets/map.png";
-pub static PLANE_PATH: &str = "src/gui/assets/air-plane.png";
+pub static PLANE_PATH: &str = "src/gui/assets/air-plane_{}.png";
 pub static TABLE_USERS_NAME: &str = "users";
 
 pub static RADIUS_CLICK_AIRPORT: f32 = 15.0; // Radio del botón
