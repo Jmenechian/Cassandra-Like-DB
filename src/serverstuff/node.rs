@@ -70,12 +70,16 @@ impl Node {
             .iter()
             .position(|n| n.number == neighbor_node.number)
         {
-            if self.neighbors[pos].time < neighbor_node.time {
+            if self.neighbors[pos].status != neighbor_node.status {
+                self.neighbors[pos] = neighbor_node;
+                true
+            } else if self.neighbors[pos].time < neighbor_node.time {
                 self.neighbors[pos] = neighbor_node;
                 false
             } else {
                 false
             }
+
         } else {
             self.neighbors.push(neighbor_node);
             true
