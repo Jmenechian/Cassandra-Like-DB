@@ -1,4 +1,4 @@
-use crate::config;
+use crate::config::{self, TABLE_PATH};
 use crate::config::{RF, TABLE_DESTINATION_NAME, TABLE_ORIGIN_NAME};
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
@@ -18,6 +18,9 @@ use crate::ConsistentHash;
 use chrono::NaiveDateTime;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
+
+use std::fs::OpenOptions;
+use std::io::Write;
 
 fn handle_message_query(
     node: &Arc<RwLock<Node>>,
@@ -185,6 +188,22 @@ fn read_repair(result: &[String], nodes_with_result: &Vec<NeighborNode>, table: 
     }
 }
 
+pub fn hinted_handoff(node_number: &String ,neighbor_number: &String, query: &Query) -> Result<(), MyError>{
+    let file = format!("{}/logs/logs_{}_{}.csv",TABLE_PATH, node_number, neighbor_number);
+    
+    let _ = match OpenOptions::new().append(true).create(true).open(file) {
+        Ok(mut f) => {
+            write!(f, "{}", query.query).map_err(|e| MyError::FileError(e.to_string()))?;
+        }
+        Err(e) => {
+            println!("Error al abrir el archivo de logs: {:?}", e);
+            return Err(MyError::FileError(e.to_string()))
+        }
+    };
+
+    Ok(())
+}
+
 /// Le envio la query a los nodos correspondientes para que la procesen y devuelvo el resultado.
 /// Aplicamos Read-Repear si la consulta fue un SELECT.
 pub fn send_query_to_nodes(
@@ -203,7 +222,6 @@ pub fn send_query_to_nodes(
             return Err(MyError::LockingError(_error));
         }
     };
-
     let mut all_response: Vec<Vec<String>> = vec![];
     let mut hash = ConsistentHash::new(RF);
     let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());
@@ -269,6 +287,9 @@ pub fn send_query_to_nodes(
             }
             continue;
         } else if neighbor.status == Status::Disconnected {
+            if !query.query.contains("SELECT") {
+                hinted_handoff(&node.number,&neighbor.number, &query)?;
+            }
             if show {
                 println!("C   - Nodo desconectado: {}", neighbor.server_ip);
             }

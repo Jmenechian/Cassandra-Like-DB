@@ -1,14 +1,18 @@
+use crate::config::{self, TABLE_PATH};
+use crate::utils::{delete_file, get_reader};
+use std::io::BufRead;
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
 use crate::messagestuff::{
     message::*,
-    message_server::{serverpacket::Packet, serverpacket::ServerMessage},
+    message_server::{serverpacket::Packet, serverpacket::ServerMessage, queryservermessage::QueryServerMessage},
 };
 use crate::serverstuff::node_status::Status;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
 use super::node_initializer::try_connect;
 use rand::seq::SliceRandom;
+use std::fs::OpenOptions;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
@@ -16,7 +20,7 @@ fn reenviar_gossip(
     node: & mut std::sync::RwLockWriteGuard<'_, Node>,
     gossip: GossipMessage,
     show: bool,
-) -> Result<(), MyError> {
+) {
     if let Some(n) = node.get_random_neighbor() {
         if show {
             println!("G    El vecino aleatorio es: \n{:?}\nG    Le mando el mensaje: \n{:?}", n, gossip);
@@ -27,7 +31,7 @@ fn reenviar_gossip(
                     println!("G   Error al eviarle mensaje gossip: {:?}", e);
                 }
             }
-            Ok(())
+            
         } else {
             if show {
                 println!("G   No me pude conectar con: {:?}, tiene que estar desconectado", n.server_ip);
@@ -37,12 +41,38 @@ fn reenviar_gossip(
                 status: Status::Disconnected,
                 ttl: 5_u8,
             };
-            reenviar_gossip(node, gossip, show)?;
+            reenviar_gossip(node, gossip, show);
             reenviar_gossip(node, gossip_msg, show)
         }
-    } else {
-        Err(MyError::Error("No tengo vecinos conectados".to_string()))
     }
+}
+
+fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode) { //4 ...
+    let file = format!("logs/logs_{}_{}", node_number, neighbor.number);
+    let rdr = match get_reader(TABLE_PATH, &file) {
+        Ok(r) => r,
+        Err(e) => {
+            return;
+        }
+    };
+    for line in rdr.lines() {
+        if let Ok(line) = line {
+            println!("line: {:?}", line);
+            if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
+                let msg = QueryServerMessage {
+                    query: line.clone(),
+                    consistency: 0,
+                };
+                let _ = msg.send_server_through(&mut socket);
+
+                let _ = Packet::from_stream(& mut socket);
+            }
+        }
+
+    }
+    println!("borrando archivo");
+    let _ = delete_file(&file, TABLE_PATH );
+
 }
 
 fn handle_message_gossip(
@@ -50,6 +80,7 @@ fn handle_message_gossip(
     gossip: &mut GossipMessage,
     show: bool,
 ) -> Result<(), MyError> {
+    // println!("entro a gossip");
     let mut node_guard: std::sync::RwLockWriteGuard<'_, Node> = match node.write() {
         Ok(n) => n,
         Err(e) => {
@@ -70,7 +101,12 @@ fn handle_message_gossip(
         Status::Connected => {new_neighbor.connect_node();}
         Status::Disconnected => {new_neighbor.disconnect_node();}
     }
-    if node_guard.add_neighbor(new_neighbor) {
+    if node_guard.add_neighbor(new_neighbor.clone()) {
+        println!("{:?}", new_neighbor);
+        if new_neighbor.status == Status::Connected {
+            handle_send_backlog(&node_guard.number, &new_neighbor); 
+        }
+
         if show {
             println!("G   Mis vecinos son:");
             for neighbor in &node_guard.neighbors {
@@ -82,7 +118,7 @@ fn handle_message_gossip(
             return Ok(())
         }
     }
-    reenviar_gossip(&mut node_guard, gossip.clone(), show)?;
+    reenviar_gossip(&mut node_guard, gossip.clone(), show);
     Ok(())
 }
 
