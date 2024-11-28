@@ -6,7 +6,7 @@ use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
     message::*,
-    message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultvoidmessage::*},
+    message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultemptymessage::*},
     message_server::{
         queryservermessage::QueryServerMessage, resultservermessage::*, serverpacket::Packet,
         serverpacket::ServerMessage,
@@ -42,7 +42,7 @@ fn handle_message_query(
         }
     };
     if table.is_empty() {
-        let void_msg = ResultVoidMessage;
+        let void_msg = ResultEmptyMessage;
         if let Err(e) = void_msg.send_through(stream) {
             if show {
                 println!("C   Error: {:?}", e);
@@ -242,11 +242,11 @@ pub fn send_query_to_nodes(
 
     hash.add_nodes(node.neighbors.to_vec());
     let key = query.get_key_representing_partition(&node.server_ip);
-    println!("\n - La key es: {}", key);
-    println!("\n - La query es: {:?}", query);
     let nodes_with_result = hash.get_nodes(&key);
 
     if show {
+        println!("\n - La key es: {}", key);
+        println!("\n - La query es: {:?}", query);
         println!(
             "
         C   vecinos: {:?}
@@ -267,22 +267,27 @@ pub fn send_query_to_nodes(
                     neighbor.server_ip
                 );
             }
-            if let Ok(result) = node.process_query(&mut query) {
-                all_response.push(result);
+            match node.process_query(&mut query) {
+                Ok(result) => {
+                    all_response.push(result);
 
-                if consistency_level == config::ONE && all_response.len() == 1 {
-                    if is_select {
-                        return Ok(process_results(
-                            &mut all_response,
-                            &nodes_with_result,
-                            &query.get_table(),
-                        ));
-                    } else {
-                        if let Some(result) = all_response.pop() {
-                            return Ok(result);
+                    if consistency_level == config::ONE && all_response.len() == 1 {
+                        if is_select {
+                            return Ok(process_results(
+                                &mut all_response,
+                                &nodes_with_result,
+                                &query.get_table(),
+                            ));
+                        } else {
+                            if let Some(result) = all_response.pop() {
+                                return Ok(result);
+                            }
+                            return Ok(vec![]);
                         }
-                        return Ok(vec![]);
                     }
+                } 
+                Err(error) => {
+                    all_response.push(vec![format!("Invalid Query: {}", error)]);
                 }
             }
             continue;
@@ -313,7 +318,10 @@ pub fn send_query_to_nodes(
                             ResultServerBody::Rows(r) => {
                                 all_response.push(r.rows_content.clone());
                             }
-                            ResultServerBody::Void(_) => {}
+                            ResultServerBody::Void(_) => {
+                                all_response.push(vec!["Invalid Query".to_string()]);
+                            }
+                            ResultServerBody::Empty(_) => {}
                         },
                         _ => {
                             if show {

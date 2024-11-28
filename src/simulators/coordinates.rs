@@ -1,4 +1,4 @@
-use crate::{config::AIRPORTS_PATH, gui::connection_server::ConnectionServer};
+use crate::{config::{self, AIRPORTS_PATH}, gui::connection_server::ConnectionServer};
 use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, sync::mpsc::Receiver};
 
 use super::{airport::Airport, flight::Flight, queries::get_query_select_in_simulator};
@@ -107,7 +107,7 @@ pub fn integrate_simulator(
         flight.number.clone(),
     );
     let channel: &Receiver<Vec<String>> = connection_server.get_channel_to_receive();
-    let _ = connection_server.make_query(query);
+    let _ = connection_server.make_query(query, config::ONE);
     let result = channel.recv().unwrap();
     let flight_in_simulator: Vec<&str> = result[0].split(",").collect();
     if flight_in_simulator.len() == 10 {

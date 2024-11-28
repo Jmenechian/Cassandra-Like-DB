@@ -5,11 +5,14 @@ use crate::messagestuff::message_server::{
     resultrowsevermsg::*, resultvoidservermsg::*, serverpacket::*,
 };
 
+use super::resultemptymessage::ResultEmptyServerMessage;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]
 pub enum ResultServerKind {
     Void = config::VOID,
     Rows = config::ROWS,
+    Empty = config::EMPTY,
 }
 
 impl ResultServerKind {
@@ -17,6 +20,7 @@ impl ResultServerKind {
         match value {
             config::VOID => Ok(ResultServerKind::Void),
             config::ROWS => Ok(ResultServerKind::Rows),
+            config::EMPTY => Ok(ResultServerKind::Empty),
             _ => Err(MyError::ServerMessageError(
                 "Invalid Result Kind".to_string(),
             )),
@@ -28,6 +32,7 @@ impl ResultServerKind {
 pub enum ResultServerBody {
     Void(ResultVoidServerMessage),
     Rows(ResultRowsServerMessage),
+    Empty(ResultEmptyServerMessage),
 }
 
 #[derive(Debug, PartialEq)]
@@ -45,6 +50,7 @@ impl Serialize for ResultServerMessage {
             ResultServerBody::Rows(rows) => {
                 bytes.extend_from_slice(&rows.to_bytes());
             }
+            ResultServerBody::Empty(_) => {}
         }
         bytes
     }
@@ -58,6 +64,7 @@ impl Serialize for ResultServerMessage {
                 let (rows, resto) = ResultRowsServerMessage::from_bytes(resto)?;
                 (ResultServerBody::Rows(rows), resto)
             }
+            ResultServerKind::Empty => (ResultServerBody::Empty(ResultEmptyServerMessage), resto),
         };
 
         Ok((

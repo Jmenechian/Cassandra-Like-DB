@@ -2,8 +2,6 @@ pub static PORTS_FILE: &str = "puertos.txt";
 
 pub static KEY_FILE: &str = "src/config_aes/aes_key.bin";
 
-pub static POOL_NUMBER: usize = 5;
-
 pub static SERVER_PORT: &str = "7000";
 pub static CLIENT_PORT: &str = "9042";
 
@@ -63,6 +61,7 @@ pub const QUORUM: u16 = 0x0004;
 // Result Kind
 pub const VOID: i32 = 0x0001;
 pub const ROWS: i32 = 0x0002;
+pub const EMPTY: i32 = 0x0003;
 
 // [relation.rs]
 pub const EQUAL: i32 = 0;

@@ -54,7 +54,6 @@ pub fn get_file_path(path: &str, file_name: &str) -> String {
 /// Open file in given path, returns an iterable reader
 pub fn get_reader(path: &str, table_name: &str) -> Result<BufReader<File>, MyError> {
     let file_path = get_file_path(path, table_name);
-    println!("Se abrirá el archivo en FILE PATH: {}", file_path);
     let file = File::open(file_path).map_err(|e| MyError::FileError(e.to_string()))?;
     let rdr = BufReader::new(file);
     Ok(rdr)

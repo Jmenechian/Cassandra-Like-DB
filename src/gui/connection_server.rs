@@ -85,7 +85,7 @@ impl ConnectionServer {
 
     /// Se lanza un thread que realizará la query indicada al nodo con el que mantenemos la conexion.
     /// Se envia por el channel la respuesta.
-    pub fn make_query(&self, query: String) -> Result<(), MyError> {
+    pub fn make_query(&self, query: String, consistency: u16) -> Result<(), MyError> {
         println!("\n- Query: {}\n", query);
         let mut stream_server: TcpStream = if let Ok(stream) = self.get_connection_server() {
             stream
@@ -97,7 +97,7 @@ impl ConnectionServer {
 
         let _ = thread::spawn({
             move || {
-                if Client::send_message(&mut stream_server, query).is_ok() {
+                if Client::send_message(&mut stream_server, query, consistency).is_ok() {
                     if let Ok(response) = Client::read_response(&mut stream_server) {
                         let _ = tx.send(response);
                     }
