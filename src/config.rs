@@ -52,7 +52,7 @@ pub const RESPONSE: u8 = 0x83;
 // OPCODE
 pub const QUERY: u8 = 0x07;
 pub const ERROR: u8 = 0x00;
-pub const OPTIONS: u8 =0x05;
+pub const OPTIONS: u8 = 0x05;
 pub const RESULT: u8 = 0x08;
 pub const SUPPORTED: u8 = 0x06;
 pub const STARTUP: u8 = 0x01;

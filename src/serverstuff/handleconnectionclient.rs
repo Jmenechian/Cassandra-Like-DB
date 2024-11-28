@@ -122,8 +122,11 @@ fn handle_message_startup(stream: &mut TcpStream, cql_stream: u16, show: bool) {
 }
 
 fn handle_message_register(stream: &mut TcpStream, cql_stream: u16, show: bool) {
-    
-    let msg = ReadyMessage {};
+    let msg = ErrorMessage {
+        error: "Invalid query".to_string(),
+        code: 0x2200,
+    };
+    //let msg = ReadyMessage {};
     if show {
         println!("C   El mensaje enviado es: {:?}", msg);
         println!("C   El mensaje enviado a: {:?}", stream);
