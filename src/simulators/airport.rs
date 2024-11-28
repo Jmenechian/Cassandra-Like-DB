@@ -2,6 +2,7 @@ use std::{collections::HashMap, net::TcpStream};
 
 use super::flight::Flight;
 use crate::clientstuff::client_cql::Client;
+use crate::config;
 use crate::errors::my_errors::MyError;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -24,17 +25,6 @@ impl Airport {
         Self { name, coordinates }
     }
 
-    pub fn do_query(&self, stream: &mut Option<TcpStream>, query: String) -> Result<(), MyError> {
-        if let Some(stream) = stream {
-            Client::send_message(stream, query)
-                .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-
-            let response = Client::read_response(stream)
-                .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
-            println!("response: {:?}", response);
-        }
-        Ok(())
-    }
     /// Se obtienen los vuelos cuyo aeropuerto de origen es el indicado.
     /// Se especifica la fecha en la que salen esos vuelos.
     pub fn get_origin_flights_from(
@@ -48,7 +38,7 @@ impl Airport {
         );
         println!("query: {:?}", query);
         if let Some(stream) = stream {
-            Client::send_message(stream, query)
+            Client::send_message(stream, query, config::QUORUM)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
             let response = Client::read_response(stream)
@@ -124,7 +114,7 @@ impl Airport {
         );
 
         if let Some(stream) = stream {
-            Client::send_message(stream, query)
+            Client::send_message(stream, query, config::QUORUM)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
             let response = Client::read_response(stream)

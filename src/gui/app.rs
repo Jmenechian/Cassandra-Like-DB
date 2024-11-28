@@ -7,7 +7,7 @@ use std::sync::mpsc::Receiver;
 
 use crate::{
     clientstuff::client_cql::Client,
-    config::*,
+    config::{self, *},
     errors::my_errors::MyError,
     gui::user::{Role, User},
     simulators::{
@@ -378,9 +378,9 @@ impl MapApp {
                                 if !query_origin.is_empty() && !query_destination.is_empty() {
                                     let rx: &Receiver<Vec<String>> = self.connection_server.get_channel_to_receive();
 
-                                    let _ = self.connection_server.make_query(query_origin);
+                                    let _ = self.connection_server.make_query(query_origin, config::QUORUM);
                                     let _ = rx.recv().unwrap();
-                                    let _ = self.connection_server.make_query(query_destination);
+                                    let _ = self.connection_server.make_query(query_destination, config::QUORUM);
                                     let _ = rx.recv().unwrap();
 
                                     if let Some(airport) = self.airports.clone().get(&self.selected_origin_airport) {
@@ -501,9 +501,9 @@ impl MapApp {
                         let rx: &Receiver<Vec<String>> =
                             self.connection_server.get_channel_to_receive();
 
-                        let _ = self.connection_server.make_query(query_origin);
+                        let _ = self.connection_server.make_query(query_origin, config::QUORUM);
                         let _ = rx.recv().unwrap();
-                        let _ = self.connection_server.make_query(query_destination);
+                        let _ = self.connection_server.make_query(query_destination, config::QUORUM);
                         let _ = rx.recv().unwrap();
                         println!("Ok receive response query");
 

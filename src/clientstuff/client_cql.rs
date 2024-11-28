@@ -57,7 +57,7 @@ impl Client {
             loop {
                 let mut input = String::new();
                 if stdin.lock().read_line(&mut input).is_ok() {
-                    let _ = Client::send_message(&mut stream_clone, input);
+                    let _ = Client::send_message(&mut stream_clone, input, config::QUORUM);
                 }
             }
         });
@@ -92,11 +92,11 @@ impl Client {
         Ok(())
     }
 
-    pub fn send_message(stream: &mut TcpStream, message: String) -> Result<()> {
+    pub fn send_message(stream: &mut TcpStream, message: String, consistency: u16) -> Result<()> {
         if !message.is_empty() {
             let msg: QueryMessage = QueryMessage {
                 query: message,
-                consistency: config::QUORUM,
+                consistency: consistency, //config::QUORUM or ONE
             };
             let _ = msg.send_through(stream);
         }

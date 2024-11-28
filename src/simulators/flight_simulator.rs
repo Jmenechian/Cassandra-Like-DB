@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     client_cql::Client,
-    config::N_WORKERS,
+    config::{self, N_WORKERS},
     errors::{
         airport_errors::AirportErrors, my_errors::MyError, simulator_errors::SimulatorErrors,
     },
@@ -114,7 +114,7 @@ impl FlightSimulator {
         };
 
         let query = get_query_create_simulator_table();
-        Client::send_message(&mut stream_server, query)
+        Client::send_message(&mut stream_server, query, config::ONE)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
         Ok(())
@@ -177,7 +177,7 @@ impl FlightSimulator {
             )
         };
 
-        Client::send_message(stream, query)
+        Client::send_message(stream, query, config::ONE)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
         let response = Client::read_response(stream)
@@ -209,7 +209,7 @@ impl FlightSimulator {
                     get_query_insert_in_origin(flight)
                 };
 
-                Client::send_message(stream, query)
+                Client::send_message(stream, query, config::ONE)
                     .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
                 let _ = Client::read_response(stream)
@@ -278,7 +278,7 @@ impl FlightSimulator {
     fn insert_flight(flight: &Flight, stream: &mut TcpStream) -> Result<(), MyError> {
         let query = get_query_insert_in_simulator(flight);
 
-        Client::send_message(stream, query)
+        Client::send_message(stream, query, config::ONE)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
         let _ = Client::read_response(stream)
@@ -296,7 +296,7 @@ impl FlightSimulator {
                 _ => continue,
             };
 
-            Client::send_message(stream, query)
+            Client::send_message(stream, query, config::ONE)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
             let _ = Client::read_response(stream)

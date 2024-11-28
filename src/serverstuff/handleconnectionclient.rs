@@ -267,25 +267,28 @@ pub fn send_query_to_nodes(
                     neighbor.server_ip
                 );
             }
-            if let Ok(result) = node.process_query(&mut query) {
-                all_response.push(result);
+            match node.process_query(&mut query) {
+                Ok(result) => {
+                    all_response.push(result);
 
-                if consistency_level == config::ONE && all_response.len() == 1 {
-                    if is_select {
-                        return Ok(process_results(
-                            &mut all_response,
-                            &nodes_with_result,
-                            &query.get_table(),
-                        ));
-                    } else {
-                        if let Some(result) = all_response.pop() {
-                            return Ok(result);
+                    if consistency_level == config::ONE && all_response.len() == 1 {
+                        if is_select {
+                            return Ok(process_results(
+                                &mut all_response,
+                                &nodes_with_result,
+                                &query.get_table(),
+                            ));
+                        } else {
+                            if let Some(result) = all_response.pop() {
+                                return Ok(result);
+                            }
+                            return Ok(vec![]);
                         }
-                        return Ok(vec![]);
                     }
+                } 
+                Err(error) => {
+                    all_response.push(vec![format!("Invalid Query: {}", error)]);
                 }
-            } else {
-                all_response.push(vec!["Invalid Query".to_string()]);
             }
             continue;
         } else if neighbor.status == Status::Disconnected {
