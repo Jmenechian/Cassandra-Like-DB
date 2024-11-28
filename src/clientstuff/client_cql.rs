@@ -71,6 +71,9 @@ impl Client {
                                 println!("{}", row);
                             }
                         }
+                        ResultBody::Empty(_) => {
+                            println!("");
+                        }
                         ResultBody::Void(_) => {
                             println!("Error: Error en la consulta ingresada");
                         }
@@ -110,6 +113,9 @@ impl Client {
                         }
                         ResultBody::Rows(rows) => {
                             return Ok(rows.rows_content);
+                        }
+                        ResultBody::Empty(_) => {
+                            return Ok(vec!["".to_string()]);
                         }
                     },
                     _ => {

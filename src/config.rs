@@ -63,6 +63,7 @@ pub const QUORUM: u16 = 0x0004;
 // Result Kind
 pub const VOID: i32 = 0x0001;
 pub const ROWS: i32 = 0x0002;
+pub const EMPTY: i32 = 0x0003;
 
 // [relation.rs]
 pub const EQUAL: i32 = 0;

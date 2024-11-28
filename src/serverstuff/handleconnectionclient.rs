@@ -6,7 +6,7 @@ use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
     message::*,
-    message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultvoidmessage::*},
+    message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultemptymessage::*},
     message_server::{
         queryservermessage::QueryServerMessage, resultservermessage::*, serverpacket::Packet,
         serverpacket::ServerMessage,
@@ -42,7 +42,7 @@ fn handle_message_query(
         }
     };
     if table.is_empty() {
-        let void_msg = ResultVoidMessage;
+        let void_msg = ResultEmptyMessage;
         if let Err(e) = void_msg.send_through(stream) {
             if show {
                 println!("C   Error: {:?}", e);
@@ -242,11 +242,11 @@ pub fn send_query_to_nodes(
 
     hash.add_nodes(node.neighbors.to_vec());
     let key = query.get_key_representing_partition(&node.server_ip);
-    println!("\n - La key es: {}", key);
-    println!("\n - La query es: {:?}", query);
     let nodes_with_result = hash.get_nodes(&key);
 
     if show {
+        println!("\n - La key es: {}", key);
+        println!("\n - La query es: {:?}", query);
         println!(
             "
         C   vecinos: {:?}
@@ -284,6 +284,8 @@ pub fn send_query_to_nodes(
                         return Ok(vec![]);
                     }
                 }
+            } else {
+                all_response.push(vec!["Invalid Query".to_string()]);
             }
             continue;
         } else if neighbor.status == Status::Disconnected {
@@ -313,7 +315,10 @@ pub fn send_query_to_nodes(
                             ResultServerBody::Rows(r) => {
                                 all_response.push(r.rows_content.clone());
                             }
-                            ResultServerBody::Void(_) => {}
+                            ResultServerBody::Void(_) => {
+                                all_response.push(vec!["Invalid Query".to_string()]);
+                            }
+                            ResultServerBody::Empty(_) => {}
                         },
                         _ => {
                             if show {

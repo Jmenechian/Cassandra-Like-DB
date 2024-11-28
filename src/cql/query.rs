@@ -51,8 +51,10 @@ impl Query {
             self.set_insert();
         } else if q_upper.contains("DELETE") {
             self.set_delete();
-        } else {
+        } else if q_upper.contains("CREATE") {
             self.set_createtable();
+        } else {
+            self.set_none();
         }
     }
 
@@ -68,6 +70,10 @@ impl Query {
             QType::Insert(insert) => insert.get_values(),
             _ => "Error".to_string(),
         }
+    }
+
+    pub fn set_none(&mut self) {
+        self.qtype = QType::None;
     }
 
     pub fn set_select(&mut self) {
@@ -139,7 +145,7 @@ impl Query {
                 let _ = update.parse_update(self.query.as_str(), address_node);
                 update.get_key()
             }
-            _ => "BBBBBBBBBBBB".to_string(),
+            _ => "".to_string(),
         }
     }
 

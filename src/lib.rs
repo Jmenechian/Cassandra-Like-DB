@@ -40,6 +40,7 @@ pub mod messagestuff {
         pub mod resultmessage;
         pub mod resultrowsmessage;
         pub mod resultvoidmessage;
+        pub mod resultemptymessage;
     }
     pub mod message_server {
         pub mod errorservermessage;
@@ -49,6 +50,7 @@ pub mod messagestuff {
         pub mod resultrowsevermsg;
         pub mod resultservermessage;
         pub mod resultvoidservermsg;
+        pub mod resultemptymessage;
         pub mod serverpacket;
     }
 }
