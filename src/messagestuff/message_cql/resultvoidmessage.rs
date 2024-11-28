@@ -15,8 +15,8 @@ impl IntoResultMessage for ResultVoidMessage {
 }
 
 impl IntoEnvelope for ResultVoidMessage {
-    fn into_envelope(self) -> Envelope {
+    fn into_envelope(self, cql_stream: u16) -> Envelope {
         let result = self.into_result_message();
-        result.into_envelope()
+        result.into_envelope(cql_stream)
     }
 }

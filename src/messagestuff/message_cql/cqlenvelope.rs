@@ -15,6 +15,7 @@ use crate::messagestuff::{
     message_cql::optionmessage::OptionMessage,
     message_cql::readymessage::ReadyMessage,
     message_cql::startupmessage::StartupMessage,
+    message_cql::registermessage::RegisterMessage,
     encrypt::*,
 };
 use std::{io::Read, net::TcpStream};
@@ -31,6 +32,7 @@ pub enum CqlOpcode {
     SupportedMessage = config::SUPPORTED,
     StartupMessage = config::STARTUP,
     ReadyMessage = config::READY,
+    RegisterMessage = config::REGISTER,
 }
 
 impl CqlOpcode {
@@ -43,6 +45,7 @@ impl CqlOpcode {
             config::SUPPORTED => Ok(CqlOpcode::SupportedMessage),
             config::STARTUP => Ok(CqlOpcode::StartupMessage),
             config::READY => Ok(CqlOpcode::ReadyMessage),
+            config::REGISTER => Ok(CqlOpcode::RegisterMessage),
             _ => Err(MyError::CqlMessageError(format!("Invalid Opcode: {:?}", value))),
         }
     }
@@ -57,6 +60,7 @@ pub enum CqlMessage {
     Supported(SupportedMessage),
     Startup(StartupMessage),
     Ready(ReadyMessage),
+    Register(RegisterMessage),
 }
 
 #[derive(Debug)]
@@ -84,6 +88,7 @@ impl Envelope {
             CqlMessage::Supported(msg )  => msg.to_bytes(),
             CqlMessage::Startup(msg) => msg.to_bytes(),
             CqlMessage::Ready(msg) => msg.to_bytes(),
+            CqlMessage::Register(msg) => msg.to_bytes(),
         };
         let final_length ;
         if false {
@@ -129,9 +134,13 @@ impl Envelope {
             let _error = format!("Error al leer el <body> desde Stream: {:?}", e);
             return Err(MyError::TcpStreamError(_error));
         }
-
-        let decrypted_body = decrypt_body_aes128(_body_buffer)?;
-        let body_length =decrypted_body.len() as i32;
+        let decrypted_body;
+        if false {
+            decrypted_body = decrypt_body_aes128(_body_buffer)?;
+        } else {
+            decrypted_body = _body_buffer;
+        }
+        let body_length = decrypted_body.len() as i32;
 
         let _body = match _opcode {
             CqlOpcode::ErrorMessage => {
@@ -162,6 +171,10 @@ impl Envelope {
                 let(ready, _) = ReadyMessage::from_bytes(decrypted_body)?;
                 CqlMessage::Ready(ready)
             }
+            CqlOpcode::RegisterMessage => {
+                let(register, _) = RegisterMessage::from_bytes(decrypted_body)?;
+                CqlMessage::Register(register)
+            }
         };
         Ok(Envelope {
             version: _version,
@@ -175,5 +188,5 @@ impl Envelope {
 }
 
 pub trait IntoEnvelope: std::fmt::Debug {
-    fn into_envelope(self) -> Envelope;
+    fn into_envelope(self, cql_stream: u16) -> Envelope;
 }

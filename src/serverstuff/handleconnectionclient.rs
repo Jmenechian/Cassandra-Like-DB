@@ -3,6 +3,8 @@ use crate::config::{RF, TABLE_DESTINATION_NAME, TABLE_ORIGIN_NAME};
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
+use crate::messagestuff::message_cql::readymessage::ReadyMessage;
+use crate::messagestuff::message_cql::startupmessage;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
     message::*,
@@ -11,7 +13,8 @@ use crate::messagestuff::{
         errormessage::*, 
         resultrowsmessage::*, 
         resultvoidmessage::*,
-        supportedmessage::*
+        supportedmessage::*,
+        readymessage::*
     },
     message_server::{
         queryservermessage::QueryServerMessage, 
@@ -33,6 +36,7 @@ fn handle_message_query(
     node: &Arc<RwLock<Node>>,
     querymessage: QueryMessage,
     stream: &mut TcpStream,
+    cql_stream: u16,
     show: bool,
 ) -> Result<(), MyError> {
 
@@ -43,6 +47,7 @@ fn handle_message_query(
             handle_message_error(
                 stream,
                 "Error: algo fallo en send_query_to_node".to_string(),
+                cql_stream,
                 show,
             );
             return Err(e);
@@ -50,7 +55,7 @@ fn handle_message_query(
     };
     if table.is_empty() {
         let void_msg = ResultVoidMessage;
-        if let Err(e) = void_msg.send_through(stream) {
+        if let Err(e) = void_msg.send_through(stream, cql_stream) {
             if show {
                 println!("C   Error: {:?}", e);
             }
@@ -61,7 +66,7 @@ fn handle_message_query(
             rows_count: content.len() as i32,
             rows_content: content,
         };
-        if let Err(e) = rows_msg.send_through(stream) {
+        if let Err(e) = rows_msg.send_through(stream, cql_stream) {
             if show {
                 println!("C   Error: {:?}", e);
             }
@@ -70,19 +75,19 @@ fn handle_message_query(
     Ok(())
 }
 
-fn handle_message_error(stream: &mut TcpStream, _error: String, show: bool) {
+fn handle_message_error(stream: &mut TcpStream, _error: String, cql_stream: u16, show: bool) {
     let msg = ErrorMessage {
         error: _error,
         code: 0_i32,
     };
-    if let Err(e) = msg.send_through(stream) {
+    if let Err(e) = msg.send_through(stream, cql_stream) {
         if show {
             println!("C   Error al enviarle un ErrorMessage al cliente: {:?}", e);
         }
     }
 }
 
-fn handle_message_option(stream: &mut TcpStream, show: bool) {
+fn handle_message_option(stream: &mut TcpStream, cql_stream: u16, show: bool) {
     let mut _mutimap: Vec<(String, Vec<String>)> = Vec::new();
     let cql_version = ("CQL_VERSION".to_string(), vec!["3.0.0".to_string()]);
     _mutimap.push(cql_version);
@@ -91,8 +96,39 @@ fn handle_message_option(stream: &mut TcpStream, show: bool) {
     let msg = SupportedMessage {
         multimap: _mutimap,
     };
+    if show {
+        println!("C   El mensaje enviado es: {:?}", msg);
+        println!("C   El mensaje enviado a: {:?}", stream);
+    }
+    if let Err(e) = msg.send_through(stream, cql_stream) {
+        if show {
+            println!("C   Error al enviarle un ErrorMessage al cliente: {:?}", e);
+        }
+    }
+}
+
+fn handle_message_startup(stream: &mut TcpStream, cql_stream: u16, show: bool) {
     
-    if let Err(e) = msg.send_through(stream) {
+    let msg = ReadyMessage {};
+    if show {
+        println!("C   El mensaje enviado es: {:?}", msg);
+        println!("C   El mensaje enviado a: {:?}", stream);
+    }
+    if let Err(e) = msg.send_through(stream, cql_stream) {
+        if show {
+            println!("C   Error al enviarle un ErrorMessage al cliente: {:?}", e);
+        }
+    }
+}
+
+fn handle_message_register(stream: &mut TcpStream, cql_stream: u16, show: bool) {
+    
+    let msg = ReadyMessage {};
+    if show {
+        println!("C   El mensaje enviado es: {:?}", msg);
+        println!("C   El mensaje enviado a: {:?}", stream);
+    }
+    if let Err(e) = msg.send_through(stream, cql_stream) {
         if show {
             println!("C   Error al enviarle un ErrorMessage al cliente: {:?}", e);
         }
@@ -112,17 +148,25 @@ pub fn handle_connection_client(
                 if show {
                     println!("\nC   El env recibido es: {:?}", env);
                 }
+                let cql_stream = env.stream;
                 match env.body {
                     CqlMessage::Query(querymessage) => {
-                        handle_message_query(&node, querymessage, stream, show)?;
+                        handle_message_query(&node, querymessage, stream, cql_stream, show)?;
                     }
                     CqlMessage::Option(optionmessage) => {
-                        handle_message_option(stream, show);
+                        handle_message_option(stream, cql_stream, show);
+                    }
+                    CqlMessage::Startup(startupmessage) => {
+                        handle_message_startup(stream, cql_stream, show);
+                    }
+                    CqlMessage::Register(registermessage) => {
+                        handle_message_register(stream, cql_stream, show);
                     }
                     _ => {
                         handle_message_error(
                             stream,
                             "Error: Solo me puede llegar un QueryMessage".to_string(),
+                            cql_stream,
                             show,
                         );
                     }

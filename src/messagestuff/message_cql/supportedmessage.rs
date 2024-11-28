@@ -28,12 +28,12 @@ impl Serialize for SupportedMessage {
 }
 
 impl IntoEnvelope for SupportedMessage {
-    fn into_envelope(self) -> Envelope {
+    fn into_envelope(self, cql_stream: u16) -> Envelope {
         let _body = self.to_bytes();
         Envelope {
             version: RESPONSE,
             flags: 0_u8,      //0 as u8,
-            stream: 0_u16,    //0 as u16,
+            stream: cql_stream,    //0 as u16,
             opcode: CqlOpcode::SupportedMessage,
             length: _body.len() as i32,
             body: CqlMessage::Supported(self),

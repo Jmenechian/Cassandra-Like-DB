@@ -95,7 +95,7 @@ impl Client {
                 query: message,
                 consistency: config::QUORUM,
             };
-            let _ = msg.send_through(stream);
+            let _ = msg.send_through(stream, 0 as u16);
         }
         Ok(())
     }

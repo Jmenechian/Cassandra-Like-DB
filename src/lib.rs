@@ -44,6 +44,7 @@ pub mod messagestuff {
         pub mod supportedmessage;
         pub mod readymessage;
         pub mod startupmessage;
+        pub mod registermessage;
     }
     pub mod message_server {
         pub mod errorservermessage;

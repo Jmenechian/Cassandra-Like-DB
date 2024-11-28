@@ -57,6 +57,7 @@ pub const RESULT: u8 = 0x08;
 pub const SUPPORTED: u8 = 0x06;
 pub const STARTUP: u8 = 0x01;
 pub const READY: u8 = 0x02;
+pub const REGISTER: u8 = 0x0B;
 
 pub const GOSSIP: u8 = 0x11;
 pub const READ_REPAIR: u8 = 0x12;

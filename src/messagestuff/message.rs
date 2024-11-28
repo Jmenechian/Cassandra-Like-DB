@@ -13,11 +13,11 @@ pub trait Serialize: std::fmt::Debug {
 }
 
 pub trait Sendable: std::fmt::Debug + IntoEnvelope {
-    fn send_through(self, stream: &mut TcpStream) -> Result<(), MyError>
+    fn send_through(self, stream: &mut TcpStream, cql_stream: u16,) -> Result<(), MyError>
     where
         Self: Sized,
     {
-        let env = self.into_envelope();
+        let env = self.into_envelope(cql_stream);
         let bytes = env.to_bytes();
         if stream.write_all(&bytes).is_err() {
             return Err(MyError::TcpStreamError(
@@ -32,7 +32,7 @@ pub trait Sendable: std::fmt::Debug + IntoEnvelope {
         Ok(())
     }
 
-    fn sent_to(self, addres: String) -> Result<(), MyError>
+    fn sent_to(self, addres: String, cql_stream: u16) -> Result<(), MyError>
     where
         Self: Sized,
     {
@@ -44,7 +44,7 @@ pub trait Sendable: std::fmt::Debug + IntoEnvelope {
                 ))
             }
         };
-        self.send_through(&mut stream)
+        self.send_through(&mut stream, cql_stream)
     }
 }
 

@@ -77,12 +77,12 @@ impl Serialize for ResultMessage {
 }
 
 impl IntoEnvelope for ResultMessage {
-    fn into_envelope(self) -> Envelope {
+    fn into_envelope(self, cql_stream: u16) -> Envelope {
         let _body = self.to_bytes();
         Envelope {
             version: RESPONSE,
             flags: 0_u8,
-            stream: 0_u16,
+            stream: cql_stream,
             opcode: CqlOpcode::ResultMessage,
             length: _body.len() as i32,
             body: CqlMessage::Result(self),
