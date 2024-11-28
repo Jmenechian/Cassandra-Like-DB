@@ -22,8 +22,8 @@ use crate::{
 
 use super::{
     buttons_and_reactions::{
-        get_color_insert_button, get_color_other_button, insert_button_can_be_pressed,
-        match_and_get_queries, update_or_delete_button_can_be_pressed,
+        get_color_button, insert_or_update_button_can_be_pressed,
+        match_and_get_queries, delete_button_can_be_pressed,
     },
     connection_server::ConnectionServer,
     images::{get_all_angles_for_flight, get_texture_for_flight},
@@ -412,7 +412,7 @@ impl MapApp {
             .show(ui.ctx(), |ui| {
                 ui.horizontal(|ui| {
                     let label = format!("Enter {}:", tag);
-                    ui.label(label);
+                    ui.label(egui::RichText::new(label).heading());
                     ui.text_edit_singleline(var);
                     *var = var.trim().to_string();
                 });
@@ -425,7 +425,7 @@ impl MapApp {
             .show(ui.ctx(), |ui| {
                 ui.horizontal(|ui| {
                     let label = format!("Enter {}:", tag);
-                    ui.label(label);
+                    ui.label(egui::RichText::new(label).heading());
 
                     egui::ComboBox::from_label("")
                         .selected_text(&self.status_selected)
@@ -490,12 +490,12 @@ impl MapApp {
                     &self.flight_selected.clone(),
                     &self.status_selected.clone(),
                 );
-                let insert_button = insert_button_can_be_pressed(parameters);
-                let up_del_button = update_or_delete_button_can_be_pressed(parameters);
+                let insert_update_button = insert_or_update_button_can_be_pressed(parameters);
+                let delete_button = delete_button_can_be_pressed(parameters);
 
                 if ui.add(egui::Button::new(tag).fill(color)).clicked() {
                     let (query_origin, query_destination) =
-                        match_and_get_queries(var, insert_button, up_del_button, parameters);
+                        match_and_get_queries(var, insert_update_button, delete_button, parameters);
 
                     if !query_origin.is_empty() && !query_destination.is_empty() {
                         let rx: &Receiver<Vec<String>> =
@@ -557,17 +557,17 @@ impl MapApp {
         self.draw_status_box(ui, x, y, "status"); //status
         y = offset_y(y);
 
-        let insert_button = insert_button_can_be_pressed(parameters);
-        let up_del_button = update_or_delete_button_can_be_pressed(parameters);
+        let insert_update_button = insert_or_update_button_can_be_pressed(parameters);
+        let delete_button = delete_button_can_be_pressed(parameters);
 
-        let insert_color = get_color_insert_button(insert_button);
-        let up_del_color = get_color_other_button(up_del_button);
+        let insert_update_color = get_color_button(insert_update_button);
+        let delete_color = get_color_button(delete_button);
 
-        self.draw_fixed_button_and_react(ui, (x, y), "INSERT", INSERT, texture, insert_color); //INSERT
+        self.draw_fixed_button_and_react(ui, (x, y), "INSERT", INSERT, texture, insert_update_color);
         x = offset_x(x);
-        self.draw_fixed_button_and_react(ui, (x, y), "DELETE", DELETE, texture, up_del_color); //DELETE
+        self.draw_fixed_button_and_react(ui, (x, y), "DELETE", DELETE, texture, delete_color);
         x = offset_x(x);
-        self.draw_fixed_button_and_react(ui, (x, y), "UPDATE", UPDATE, texture, up_del_color);
+        self.draw_fixed_button_and_react(ui, (x, y), "UPDATE", UPDATE, texture, insert_update_color);
     }
 
     fn get_user(&mut self) {
