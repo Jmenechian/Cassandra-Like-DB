@@ -1,4 +1,4 @@
-use crate::config::{ENCRIPT_DATA, TABLE_PATH};
+use crate::config::ENCRIPT_DATA;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
 use chrono::Utc;
@@ -148,8 +148,8 @@ impl Insert {
                 new_record.push(String::new());
             }
         }
-        new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
-        new_record.push(Utc::now().to_string()); // metes lo mas nuevo
+        new_record.pop(); // sacamos el timestamp vacio
+        new_record.push(Utc::now().to_string());
         new_record
     }
 

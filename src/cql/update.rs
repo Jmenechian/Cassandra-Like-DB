@@ -8,6 +8,7 @@ use crate::utils::*;
 use std::collections::HashMap;
 use std::io::BufRead;
 use aes_gcm::{Aes256Gcm, aead::Key};
+use chrono::Utc;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
@@ -81,6 +82,7 @@ impl Update {
             }
             self._get_set_values(chunk)?;
         }
+        self.set.insert("timestamp".to_string(), Utc::now().to_string());
         Ok(())
     }
 
