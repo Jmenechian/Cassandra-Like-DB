@@ -71,8 +71,6 @@ pub const NOT_NUMBER: i32 = 3;
 
 // encriptacion at-rest
 pub const ENCRIPT_DATA: bool = false; // Para testeo
-pub static KEYS_FILE:&str = "encryption_keys";
-
 
 // OPCODE
 // 0x00    ERROR

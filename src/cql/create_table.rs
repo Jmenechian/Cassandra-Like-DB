@@ -197,41 +197,30 @@ impl CreateTable {
         format
     }
 
-    fn create_encrypted_tables(&mut self) -> Result<(), MyError> {
-        // let encryption_key=  Aes256Gcm::generate_key(OsRng); 
+    fn create_table(&mut self) -> Result<(), MyError> {
         for i in 1..=RING_SIZE {
             // Creo nueva tabla por nodo
             let table_name = format!("{}/{}_{}.csv", TABLE_PATH,self.table_name, i);
-            let encrypted_columns: Vec<u8> = encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
+            let columns: String = self.columns.join(",");
+            let columns_final: String = if ENCRIPT_DATA {
+                let encripted_column = encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
+                match  String::from_utf8(encripted_column) {
+                    Ok(s) => s,
+                    Err(e) => return Err(MyError::DecryptionError(e.to_string())),
+                }
+            } else {
+                columns
+            };
+            
             let mut f = File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
-            f.write_all(&encrypted_columns)
-                .map_err(|e| MyError::FileError(e.to_string()))?;
-            writeln!(f).map_err(|e| MyError::FileError(e.to_string()))?;
+            writeln!(f, "{}", columns_final).map_err(|e| MyError::FileError(e.to_string()))?;
         }
         Ok(())
     }
-
-    fn create_unencrypted_tables(&mut self) -> Result<(), MyError> {
-        for i in 1..=RING_SIZE {
-            // Creo nueva tabla por nodo
-            let path = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
-            let mut f = File::create_new(path).map_err(|e| MyError::FileError(e.to_string()))?;
-
-            f.write_all(self.columns.join(",").as_bytes())
-                .map_err(|e| MyError::FileError(e.to_string()))?;
-            writeln!(f).map_err(|e| MyError::FileError(e.to_string()))?;
-        }
-        Ok(())
-    }
-    
     
     // Se ejecuta la query
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
-        if ENCRIPT_DATA {
-            self.create_encrypted_tables()?;
-        } else {
-            self.create_unencrypted_tables()?;
-        }
+        let _ = self.create_table()?;
         
         // Creo un solo archivo de metadata
         let path_metadata = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, "metadata");
