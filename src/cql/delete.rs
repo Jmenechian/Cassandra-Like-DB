@@ -1,10 +1,10 @@
 // Representa las consultas del tipo DELETE
 // Aca se parsea la consulta y se ejecuta
-use crate::config::{TABLE_PATH, ENCRIPT_DATA};
+use crate::config::{ENCRIPT_DATA, TABLE_PATH};
 use crate::cql::{filter::Filter, where_clause::WhereClause};
+use crate::encryption::encrypt::decrypt_body_aes128;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
-use crate::messagestuff::encrypt::*;
 use std::io::BufRead;
 use std::sync::{Arc, RwLock};
 
@@ -88,7 +88,7 @@ impl Delete {
             let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
             let final_line: String = if ENCRIPT_DATA {
                 let decrypted_line = decrypt_body_aes128(line.as_bytes().to_vec())?;
-                match  String::from_utf8(decrypted_line) {
+                match String::from_utf8(decrypted_line) {
                     Ok(s) => s,
                     Err(e) => return Err(MyError::DecryptionError(e.to_string())),
                 }

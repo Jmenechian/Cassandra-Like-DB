@@ -6,7 +6,7 @@ use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
     message::*,
-    message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultemptymessage::*},
+    message_cql::{cqlenvelope::*, errormessage::*, resultemptymessage::*, resultrowsmessage::*},
     message_server::{
         queryservermessage::QueryServerMessage, resultservermessage::*, serverpacket::Packet,
         serverpacket::ServerMessage,
@@ -16,6 +16,7 @@ use crate::serverstuff::node_status::Status;
 use crate::serverstuff::{neighbor_node::NeighborNode, node::Node};
 use crate::ConsistentHash;
 use chrono::NaiveDateTime;
+use std::collections::HashMap;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
@@ -28,7 +29,6 @@ fn handle_message_query(
     stream: &mut TcpStream,
     show: bool,
 ) -> Result<(), MyError> {
-
     let table = match send_query_to_nodes(node, querymessage.query, querymessage.consistency, show)
     {
         Ok(r) => r,
@@ -116,7 +116,7 @@ pub fn handle_connection_client(
 /// Hace el read-repair para las tabla de origen y destino de vuelos.
 /// El simulador no tiene read-repair.
 fn process_results(
-    results: &mut Vec<Vec<String>>,
+    results: &mut HashMap<String, Vec<String>>,
     nodes_with_result: &Vec<NeighborNode>,
     table: &str,
 ) -> Vec<String> {
@@ -125,34 +125,51 @@ fn process_results(
     table_name.pop();
     table_name.pop();
     if table_name != TABLE_ORIGIN_NAME && table_name != TABLE_DESTINATION_NAME {
-        if let Some(result) = results.pop() {
-            println!("El nombre de la tabla es: {:?}", table_name);
-            return result;
+        if let Some(node) = results.keys().collect::<Vec<&String>>().first() {
+            if let Some(result) = results.get(*node) {
+                return result.to_vec();
+            }
+            return vec![];
         }
-        return vec![];
     }
 
     match results.len() {
         0 => vec![],
         1 => {
-            if let Some(result) = results.pop() {
-                return result;
+            if let Some(result) = results.values().collect::<Vec<&Vec<String>>>().first() {
+                return result.to_vec();
             }
             vec![]
         }
         _ => {
-            let index = look_newer(results);
-            read_repair(&results[index], nodes_with_result, &table_name);
-            results.remove(index)
+            if read_repair_needed(results.clone()) {
+                println!("Read repair needed");
+                let node = look_newer(results);
+                if let Some(result) = results.get(&node) {
+                    read_repair(result, nodes_with_result, &node, &table_name);
+                    result.to_vec()
+                } else {
+                    println!("ERROR EN READ REPAIR: No deberia llegar aca");
+                    vec![]
+                }
+            } else {
+                println!("Read repair not needed");
+                if let Some(result) = results.values().collect::<Vec<&Vec<String>>>().first() {
+                    result.to_vec()
+                } else {
+                    println!("ERROR EN READ REPAIR: No deberia llegar aca");
+                    vec![]
+                }
+            }
         }
     }
 }
 
-fn look_newer(results: &[Vec<String>]) -> usize {
+fn look_newer(results: &HashMap<String, Vec<String>>) -> String {
     let mut newer = NaiveDateTime::MIN;
-    let mut index = 0;
-    for (i, result) in results.iter().enumerate() {
-        println!("resultado: {:?} de i: {}", result, i);
+    let mut newest_node = "".to_string();
+
+    for (node, result) in results.iter() {
         for row in result {
             if let Some(timestamp) = row
                 .split(",")
@@ -165,23 +182,76 @@ fn look_newer(results: &[Vec<String>]) -> usize {
                 {
                     if parsed_datetime >= newer {
                         newer = parsed_datetime;
-                        index = i;
+                        newest_node = node.clone();
                     }
                 };
             }
         }
     }
-    index
+    newest_node
 }
 
-fn read_repair(result: &[String], nodes_with_result: &Vec<NeighborNode>, table: &str) {
+/// Chequea si es necesario hacer read repair
+/// Solo se llama cuando hay por lo menos dos resultados
+fn read_repair_needed(results: HashMap<String, Vec<String>>) -> bool {
+    let mut results_vec = results.values().collect::<Vec<&Vec<String>>>();
+    if results_vec.len() < 2 {
+        return false;
+    }
+
+    if let Some(mut result1) = results_vec.pop() {
+        while !results_vec.is_empty() {
+            for result2 in &results_vec {
+                if !same_results(result1, result2) {
+                    return true;
+                }
+            }
+            result1 = results_vec.pop().unwrap();
+        }
+    }
+    false
+}
+
+fn same_results(rows1: &[String], rows2: &[String]) -> bool {
+    if rows1.is_empty() && rows2.is_empty() {
+        return true;
+    }
+
+    if rows1.len() != rows2.len() {
+        return false;
+    }
+
+    for (row1, row2) in rows1.iter().zip(rows2.iter()) {
+        let mut row1_split = row1.split(",").collect::<Vec<&str>>();
+        row1_split.pop(); // saco el timestamp
+
+        let mut row2_split = row2.split(",").collect::<Vec<&str>>();
+        row2_split.pop(); // saco el timestamp
+
+        if row1_split != row2_split {
+            return false;
+        }
+    }
+    true
+}
+
+// Manda mensaje de read-repair a los nodos que no tienen la info correcta.
+fn read_repair(
+    result: &[String],
+    nodes_with_result: &Vec<NeighborNode>,
+    node: &String,
+    table: &str,
+) {
     println!("Mandando mensaje de Read Repair");
 
-    for node in nodes_with_result {
-        if node.status == Status::Disconnected {
+    for node_neighbor in nodes_with_result {
+        if node_neighbor.number == *node {
             continue;
         }
-        if let Ok(mut socket) = TcpStream::connect(&node.server_ip) {
+        if node_neighbor.status == Status::Disconnected {
+            continue;
+        }
+        if let Ok(mut socket) = TcpStream::connect(&node_neighbor.server_ip) {
             let msg = ReadRepairMessage {
                 table: table.to_string(),
                 rows_to_keep: result.to_vec(),
@@ -191,16 +261,23 @@ fn read_repair(result: &[String], nodes_with_result: &Vec<NeighborNode>, table: 
     }
 }
 
-pub fn hinted_handoff(node_number: &String ,neighbor_number: &String, query: &Query) -> Result<(), MyError>{
-    let file = format!("{}/logs/logs_{}_{}.csv",TABLE_PATH, node_number, neighbor_number);
-    
-    let _ = match OpenOptions::new().append(true).create(true).open(file) {
+pub fn hinted_handoff(
+    node_number: &String,
+    neighbor_number: &String,
+    query: &Query,
+) -> Result<(), MyError> {
+    let file = format!(
+        "{}/logs/logs_{}_{}.csv",
+        TABLE_PATH, node_number, neighbor_number
+    );
+
+    match OpenOptions::new().append(true).create(true).open(file) {
         Ok(mut f) => {
             write!(f, "{}", query.query).map_err(|e| MyError::FileError(e.to_string()))?;
         }
         Err(e) => {
             println!("Error al abrir el archivo de logs: {:?}", e);
-            return Err(MyError::FileError(e.to_string()))
+            return Err(MyError::FileError(e.to_string()));
         }
     };
 
@@ -226,6 +303,7 @@ pub fn send_query_to_nodes(
         }
     };
     let mut all_response: Vec<Vec<String>> = vec![];
+    let mut all_response_dict: HashMap<String, Vec<String>> = HashMap::new();
     let mut hash = ConsistentHash::new(RF);
     let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());
 
@@ -272,12 +350,13 @@ pub fn send_query_to_nodes(
             }
             match node.process_query(&mut query) {
                 Ok(result) => {
-                    all_response.push(result);
+                    // all_response.push(result);
+                    all_response_dict.insert(neighbor.server_ip.clone(), result);
 
                     if consistency_level == config::ONE && all_response.len() == 1 {
                         if is_select {
                             return Ok(process_results(
-                                &mut all_response,
+                                &mut all_response_dict,
                                 &nodes_with_result,
                                 &query.get_table(),
                             ));
@@ -288,15 +367,19 @@ pub fn send_query_to_nodes(
                             return Ok(vec![]);
                         }
                     }
-                } 
+                }
                 Err(error) => {
-                    all_response.push(vec![format!("Invalid Query: {}", error)]);
+                    // all_response.push(vec![format!("Invalid Query: {}", error)]);
+                    all_response_dict.insert(
+                        neighbor.server_ip.clone(),
+                        vec![format!("Invalid Query: {}", error)],
+                    );
                 }
             }
             continue;
         } else if neighbor.status == Status::Disconnected {
             if !query.query.contains("SELECT") {
-                hinted_handoff(&node.number,&neighbor.number, &query)?;
+                hinted_handoff(&node.number, &neighbor.number, &query)?;
             }
             if show {
                 println!("C   - Nodo desconectado: {}", neighbor.server_ip);
@@ -319,10 +402,16 @@ pub fn send_query_to_nodes(
                     match packet.body {
                         ServerMessage::Result(resultmessage) => match resultmessage.body {
                             ResultServerBody::Rows(r) => {
-                                all_response.push(r.rows_content.clone());
+                                // all_response.push(r.rows_content.clone());
+                                all_response_dict
+                                    .insert(neighbor.server_ip.clone(), r.rows_content.clone());
                             }
                             ResultServerBody::Void(_) => {
                                 all_response.push(vec!["Invalid Query".to_string()]);
+                                all_response_dict.insert(
+                                    neighbor.server_ip.clone(),
+                                    vec!["Invalid Query".to_string()],
+                                );
                             }
                             ResultServerBody::Empty(_) => {}
                         },
@@ -343,13 +432,17 @@ pub fn send_query_to_nodes(
     }
     if is_select {
         Ok(process_results(
-            &mut all_response,
+            &mut all_response_dict,
             &nodes_with_result,
             &query.get_table(),
         ))
     } else {
-        if let Some(result) = all_response.pop() {
-            return Ok(result);
+        if let Some(result) = all_response_dict
+            .values()
+            .collect::<Vec<&Vec<String>>>()
+            .first()
+        {
+            return Ok(result.to_vec());
         }
         Ok(vec![])
     }

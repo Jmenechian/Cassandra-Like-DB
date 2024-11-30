@@ -1,4 +1,7 @@
-use crate::{config::{self, AIRPORTS_PATH}, gui::connection_server::ConnectionServer};
+use crate::{
+    config::{self, AIRPORTS_PATH},
+    gui::connection_server::ConnectionServer,
+};
 use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, sync::mpsc::Receiver};
 
 use super::{airport::Airport, flight::Flight, queries::get_query_select_in_simulator};

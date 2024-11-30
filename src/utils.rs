@@ -1,5 +1,6 @@
 // Funciones auxiliares para el manejo de archivos y strings
 
+use crate::encryption::encrypt::*;
 use crate::{config::ENCRIPT_DATA, errors::my_errors::MyError};
 use std::{
     fs::{File, OpenOptions},
@@ -7,7 +8,6 @@ use std::{
     iter::Peekable,
     sync::{Arc, RwLock},
 };
-use crate::messagestuff::encrypt::*;
 
 /// Returns the full quote inside ' 'S
 pub fn get_full_quote(parts: &[&str], index: usize) -> String {
@@ -99,14 +99,14 @@ pub fn get_file_headers<R: std::io::BufRead>(rdr: &mut R) -> Result<Vec<String>,
         .map_err(|_| MyError::FileError("Error n get_File_headers".to_string()))?;
     let final_headers: String = if ENCRIPT_DATA {
         let decrypted_headers = decrypt_body_aes128(headers_line.as_bytes().to_vec())?;
-        match  String::from_utf8(decrypted_headers) {
+        match String::from_utf8(decrypted_headers) {
             Ok(s) => s,
             Err(e) => return Err(MyError::DecryptionError(e.to_string())),
         }
     } else {
         headers_line
     };
-    
+
     let headers: Vec<String> = final_headers
         .trim()
         .split(',')
@@ -133,15 +133,12 @@ pub fn write_rows(path: &str, table_name: &str, records: &Vec<Vec<String>>) -> R
     Ok(())
 }
 
-
 /// Appends row to file
 /// Expects file to end with a newline
 pub fn append_row(file: &mut File, records: &[String]) -> Result<(), MyError> {
     writeln!(file, "{}", records.join(",")).map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }
-
-
 
 /// Apppends row to already opened file
 /// Expects file to end with a newline
@@ -187,11 +184,15 @@ pub fn write_temporary_to_original(
         let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
         let record: Vec<String> = line.trim().split(",").map(|s| s.to_string()).collect();
         if ENCRIPT_DATA {
-            let encrypted_line: Vec<u8> = encrypt_body_aes128(record.join(",").as_bytes().to_vec())?;
-            original_table.write_all(&encrypted_line).map_err(|e| MyError::FileError(e.to_string()))?;
+            let encrypted_line: Vec<u8> =
+                encrypt_body_aes128(record.join(",").as_bytes().to_vec())?;
+            original_table
+                .write_all(&encrypted_line)
+                .map_err(|e| MyError::FileError(e.to_string()))?;
             writeln!(original_table).map_err(|e| MyError::FileError(e.to_string()))?;
         } else {
-            append_row(&mut original_table, &record).map_err(|e| MyError::FileError(e.to_string()))?;
+            append_row(&mut original_table, &record)
+                .map_err(|e| MyError::FileError(e.to_string()))?;
         }
     }
     Ok(())
@@ -203,4 +204,3 @@ fn empty_table(table: &File) -> Result<(), MyError> {
         .map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
 }
-

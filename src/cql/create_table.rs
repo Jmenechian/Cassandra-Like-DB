@@ -1,9 +1,9 @@
-use crate::config::{RING_SIZE, TABLE_PATH, ENCRIPT_DATA};
+use crate::config::{ENCRIPT_DATA, RING_SIZE, TABLE_PATH};
+use crate::encryption::encrypt::encrypt_body_aes128;
 use crate::errors::my_errors::MyError;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use crate::messagestuff::encrypt::*;
 
 #[derive(Debug, PartialEq, Eq)]
 /// Representa las consultas del tipo CREATE TABLE

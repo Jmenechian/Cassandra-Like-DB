@@ -7,7 +7,8 @@ use crate::config;
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::{
-    cqlenvelope::*, resultrowsmessage::ResultRowsMessage, resultvoidmessage::ResultVoidMessage, resultemptymessage::ResultEmptyMessage
+    cqlenvelope::*, resultemptymessage::ResultEmptyMessage, resultrowsmessage::ResultRowsMessage,
+    resultvoidmessage::ResultVoidMessage,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq)]

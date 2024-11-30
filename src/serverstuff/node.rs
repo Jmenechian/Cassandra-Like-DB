@@ -79,7 +79,6 @@ impl Node {
             } else {
                 false
             }
-
         } else {
             self.neighbors.push(neighbor_node);
             true

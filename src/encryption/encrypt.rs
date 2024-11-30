@@ -1,10 +1,10 @@
 use crate::config::KEY_FILE;
 use crate::errors::my_errors::MyError;
-use std::{io::Read, fs::File};
+use aes::cipher::{generic_array::GenericArray, BlockDecrypt, BlockEncrypt, KeyInit};
 use aes::Aes128;
-use aes::cipher::{BlockEncrypt, BlockDecrypt, KeyInit, generic_array::GenericArray};
+use std::{fs::File, io::Read};
 
-pub fn load_key_from_file(filename: &str) -> Result<[u8;16], MyError> {
+pub fn load_key_from_file(filename: &str) -> Result<[u8; 16], MyError> {
     let mut file = match File::open(filename) {
         Ok(f) => f,
         Err(_) => return Err(MyError::FileError("Error".to_string())),
@@ -52,14 +52,18 @@ pub fn decode(bytes: Vec<u8>) -> Result<Vec<u8>, MyError> {
             None => return Err(MyError::DecryptionError("Error".to_string())),
         };
         if *last == b'\n' {
-            bytes_to_decode = bytes[..bytes.len()-1].to_vec();
+            bytes_to_decode = bytes[..bytes.len() - 1].to_vec();
         } else {
-            return Err(MyError::DecryptionError(format!("Datos codificados no validos: {:?}, last: {:?}", bytes.len(), bytes.last().unwrap())))
+            return Err(MyError::DecryptionError(format!(
+                "Datos codificados no validos: {:?}, last: {:?}",
+                bytes.len(),
+                bytes.last().unwrap()
+            )));
         }
     } else {
         bytes_to_decode = bytes;
     }
-    
+
     const CUSTOM_ENCODING: &[u8] = b"0123456789ABCDEF";
     let mut decoding_map = [0u8; 256];
     for (i, &c) in CUSTOM_ENCODING.iter().enumerate() {
@@ -88,12 +92,20 @@ pub fn decrypt_body_aes128(encrypted_body: Vec<u8>) -> Result<Vec<u8>, MyError> 
         return Ok(decrypted);
     }
     if decrypted.len() % 16 != 0 {
-        return Err(MyError::DecryptionError(format!("Invalid padding 1: decrypted: {:?},  {:?}, len: {:?}", encrypted_body, decrypted.is_empty(), decrypted.len() % 16)));
+        return Err(MyError::DecryptionError(format!(
+            "Invalid padding 1: decrypted: {:?},  {:?}, len: {:?}",
+            encrypted_body,
+            decrypted.is_empty(),
+            decrypted.len() % 16
+        )));
     }
 
     let padding = *decrypted.last().unwrap() as usize;
     if padding == 0 || padding > 16 || padding > decrypted.len() {
-        return Err(MyError::DecryptionError(format!("Invalid padding 2: padding: {:?}, decrypted: {:?}", padding, decrypted)));
+        return Err(MyError::DecryptionError(format!(
+            "Invalid padding 2: padding: {:?}, decrypted: {:?}",
+            padding, decrypted
+        )));
     }
 
     let unpadded = decrypted[..decrypted.len() - padding].to_vec();
@@ -127,7 +139,10 @@ mod tests {
 
     #[test]
     fn test_encrypt_message() -> Result<(), MyError> {
-        let message = QueryMessage{query: "SELECT FROM origin WHERE airport = AEP".to_string(),consistency: 8 as u16};
+        let message = QueryMessage {
+            query: "SELECT FROM origin WHERE airport = AEP".to_string(),
+            consistency: 8 as u16,
+        };
         let message_vec = message.to_bytes();
         let message_encrypt = encrypt_body_aes128(message_vec)?;
         let message_decrypt = decrypt_body_aes128(message_encrypt)?;

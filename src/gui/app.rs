@@ -22,8 +22,8 @@ use crate::{
 
 use super::{
     buttons_and_reactions::{
-        get_color_button, insert_or_update_button_can_be_pressed,
-        match_and_get_queries, delete_button_can_be_pressed,
+        delete_button_can_be_pressed, get_color_button, insert_or_update_button_can_be_pressed,
+        match_and_get_queries,
     },
     connection_server::ConnectionServer,
     images::{get_all_angles_for_flight, get_texture_for_flight},
@@ -501,9 +501,13 @@ impl MapApp {
                         let rx: &Receiver<Vec<String>> =
                             self.connection_server.get_channel_to_receive();
 
-                        let _ = self.connection_server.make_query(query_origin, config::QUORUM);
+                        let _ = self
+                            .connection_server
+                            .make_query(query_origin, config::QUORUM);
                         let _ = rx.recv().unwrap();
-                        let _ = self.connection_server.make_query(query_destination, config::QUORUM);
+                        let _ = self
+                            .connection_server
+                            .make_query(query_destination, config::QUORUM);
                         let _ = rx.recv().unwrap();
                         println!("Ok receive response query");
 
@@ -563,11 +567,25 @@ impl MapApp {
         let insert_update_color = get_color_button(insert_update_button);
         let delete_color = get_color_button(delete_button);
 
-        self.draw_fixed_button_and_react(ui, (x, y), "INSERT", INSERT, texture, insert_update_color);
+        self.draw_fixed_button_and_react(
+            ui,
+            (x, y),
+            "INSERT",
+            INSERT,
+            texture,
+            insert_update_color,
+        );
         x = offset_x(x);
         self.draw_fixed_button_and_react(ui, (x, y), "DELETE", DELETE, texture, delete_color);
         x = offset_x(x);
-        self.draw_fixed_button_and_react(ui, (x, y), "UPDATE", UPDATE, texture, insert_update_color);
+        self.draw_fixed_button_and_react(
+            ui,
+            (x, y),
+            "UPDATE",
+            UPDATE,
+            texture,
+            insert_update_color,
+        );
     }
 
     fn get_user(&mut self) {

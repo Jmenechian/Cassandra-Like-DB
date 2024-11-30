@@ -32,27 +32,30 @@ pub mod serverstuff {
 
 pub mod messagestuff {
     pub mod message;
-    pub mod encrypt;
     pub mod message_cql {
         pub mod cqlenvelope;
         pub mod errormessage;
         pub mod querymessage;
+        pub mod resultemptymessage;
         pub mod resultmessage;
         pub mod resultrowsmessage;
         pub mod resultvoidmessage;
-        pub mod resultemptymessage;
     }
     pub mod message_server {
         pub mod errorservermessage;
         pub mod gossipmessage;
         pub mod queryservermessage;
         pub mod readrepairmessage;
+        pub mod resultemptymessage;
         pub mod resultrowsevermsg;
         pub mod resultservermessage;
         pub mod resultvoidservermsg;
-        pub mod resultemptymessage;
         pub mod serverpacket;
     }
+}
+
+pub mod encryption {
+    pub mod encrypt;
 }
 
 pub use cql::query::Query;

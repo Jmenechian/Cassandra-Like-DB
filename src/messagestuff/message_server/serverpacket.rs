@@ -5,6 +5,7 @@
 //   - Para enviar el packet y leerlo por stream estan las funciones to_bytes() y from_stream().
 
 use crate::config;
+use crate::encryption::encrypt::{decrypt_body_aes128, encrypt_body_aes128};
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::{
     message::*, message_server::errorservermessage::ErrorServerMessage,
@@ -12,7 +13,6 @@ use crate::messagestuff::{
     message_server::queryservermessage::QueryServerMessage,
     message_server::readrepairmessage::ReadRepairMessage,
     message_server::resultservermessage::ResultServerMessage,
-    encrypt::*,
 };
 use std::{io::Read, net::TcpStream};
 
@@ -104,9 +104,9 @@ impl Packet {
                 "Error al leer el <body> desde Stream".to_string(),
             ));
         }
-        
+
         let decrypted_body = decrypt_body_aes128(body_buffer)?;
-        let body_length =decrypted_body.len() as i32;
+        let body_length = decrypted_body.len() as i32;
 
         let _body = match _opcode {
             ServerOpcode::GossipMessage => {

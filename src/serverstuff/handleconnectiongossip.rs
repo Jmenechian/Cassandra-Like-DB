@@ -1,29 +1,33 @@
-use crate::config::{self, TABLE_PATH};
-use crate::utils::{delete_file, get_reader};
-use std::io::BufRead;
+use super::node_initializer::try_connect;
+use crate::config::TABLE_PATH;
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
 use crate::messagestuff::{
     message::*,
-    message_server::{serverpacket::Packet, serverpacket::ServerMessage, queryservermessage::QueryServerMessage},
+    message_server::{
+        queryservermessage::QueryServerMessage, serverpacket::Packet, serverpacket::ServerMessage,
+    },
 };
-use crate::serverstuff::node_status::Status;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
-use super::node_initializer::try_connect;
+use crate::serverstuff::node_status::Status;
+use crate::utils::{delete_file, get_reader};
 use rand::seq::SliceRandom;
-use std::fs::OpenOptions;
+use std::io::BufRead;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
 fn reenviar_gossip(
-    node: & mut std::sync::RwLockWriteGuard<'_, Node>,
+    node: &mut std::sync::RwLockWriteGuard<'_, Node>,
     gossip: GossipMessage,
     show: bool,
 ) {
     if let Some(n) = node.get_random_neighbor() {
         if show {
-            println!("G    El vecino aleatorio es: \n{:?}\nG    Le mando el mensaje: \n{:?}", n, gossip);
+            println!(
+                "G    El vecino aleatorio es: \n{:?}\nG    Le mando el mensaje: \n{:?}",
+                n, gossip
+            );
         }
         if let Some(mut stream) = try_connect(n.gossip_ip.clone()) {
             if let Err(e) = gossip.clone().send_server_through(&mut stream) {
@@ -31,10 +35,12 @@ fn reenviar_gossip(
                     println!("G   Error al eviarle mensaje gossip: {:?}", e);
                 }
             }
-            
         } else {
             if show {
-                println!("G   No me pude conectar con: {:?}, tiene que estar desconectado", n.server_ip);
+                println!(
+                    "G   No me pude conectar con: {:?}, tiene que estar desconectado",
+                    n.server_ip
+                );
             }
             let gossip_msg = GossipMessage {
                 ip: n.server_ip.clone(),
@@ -47,11 +53,12 @@ fn reenviar_gossip(
     }
 }
 
-fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode) { //4 ...
+fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode) {
+    //4 ...
     let file = format!("logs/logs_{}_{}", node_number, neighbor.number);
     let rdr = match get_reader(TABLE_PATH, &file) {
         Ok(r) => r,
-        Err(e) => {
+        Err(_) => {
             return;
         }
     };
@@ -65,14 +72,12 @@ fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode) { //4 ...
                 };
                 let _ = msg.send_server_through(&mut socket);
 
-                let _ = Packet::from_stream(& mut socket);
+                let _ = Packet::from_stream(&mut socket);
             }
         }
-
     }
     println!("borrando archivo");
-    let _ = delete_file(&file, TABLE_PATH );
-
+    let _ = delete_file(&file, TABLE_PATH);
 }
 
 fn handle_message_gossip(
@@ -98,13 +103,17 @@ fn handle_message_gossip(
     };
     let mut new_neighbor = NeighborNode::new(&port.to_string());
     match gossip.status {
-        Status::Connected => {new_neighbor.connect_node();}
-        Status::Disconnected => {new_neighbor.disconnect_node();}
+        Status::Connected => {
+            new_neighbor.connect_node();
+        }
+        Status::Disconnected => {
+            new_neighbor.disconnect_node();
+        }
     }
     if node_guard.add_neighbor(new_neighbor.clone()) {
         println!("{:?}", new_neighbor);
         if new_neighbor.status == Status::Connected {
-            handle_send_backlog(&node_guard.number, &new_neighbor); 
+            handle_send_backlog(&node_guard.number, &new_neighbor);
         }
 
         if show {
@@ -114,7 +123,7 @@ fn handle_message_gossip(
             }
         }
     } else if let Some(false) = gossip.decrease_ttl() {
-        return Ok(())
+        return Ok(());
     }
     reenviar_gossip(&mut node_guard, gossip.clone(), show);
     Ok(())
