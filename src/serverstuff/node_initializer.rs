@@ -33,39 +33,41 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
     //empiezo gossip
     let ports = read_ports_from_file(PORTS_FILE)?;
     let my_ip = current_node.server_ip.clone();
-    match connect_to_random_gossip(ports.clone(), &port, show_g) {
-        Some((mut s, addr)) => {
-            let gossip_msg = GossipMessage {
-                ip: my_ip.clone(),
-                status: Status::Connected,
-                ttl: 5_u8,
-            };
-            let _ = gossip_msg.send_server_through(&mut s);
-            let port = match addr.chars().last() {
-                Some(c) => c,
-                None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
-            };
-            let new = current_node.add_neighbor(NeighborNode::new(&port.to_string()));
-            if show_g && new {
-                println!("G   Mis vecinos son: {:?}", current_node.neighbors);
-            }
-        }
-        None => println!("Tengo que ser el primer nodo porque no encontre otro"),
-    };
+    // match connect_to_random_gossip(ports.clone(), &port, show_g) {
+    //     Some((mut s, addr)) => {
+    //         let gossip_msg = GossipMessage {
+    //             ip: my_ip.clone(),
+    //             status: Status::Connected,
+    //             ttl: 5_u8,
+    //         };
+    //         let _ = gossip_msg.send_server_through(&mut s);
+    //         let port = match addr.chars().last() {
+    //             Some(c) => c,
+    //             None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
+    //         };
+    //         let new = current_node.add_neighbor(NeighborNode::new(&port.to_string()));
+    //         if show_g && new {
+    //             println!("G   Mis vecinos son: {:?}", current_node.neighbors);
+    //         }
+    //     }
+    //     None => println!("Tengo que ser el primer nodo porque no encontre otro"),
+    // };
 
     let server_ip = current_node.server_ip.clone();
     let client_ip = current_node.client_ip.clone();
     let gossip_ip = current_node.gossip_ip.clone();
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node));
 
-    // Seccion cliente-servidor
-    listen(client_ip, &current_node, handle_connection_client, show_c)?;
+    
 
     // Seccion servidor-servidor
     listen(server_ip, &current_node, handle_connection_server, show_s)?;
 
     // Seccion Gossip
     listen(gossip_ip, &current_node, handle_connection_gossip, show_g)?;
+
+    // Seccion cliente-servidor
+    listen(client_ip, &current_node, handle_connection_client, show_c)?;
 
     loop {
         thread::sleep(Duration::from_secs(2));

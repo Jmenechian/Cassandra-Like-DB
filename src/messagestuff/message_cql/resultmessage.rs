@@ -7,7 +7,7 @@ use crate::config;
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::*;
 use crate::messagestuff::message_cql::{
-    cqlenvelope::*, resultrowsmessage::ResultRowsMessage, resultvoidmessage::ResultVoidMessage,
+    cqlenvelope::*, resultrowsmessage::ResultRowsMessage, resultvoidmessage::ResultVoidMessage, resultemptymessage::ResultEmptyMessage
 };
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -15,6 +15,7 @@ use crate::messagestuff::message_cql::{
 pub enum ResultKind {
     Void = config::VOID,
     Rows = config::ROWS,
+    Empty = config::EMPTY,
 }
 
 impl ResultKind {
@@ -22,6 +23,7 @@ impl ResultKind {
         match value {
             config::VOID => Ok(ResultKind::Void),
             config::ROWS => Ok(ResultKind::Rows),
+            config::EMPTY => Ok(ResultKind::Empty),
             _ => Err(MyError::ServerMessageError(
                 "Invalid Result Kind".to_string(),
             )),
@@ -33,6 +35,7 @@ impl ResultKind {
 pub enum ResultBody {
     Void(ResultVoidMessage),
     Rows(ResultRowsMessage),
+    Empty(ResultEmptyMessage),
 }
 
 #[derive(Debug, PartialEq)]
@@ -50,6 +53,7 @@ impl Serialize for ResultMessage {
             ResultBody::Rows(rows) => {
                 bytes.extend_from_slice(&rows.to_bytes());
             }
+            ResultBody::Empty(_) => {}
         }
         bytes
     }
@@ -63,6 +67,7 @@ impl Serialize for ResultMessage {
                 let (rows, resto) = ResultRowsMessage::from_bytes(resto)?;
                 (ResultBody::Rows(rows), resto)
             }
+            ResultKind::Empty => (ResultBody::Empty(ResultEmptyMessage), resto),
         };
 
         Ok((

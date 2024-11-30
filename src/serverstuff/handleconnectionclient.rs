@@ -1,4 +1,4 @@
-use crate::config;
+use crate::config::{self, TABLE_PATH};
 use crate::config::{RF, TABLE_DESTINATION_NAME, TABLE_ORIGIN_NAME};
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
@@ -6,7 +6,7 @@ use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
     message::*,
-    message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultvoidmessage::*},
+    message_cql::{cqlenvelope::*, errormessage::*, resultrowsmessage::*, resultemptymessage::*},
     message_server::{
         queryservermessage::QueryServerMessage, resultservermessage::*, serverpacket::Packet,
         serverpacket::ServerMessage,
@@ -18,6 +18,9 @@ use crate::ConsistentHash;
 use chrono::NaiveDateTime;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
+
+use std::fs::OpenOptions;
+use std::io::Write;
 
 fn handle_message_query(
     node: &Arc<RwLock<Node>>,
@@ -39,7 +42,7 @@ fn handle_message_query(
         }
     };
     if table.is_empty() {
-        let void_msg = ResultVoidMessage;
+        let void_msg = ResultEmptyMessage;
         if let Err(e) = void_msg.send_through(stream) {
             if show {
                 println!("C   Error: {:?}", e);
@@ -188,6 +191,22 @@ fn read_repair(result: &[String], nodes_with_result: &Vec<NeighborNode>, table: 
     }
 }
 
+pub fn hinted_handoff(node_number: &String ,neighbor_number: &String, query: &Query) -> Result<(), MyError>{
+    let file = format!("{}/logs/logs_{}_{}.csv",TABLE_PATH, node_number, neighbor_number);
+    
+    let _ = match OpenOptions::new().append(true).create(true).open(file) {
+        Ok(mut f) => {
+            write!(f, "{}", query.query).map_err(|e| MyError::FileError(e.to_string()))?;
+        }
+        Err(e) => {
+            println!("Error al abrir el archivo de logs: {:?}", e);
+            return Err(MyError::FileError(e.to_string()))
+        }
+    };
+
+    Ok(())
+}
+
 /// Le envio la query a los nodos correspondientes para que la procesen y devuelvo el resultado.
 /// Aplicamos Read-Repear si la consulta fue un SELECT.
 pub fn send_query_to_nodes(
@@ -206,7 +225,6 @@ pub fn send_query_to_nodes(
             return Err(MyError::LockingError(_error));
         }
     };
-
     let mut all_response: Vec<Vec<String>> = vec![];
     let mut hash = ConsistentHash::new(RF);
     let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());
@@ -227,11 +245,11 @@ pub fn send_query_to_nodes(
 
     hash.add_nodes(node.neighbors.to_vec());
     let key = query.get_key_representing_partition(&node.server_ip);
-    println!("\n - La key es: {}", key);
-    println!("\n - La query es: {:?}", query);
     let nodes_with_result = hash.get_nodes(&key);
 
     if show {
+        println!("\n - La key es: {}", key);
+        println!("\n - La query es: {:?}", query);
         println!(
             "
         C   vecinos: {:?}
@@ -252,26 +270,34 @@ pub fn send_query_to_nodes(
                     neighbor.server_ip
                 );
             }
-            if let Ok(result) = node.process_query(&mut query) {
-                all_response.push(result);
+            match node.process_query(&mut query) {
+                Ok(result) => {
+                    all_response.push(result);
 
-                if consistency_level == config::ONE && all_response.len() == 1 {
-                    if is_select {
-                        return Ok(process_results(
-                            &mut all_response,
-                            &nodes_with_result,
-                            &query.get_table(),
-                        ));
-                    } else {
-                        if let Some(result) = all_response.pop() {
-                            return Ok(result);
+                    if consistency_level == config::ONE && all_response.len() == 1 {
+                        if is_select {
+                            return Ok(process_results(
+                                &mut all_response,
+                                &nodes_with_result,
+                                &query.get_table(),
+                            ));
+                        } else {
+                            if let Some(result) = all_response.pop() {
+                                return Ok(result);
+                            }
+                            return Ok(vec![]);
                         }
-                        return Ok(vec![]);
                     }
+                } 
+                Err(error) => {
+                    all_response.push(vec![format!("Invalid Query: {}", error)]);
                 }
             }
             continue;
         } else if neighbor.status == Status::Disconnected {
+            if !query.query.contains("SELECT") {
+                hinted_handoff(&node.number,&neighbor.number, &query)?;
+            }
             if show {
                 println!("C   - Nodo desconectado: {}", neighbor.server_ip);
             }
@@ -295,7 +321,10 @@ pub fn send_query_to_nodes(
                             ResultServerBody::Rows(r) => {
                                 all_response.push(r.rows_content.clone());
                             }
-                            ResultServerBody::Void(_) => {}
+                            ResultServerBody::Void(_) => {
+                                all_response.push(vec!["Invalid Query".to_string()]);
+                            }
+                            ResultServerBody::Empty(_) => {}
                         },
                         _ => {
                             if show {

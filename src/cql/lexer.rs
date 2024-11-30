@@ -1,7 +1,5 @@
-// Aca se crean a los Tokens que representan las palabras claves de la condicion WHERE
-// 'Token': Representa las palabras claves de la condicion WHERE
-
 #[derive(Debug, PartialEq)]
+/// Representa las palabras claves de la condicion WHERE
 pub enum Token {
     Where,
     And,
@@ -25,6 +23,8 @@ pub enum Token {
 }
 
 #[derive(Debug)]
+/// Crea a los Tokens que representan las palabras claves de la condicion WHERE
+/// 'Token': Representa las palabras claves de la condicion WHERE
 pub struct Lexer {
     input: String,
 }
@@ -74,6 +74,7 @@ impl Lexer {
         }
     }
 
+    /// Se tokeniza el input.
     pub fn tokenize(&mut self) -> Vec<Token> {
         let mut tokens: Vec<Token> = Vec::new();
         while let Some(word) = self.next_word() {

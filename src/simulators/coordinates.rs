@@ -1,7 +1,7 @@
-use crate::config::AIRPORTS_PATH;
-use std::{collections::HashMap, f32::consts::PI, fs::read_to_string};
+use crate::{config::{self, AIRPORTS_PATH}, gui::connection_server::ConnectionServer};
+use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, sync::mpsc::Receiver};
 
-use super::{airport::Airport, flight::Flight};
+use super::{airport::Airport, flight::Flight, queries::get_query_select_in_simulator};
 
 /// Se devuelve un Hash de los aeropuestos del archivo ubicado en AIRPORTS_PATH.
 /// La clave será nombre de cada aeropuerto.
@@ -77,6 +77,7 @@ pub fn obtain_middle_position(
 }
 
 /// Dado dos coordenadas (x,y) se obtiene el ángulo que forman, expresado en grados.
+/// Se mide desde el eje x positivo en el sentido de las agulas del reloj.
 pub fn get_angle(screen_x_o: f32, screen_x_d: f32, screen_y_o: f32, screen_y_d: f32) -> f32 {
     let delta_x = screen_x_d - screen_x_o;
     let delta_y = screen_y_d - screen_y_o;
@@ -89,4 +90,35 @@ pub fn get_angle(screen_x_o: f32, screen_x_d: f32, screen_y_o: f32, screen_y_d: 
         return angle_degrees + 360.0;
     }
     angle_degrees
+}
+
+/// Se busca si el vuelo está en la tabla del simulador.
+/// En caso de que este, se devuelven las coordenadas que se obtengan de la tabla.
+/// En caso contrario, se devulve los valores de la mitad del recorrido que se pasan por parametro.
+pub fn integrate_simulator(
+    flight: &Flight,
+    (mid_x, mid_y): (f32, f32),
+    connection_server: &ConnectionServer,
+    [width, height]: [usize; 2],
+) -> (f32, f32) {
+    let query = get_query_select_in_simulator(
+        flight.departure_date.clone(),
+        flight.origin_airport.name.clone(),
+        flight.number.clone(),
+    );
+    let channel: &Receiver<Vec<String>> = connection_server.get_channel_to_receive();
+    let _ = connection_server.make_query(query, config::ONE);
+    let result = channel.recv().unwrap();
+    let flight_in_simulator: Vec<&str> = result[0].split(",").collect();
+    if flight_in_simulator.len() == 10 {
+        // [flight , airport , destination , status , date , speed , latitude , longitude , height, timestamp]
+        if let (Ok(x), Ok(y)) = (
+            flight_in_simulator[7].parse::<f32>(),
+            flight_in_simulator[6].parse::<f32>(),
+        ) {
+            return get_coordinate_positioning_on_map((x, y), [width, height]);
+        }
+    }
+
+    (mid_x, mid_y)
 }

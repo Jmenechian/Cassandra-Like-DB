@@ -2,8 +2,6 @@ pub static PORTS_FILE: &str = "puertos.txt";
 
 pub static KEY_FILE: &str = "src/config_aes/aes_key.bin";
 
-pub static POOL_NUMBER: usize = 5;
-
 pub static SERVER_PORT: &str = "7000";
 pub static CLIENT_PORT: &str = "9042";
 
@@ -26,7 +24,7 @@ pub static CRUISING_HEIGHT: f32 = 10000.0; // Altura crucero de 10mil metros.
 //GUI:
 pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";
 pub static MAP_PATH: &str = "src/gui/assets/map.png";
-pub static PLANE_PATH: &str = "src/gui/assets/air-plane.png";
+pub static PLANE_PATH: &str = "src/gui/assets/air-plane_{}.png";
 pub static TABLE_USERS_NAME: &str = "users";
 
 pub static RADIUS_CLICK_AIRPORT: f32 = 15.0; // Radio del botón
@@ -63,6 +61,7 @@ pub const QUORUM: u16 = 0x0004;
 // Result Kind
 pub const VOID: i32 = 0x0001;
 pub const ROWS: i32 = 0x0002;
+pub const EMPTY: i32 = 0x0003;
 
 // [relation.rs]
 pub const EQUAL: i32 = 0;

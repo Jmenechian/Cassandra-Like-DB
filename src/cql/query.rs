@@ -8,6 +8,7 @@ use crate::cql::update::Update;
 use crate::errors::my_errors::MyError;
 
 #[derive(Debug, Eq, PartialEq)]
+/// Enum de los tipos de queries.
 pub enum QType {
     None,
     Select(Select),
@@ -18,6 +19,7 @@ pub enum QType {
 }
 
 #[derive(Debug)]
+/// Estructura que representa una consulta CQL.
 pub struct Query {
     pub query: String, //SELECT * FROM table WHERE id = 1
     pub sender_node_ip: String,
@@ -48,8 +50,10 @@ impl Query {
             self.set_insert();
         } else if q_upper.contains("DELETE") {
             self.set_delete();
-        } else {
+        } else if q_upper.contains("CREATE") {
             self.set_createtable();
+        } else {
+            self.set_none();
         }
     }
 
@@ -65,6 +69,10 @@ impl Query {
             QType::Insert(insert) => insert.get_values(),
             _ => "Error".to_string(),
         }
+    }
+
+    pub fn set_none(&mut self) {
+        self.qtype = QType::None;
     }
 
     pub fn set_select(&mut self) {
@@ -87,7 +95,7 @@ impl Query {
         self.qtype = QType::CreateTable(CreateTable::new());
     }
 
-    // Delegates the parsing
+    /// Delegates the parsing
     pub fn parse_query(&mut self) -> Result<(), MyError> {
         self.get_type();
 
@@ -101,7 +109,7 @@ impl Query {
         }
     }
 
-    // Delegates the command execution
+    /// Delegates the command execution
     pub fn execute_command(&mut self, table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
         println!("\n - Query: {:?} \n", self.qtype);
         match &mut self.qtype {
@@ -114,7 +122,7 @@ impl Query {
         }
     }
 
-    // Debe devolver de la query los valores de los campos de las columnas que pertenecen a la partición de esa tabla.
+    /// Debe devolver de la query los valores de los campos de las columnas que pertenecen a la partición de esa tabla.
     pub fn get_key_representing_partition(&mut self, address_node: &str) -> String {
         //devolveme el nombre del aeropuerto
         self.get_type();
@@ -136,10 +144,11 @@ impl Query {
                 let _ = update.parse_update(self.query.as_str(), address_node);
                 update.get_key()
             }
-            _ => "BBBBBBBBBBBB".to_string(),
+            _ => "".to_string(),
         }
     }
 
+    /// Devuelve la tabla en la que se aplica la query.
     pub fn get_table(&self) -> String {
         let table: String = match &self.qtype {
             QType::None => "".to_string(),

@@ -1,20 +1,20 @@
-// User struct that represents the user of the application.
-// Used for Authentication and Authoriazation.
-//
-// User: Can only do SELECT queries
-// Admin: Can do SELECT, INSERT, UPDATE, DELETE queries
-
 use crate::config::{TABLE_PATH, TABLE_USERS_NAME};
 use crate::errors::my_errors::MyError;
 use crate::utils::get_reader;
 use std::io::BufRead;
 
+/// Enum que representa los rolos que puede tener un usuario.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Role {
     Admin,
     User,
 }
 
+/// User struct that represents the user of the application.
+/// Used for Authentication and Authoriazation.
+///
+/// User: Can only do SELECT queries
+/// Admin: Can do SELECT, INSERT, UPDATE, DELETE queries
 #[derive(Debug)]
 pub struct User {
     pub username: String,

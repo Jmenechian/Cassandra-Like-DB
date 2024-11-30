@@ -40,6 +40,7 @@ pub mod messagestuff {
         pub mod resultmessage;
         pub mod resultrowsmessage;
         pub mod resultvoidmessage;
+        pub mod resultemptymessage;
     }
     pub mod message_server {
         pub mod errorservermessage;
@@ -49,6 +50,7 @@ pub mod messagestuff {
         pub mod resultrowsevermsg;
         pub mod resultservermessage;
         pub mod resultvoidservermsg;
+        pub mod resultemptymessage;
         pub mod serverpacket;
     }
 }
@@ -62,13 +64,16 @@ pub use consistent_hashing::ConsistentHash;
 
 pub mod gui {
     pub mod app;
+    pub mod buttons_and_reactions;
     pub mod connection_server;
+    pub mod images;
+    pub mod queries;
     pub mod user;
 }
 
 pub mod simulators {
     pub mod airport;
-    pub mod airport_coordinates;
+    pub mod coordinates;
     pub mod flight;
     pub mod flight_simulator;
     pub mod flight_status;

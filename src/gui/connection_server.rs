@@ -6,6 +6,9 @@ use std::{
 
 use crate::{client_cql::Client, errors::my_errors::MyError, simulators::airport::Airport};
 
+/// Estructura que representa la conexión con el nodo.
+/// Guarda el stream y los channels por los que va a enviar el resultado,
+/// y por donde se va a poder recibir lo que envió.
 #[derive(Debug)]
 pub struct ConnectionServer {
     pub stream: Option<TcpStream>,
@@ -13,6 +16,7 @@ pub struct ConnectionServer {
 }
 
 impl ConnectionServer {
+    /// Se inicializa la conección con el nodo.
     pub fn initialize(mut client: Client) -> Self {
         let stream = if let Ok(stream) = client.connect() {
             Some(stream)
@@ -37,10 +41,13 @@ impl ConnectionServer {
         ))
     }
 
+    /// Devuelve el extreamo del channel por el que se va a poder recibir lo que envíe desde esta estructura.
     pub fn get_channel_to_receive(&self) -> &Receiver<Vec<String>> {
         &self.channels.1
     }
 
+    /// Se lanza un thread para realizar las consultas de los vuelos que llegan y salen del aeropuesto.
+    /// Luego se envía la respuesta por el channel.
     pub fn send_origin_and_return_flights(
         &self,
         date: String,
@@ -76,7 +83,9 @@ impl ConnectionServer {
         Ok(())
     }
 
-    pub fn make_query(&self, query: String) -> Result<(), MyError> {
+    /// Se lanza un thread que realizará la query indicada al nodo con el que mantenemos la conexion.
+    /// Se envia por el channel la respuesta.
+    pub fn make_query(&self, query: String, consistency: u16) -> Result<(), MyError> {
         println!("\n- Query: {}\n", query);
         let mut stream_server: TcpStream = if let Ok(stream) = self.get_connection_server() {
             stream
@@ -88,7 +97,7 @@ impl ConnectionServer {
 
         let _ = thread::spawn({
             move || {
-                if Client::send_message(&mut stream_server, query).is_ok() {
+                if Client::send_message(&mut stream_server, query, consistency).is_ok() {
                     if let Ok(response) = Client::read_response(&mut stream_server) {
                         let _ = tx.send(response);
                     }

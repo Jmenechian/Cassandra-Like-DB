@@ -13,8 +13,8 @@ use std::sync::{Arc, RwLock};
 #[derive(Debug, Clone)]
 pub struct Node {
     pub number: String,
-    pub server_ip: String, // IP donde nodo se pone a escuchar conecciones de servidores
-    pub client_ip: String, // IP donde nodo se pone a escuchar conecciones de cliente
+    pub server_ip: String, // IP donde nodo se pone a escuchar conexiones de servidores
+    pub client_ip: String, // IP donde nodo se pone a escuchar conexiones de cliente
     pub gossip_ip: String, // IP donde nodo se pone a escuchar mensajes Gossip
     pub neighbors: Vec<NeighborNode>, // todos los otros nodos
     pub path_table_origin: Arc<RwLock<String>>, // path donde se encuntra el archivo que representan la tabla
@@ -70,12 +70,16 @@ impl Node {
             .iter()
             .position(|n| n.number == neighbor_node.number)
         {
-            if self.neighbors[pos].time < neighbor_node.time {
+            if self.neighbors[pos].status != neighbor_node.status {
+                self.neighbors[pos] = neighbor_node;
+                true
+            } else if self.neighbors[pos].time < neighbor_node.time {
                 self.neighbors[pos] = neighbor_node;
                 false
             } else {
                 false
             }
+
         } else {
             self.neighbors.push(neighbor_node);
             true

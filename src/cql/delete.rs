@@ -9,6 +9,8 @@ use std::io::BufRead;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
+/// Representa las consultas del tipo DELETE.
+/// Se parsea la consulta y se ejecuta.
 pub struct Delete {
     pub table: String,
     pub whereclause: WhereClause,
@@ -30,7 +32,7 @@ impl Delete {
         }
     }
 
-    // Parsea la consulta para ejecutar mas tarde
+    /// Parsea la consulta para ejecutar mas tarde
     pub fn parse_delete(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
         let port = match address_node.chars().last() {
             Some(c) => c,
@@ -62,8 +64,7 @@ impl Delete {
         Ok(())
     }
 
-    // Ejecuta la consulta
-
+    /// Ejecuta la consulta
     pub fn execute_command(
         &mut self,
         path_table: Arc<RwLock<String>>,
@@ -108,6 +109,7 @@ impl Delete {
         Ok(vec!["Se eliminaron las filas".to_string()])
     }
 
+    /// Se obtiene los valores de los campos de las particiones de la tabla.
     pub fn get_key(&self) -> String {
         println!("Where = {:?}", self.whereclause);
         let aeropuerto = if let Some(aeropuerto) = self.whereclause.find_value_for_key("airport") {
