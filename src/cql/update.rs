@@ -5,9 +5,10 @@ use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
+use crate::config::ENCRIPT_DATA;
+use crate::messagestuff::encrypt::*;
 use std::collections::HashMap;
 use std::io::BufRead;
-use aes_gcm::{Aes256Gcm, aead::Key};
 use chrono::Utc;
 use std::sync::{Arc, RwLock};
 
@@ -144,21 +145,29 @@ impl Update {
         &mut self,
         path_table: Arc<RwLock<String>>,
     ) -> Result<Vec<String>, MyError> {
-        
-        let mut rdr = get_reader_read(&path_table)?;
-        let col_names = get_file_headers(&mut rdr)?;
-        self.check_columns_are_valid(&col_names)?;
+        let my_path: Arc<RwLock<String>> = path_table.clone();
+
+        let mut rdr_read = get_reader_read(&my_path)?;
+        let headers = get_file_headers(&mut rdr_read)?;
+        self.check_columns_are_valid(&headers)?;
+
         let file_open = get_file_to_write(&path_table)?;
-
         let (mut temp_file, temp_file_name) = create_temporary_file(TABLE_PATH, &self.table)?;
-        append_row_with_file(&mut temp_file, &col_names)?;
-
-        // Save old rows and updated rows
-        let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
-        let lines = rdr.lines();
-        for line in lines {
+        append_row_with_file(&mut temp_file, &headers)?;
+        let filter = Filter::new(headers.clone(), self.whereclause.clone())?;
+        for line in rdr_read.lines() {
             let line = line.map_err(|e| MyError::Error(e.to_string()))?;
-            let mut row: Vec<String> = line
+            let final_line: String = if ENCRIPT_DATA {
+                let decrypted_line = decrypt_body_aes128(line.as_bytes().to_vec())?;
+                match  String::from_utf8(decrypted_line) {
+                    Ok(s) => s,
+                    Err(e) => return Err(MyError::DecryptionError(e.to_string())),
+                }
+            } else {
+                line
+            };
+            
+            let mut row: Vec<String> = final_line
                 .split(",")
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
@@ -172,7 +181,7 @@ impl Update {
 
             // Modify the row based on the SET clause
             for (header_index, value) in row.iter_mut().enumerate() {
-                if let Some(header_name) = col_names.get(header_index) {
+                if let Some(header_name) = headers.get(header_index) {
                     if let Some(new_value) = self.set.get(header_name) {
                         updated_row.push(new_value.to_string());
                     } else {

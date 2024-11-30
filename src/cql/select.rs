@@ -1,12 +1,12 @@
 // Representa las consultas del tipo SELECT
 // Aca se parsea la consulta y se ejecuta
-use crate::config::{TABLE_PATH, ENCRIPT_DATA};
+use crate::config::ENCRIPT_DATA;
 use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
+use crate::messagestuff::encrypt::*;
 use std::io::BufRead;
-use aes_gcm::{Aes256Gcm, aead::Key};
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
@@ -109,50 +109,37 @@ impl Select {
         Ok(())
     }
 
-
-    // fn execute_command_encrypted(&self, encryption_key: &Key<Aes256Gcm>) -> Result<Vec<String>, MyError> {
-    //     let mut contents: Vec<u8> = Vec::new();
-    //     open_encrypted_file(TABLE_PATH, &self.table, &mut contents)?;
-    //     let parts: Vec<&[u8]> = contents.split(|&byte| byte == b'\n').collect();
-
-    //     let col_names = decrypt_row(parts[0], encryption_key)?;
-    //     let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
-        
-    //     let mut tabla: Vec<String> = Vec::new();
-    //     for line in parts.iter().skip(1) {
-    //         let row = decrypt_row(line, encryption_key)?;
-    //         if filter.filter(&row) {
-    //             tabla.push(row.join(","));
-    //         }
-    //     }
-    //   Ok(tabla)
-    // }
-
     /// Se ejecuta la query sobre la tabla.
     pub fn execute_command(
         &mut self,
         path_table: Arc<RwLock<String>>,
     ) -> Result<Vec<String>, MyError> {
-        
-        let mut rdr = get_reader_read(&path_table)?;
-        // if ENCRIPT_DATA {
-        //     return self.execute_command_encrypted(encryption_key);
-        // }
-        
-        let col_names = get_file_headers(&mut rdr)?;
-        let filter = Filter::new(col_names.clone(), self.whereclause.clone())?;
 
-        let mut tabla: Vec<String> = Vec::new();
-        for line in rdr.lines() {
+        let my_path: Arc<RwLock<String>> = path_table.clone();
+        let mut rdr_read = get_reader_read(&my_path)?;
+        let headers = get_file_headers(&mut rdr_read)?;
+        let filter = Filter::new(headers.clone(), self.whereclause.clone())?;
+        let mut tabla = Vec::new();
+        for line in rdr_read.lines() {
             let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
-            let row: Vec<String> = line
+            let final_line: String = if ENCRIPT_DATA {
+                let decrypted_line = decrypt_body_aes128(line.as_bytes().to_vec())?;
+                match  String::from_utf8(decrypted_line) {
+                    Ok(s) => s,
+                    Err(e) => return Err(MyError::DecryptionError(e.to_string())),
+                }
+            } else {
+                line
+            };
+            let row: Vec<String> = final_line
                 .split(",")
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
             if filter.filter(&row) {
-                tabla.push(line);
+                tabla.push(final_line);
             }
         }
+
         Ok(tabla)
     }
 
