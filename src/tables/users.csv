@@ -3,5 +3,5 @@ test_user,password123,user
 admin_user,admin2024,admin
 john_doe,jdoe!,user
 jane_smith,jsmith!,user
-a,a,user
-s,s,admin
+u,u,user
+a,a,admin

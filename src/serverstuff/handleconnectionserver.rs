@@ -85,7 +85,6 @@ fn handle_message_read_repair(
         }
     };
 
-
     let mut _query = Query::new(query_str, node.server_ip.clone());
     let rows_to_update = node.process_query(&mut _query)?;
 

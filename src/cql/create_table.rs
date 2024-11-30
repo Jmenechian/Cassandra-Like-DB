@@ -1,9 +1,9 @@
-use crate::config::{RING_SIZE, TABLE_PATH, ENCRIPT_DATA};
+use crate::config::{ENCRIPT_DATA, RING_SIZE, TABLE_PATH};
+use crate::encryption::encrypt::encrypt_body_aes128;
 use crate::errors::my_errors::MyError;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use crate::messagestuff::encrypt::*;
 
 #[derive(Debug, PartialEq, Eq)]
 /// Representa las consultas del tipo CREATE TABLE
@@ -198,12 +198,14 @@ impl CreateTable {
     }
 
     fn create_encrypted_tables(&mut self) -> Result<(), MyError> {
-        // let encryption_key=  Aes256Gcm::generate_key(OsRng); 
+        // let encryption_key=  Aes256Gcm::generate_key(OsRng);
         for i in 1..=RING_SIZE {
             // Creo nueva tabla por nodo
-            let table_name = format!("{}/{}_{}.csv", TABLE_PATH,self.table_name, i);
-            let encrypted_columns: Vec<u8> = encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
-            let mut f = File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
+            let table_name = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
+            let encrypted_columns: Vec<u8> =
+                encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
+            let mut f =
+                File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
             f.write_all(&encrypted_columns)
                 .map_err(|e| MyError::FileError(e.to_string()))?;
             writeln!(f).map_err(|e| MyError::FileError(e.to_string()))?;
@@ -223,8 +225,7 @@ impl CreateTable {
         }
         Ok(())
     }
-    
-    
+
     // Se ejecuta la query
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         if ENCRIPT_DATA {
@@ -232,7 +233,7 @@ impl CreateTable {
         } else {
             self.create_unencrypted_tables()?;
         }
-        
+
         // Creo un solo archivo de metadata
         let path_metadata = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, "metadata");
         let mut f_metadata =
