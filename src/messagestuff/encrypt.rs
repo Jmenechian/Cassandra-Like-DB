@@ -1,11 +1,8 @@
 use crate::config::KEY_FILE;
 use crate::errors::my_errors::MyError;
-use crate::utils::*;
-use std::{io::Read, fs::File, io::Write};
+use std::{io::Read, fs::File};
 use aes::Aes128;
 use aes::cipher::{BlockEncrypt, BlockDecrypt, KeyInit, generic_array::GenericArray};
-use std::sync::Arc;
-use std::sync::RwLock;
 
 pub fn load_key_from_file(filename: &str) -> Result<[u8;16], MyError> {
     let mut file = match File::open(filename) {
@@ -32,29 +29,69 @@ pub fn encrypt_body_aes128(body: Vec<u8>) -> Result<Vec<u8>, MyError> {
         cipher.encrypt_block(&mut block);
         encrypted.extend_from_slice(&block);
     }
-    Ok(encrypted)
+    Ok(encode(encrypted))
+}
+
+pub fn encode(bytes: Vec<u8>) -> Vec<u8> {
+    const CUSTOM_ENCODING: &[u8] = b"0123456789ABCDEF";
+    let mut encoded = Vec::new();
+    for byte in bytes {
+        let index1 = (byte >> 4) as usize;
+        let index2 = (byte & 0x0F) as usize;
+        encoded.push(CUSTOM_ENCODING[index1]);
+        encoded.push(CUSTOM_ENCODING[index2]);
+    }
+    encoded
+}
+
+pub fn decode(bytes: Vec<u8>) -> Result<Vec<u8>, MyError> {
+    let bytes_to_decode: Vec<u8>;
+    if bytes.len() % 2 != 0 {
+        let last = match bytes.last() {
+            Some(c) => c,
+            None => return Err(MyError::DecryptionError("Error".to_string())),
+        };
+        if *last == b'\n' {
+            bytes_to_decode = bytes[..bytes.len()-1].to_vec();
+        } else {
+            return Err(MyError::DecryptionError(format!("Datos codificados no validos: {:?}, last: {:?}", bytes.len(), bytes.last().unwrap())))
+        }
+    } else {
+        bytes_to_decode = bytes;
+    }
+    
+    const CUSTOM_ENCODING: &[u8] = b"0123456789ABCDEF";
+    let mut decoding_map = [0u8; 256];
+    for (i, &c) in CUSTOM_ENCODING.iter().enumerate() {
+        decoding_map[c as usize] = i as u8;
+    }
+    let mut decoded = Vec::new();
+    for chunk in bytes_to_decode.chunks(2) {
+        let index1 = decoding_map[chunk[0] as usize];
+        let index2 = decoding_map[chunk[1] as usize];
+        decoded.push((index1 << 4) | index2);
+    }
+    Ok(decoded)
 }
 
 pub fn decrypt_body_aes128(encrypted_body: Vec<u8>) -> Result<Vec<u8>, MyError> {
+    let decoded_body = decode(encrypted_body.clone())?;
     let key = load_key_from_file(KEY_FILE)?;
     let cipher = Aes128::new(GenericArray::from_slice(&key));
     let mut decrypted = Vec::new();
-    for chunck in encrypted_body.chunks_exact(16) {
+    for chunck in decoded_body.chunks_exact(16) {
         let mut block = GenericArray::clone_from_slice(chunck);
         cipher.decrypt_block(&mut block);
         decrypted.extend_from_slice(&block);
     }
-    if decrypted.len() == 0 {
+    if decrypted.is_empty() {
         return Ok(decrypted);
     }
-    // Verifica que el tamaño sea múltiplo de 16
     if decrypted.len() % 16 != 0 {
         return Err(MyError::DecryptionError(format!("Invalid padding 1: decrypted: {:?},  {:?}, len: {:?}", encrypted_body, decrypted.is_empty(), decrypted.len() % 16)));
-        //return Err(MyError::DecryptionError("Invalid padding 1".to_string()));
     }
 
-    // Elimina el padding
-    let padding = *decrypted.last().unwrap() as usize; // Último byte indica el tamaño del padding
+    let padding = *decrypted.last().unwrap() as usize;
     if padding == 0 || padding > 16 || padding > decrypted.len() {
         return Err(MyError::DecryptionError(format!("Invalid padding 2: padding: {:?}, decrypted: {:?}", padding, decrypted)));
     }
@@ -63,42 +100,6 @@ pub fn decrypt_body_aes128(encrypted_body: Vec<u8>) -> Result<Vec<u8>, MyError> 
 
     Ok(unpadded)
 }
-
-pub fn read_encrypted_file(file_path: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
-    let mut rdr_read = get_reader_read(&file_path)?;
-    let mut contents = Vec::new();
-    rdr_read.read_to_end(&mut contents).map_err(|e| MyError::Error("Error".to_string()))?;
-    let mut parts: Vec<Vec<u8>> = contents.split(|&byte| byte == b'\n').map(|s| s.to_vec()).collect::<Vec<_>>().to_vec();
-    let mut lines = Vec::new();
-    for i in 0..parts.len() {
-        let encrypted_line = parts[i].clone();
-        let decrypted_line = decrypt_body_aes128(encrypted_line.clone());
-        if let Err(MyError::DecryptionError(_)) = &decrypted_line {
-            if i + 1 < parts.len() {
-                // Concatenamos la línea actual con un salto de línea
-                let mut combined_line = Vec::new();
-                combined_line.extend_from_slice(&parts[i]);  // Añade la línea actual
-                combined_line.push(b'\n');  // Añade un salto de línea
-    
-                // Añadimos la siguiente línea
-                combined_line.extend_from_slice(&parts[i + 1]);
-    
-                // Actualizamos `parts[i+1]` con la línea combinada
-                parts[i+1] = combined_line;
-                continue;
-            }
-        }
-        
-        let decrypted_string = match decrypted_line {
-            Ok(s) => s,
-            Err(e) => return Err(MyError::EncryptionError(format!("Error antes de aca: {:?}", e))),
-        };
-        let decryptes_string = String::from_utf8(decrypted_string).map_err(|e| MyError::EncryptionError(format!("Error: {:?}", e)))?;
-        lines.push(decryptes_string);
-    }
-    Ok(lines)
-}
-
 
 #[cfg(test)]
 mod tests {

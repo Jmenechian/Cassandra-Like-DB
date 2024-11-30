@@ -7,10 +7,8 @@ use crate::errors::my_errors::MyError;
 use crate::utils::*;
 use crate::config::ENCRIPT_DATA;
 use crate::messagestuff::encrypt::*;
-use std::error::Error;
 use std::collections::HashMap;
 use std::io::BufRead;
-use aes_gcm::{Aes256Gcm, aead::Key};
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
@@ -146,37 +144,28 @@ impl Update {
         path_table: Arc<RwLock<String>>,
     ) -> Result<Vec<String>, MyError> {
         let my_path: Arc<RwLock<String>> = path_table.clone();
-        let headers: Vec<String>;
-        let mut lines: Vec<Result<String, MyError>> = Vec::new();
-        if ENCRIPT_DATA {
-            let file_lines =  read_encrypted_file(my_path)?;
-            let decrepted_columns = match file_lines.get(0) {
-                Some(v) => v,
-                None => return Err(MyError::Error("Error".to_string())),
-            };
-            headers = decrepted_columns.split(",").map(|s| s.to_string()).collect::<Vec<String>>();
-            for line in &file_lines[1..] {
-                lines.push(Ok(line.clone()));
-            }
-        } else {
-            let mut rdr_read = get_reader_read(&my_path)?;
-            headers = get_file_headers(&mut rdr_read)?;
-            self.check_columns_are_valid(&headers)?;
-            
 
-            
+        let mut rdr_read = get_reader_read(&my_path)?;
+        let headers = get_file_headers(&mut rdr_read)?;
+        self.check_columns_are_valid(&headers)?;
 
-            // Save old rows and updated rows
-            
-            let lines = rdr_read.lines();
-        }
         let file_open = get_file_to_write(&path_table)?;
         let (mut temp_file, temp_file_name) = create_temporary_file(TABLE_PATH, &self.table)?;
         append_row_with_file(&mut temp_file, &headers)?;
         let filter = Filter::new(headers.clone(), self.whereclause.clone())?;
-        for line in lines {
+        for line in rdr_read.lines() {
             let line = line.map_err(|e| MyError::Error(e.to_string()))?;
-            let mut row: Vec<String> = line
+            let final_line: String = if ENCRIPT_DATA {
+                let decrypted_line = decrypt_body_aes128(line.as_bytes().to_vec())?;
+                match  String::from_utf8(decrypted_line) {
+                    Ok(s) => s,
+                    Err(e) => return Err(MyError::DecryptionError(e.to_string())),
+                }
+            } else {
+                line
+            };
+            
+            let mut row: Vec<String> = final_line
                 .split(",")
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();

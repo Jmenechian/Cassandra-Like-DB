@@ -2,13 +2,11 @@
 
 use crate::{config::ENCRIPT_DATA, errors::my_errors::MyError};
 use std::{
-    fs::{File, OpenOptions, remove_file},
-    io::{BufRead, BufReader, Seek, SeekFrom, Write, Read},
+    fs::{File, OpenOptions},
+    io::{BufRead, BufReader, Seek, SeekFrom, Write},
     iter::Peekable,
     sync::{Arc, RwLock},
 };
-
-use base64::{engine::general_purpose, Engine};
 use crate::messagestuff::encrypt::*;
 
 /// Returns the full quote inside ' 'S
@@ -99,9 +97,18 @@ fn open_file(path: String) -> Result<File, MyError> {
 pub fn get_file_headers<R: std::io::BufRead>(rdr: &mut R) -> Result<Vec<String>, MyError> {
     let mut headers_line = String::new();
     rdr.read_line(&mut headers_line)
-        .map_err(|e| MyError::FileError("Error n get_File_headers".to_string()))?;
-
-    let headers: Vec<String> = headers_line
+        .map_err(|_| MyError::FileError("Error n get_File_headers".to_string()))?;
+    let final_headers: String = if ENCRIPT_DATA {
+        let decrypted_headers = decrypt_body_aes128(headers_line.as_bytes().to_vec())?;
+        match  String::from_utf8(decrypted_headers) {
+            Ok(s) => s,
+            Err(e) => return Err(MyError::DecryptionError(e.to_string())),
+        }
+    } else {
+        headers_line
+    };
+    
+    let headers: Vec<String> = final_headers
         .trim()
         .split(',')
         .map(|s| s.to_string())

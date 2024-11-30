@@ -1,10 +1,10 @@
 // Representa las consultas del tipo DELETE
 // Aca se parsea la consulta y se ejecuta
-use crate::config::TABLE_PATH;
+use crate::config::{TABLE_PATH, ENCRIPT_DATA};
 use crate::cql::{filter::Filter, where_clause::WhereClause};
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
-use aes_gcm::{Aes256Gcm, aead::Key};
+use crate::messagestuff::encrypt::*;
 use std::io::BufRead;
 use std::sync::{Arc, RwLock};
 
@@ -85,7 +85,16 @@ impl Delete {
 
         for line in rdr.lines() {
             let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
-            let row: Vec<String> = line
+            let final_line: String = if ENCRIPT_DATA {
+                let decrypted_line = decrypt_body_aes128(line.as_bytes().to_vec())?;
+                match  String::from_utf8(decrypted_line) {
+                    Ok(s) => s,
+                    Err(e) => return Err(MyError::DecryptionError(e.to_string())),
+                }
+            } else {
+                line
+            };
+            let row: Vec<String> = final_line
                 .split(",")
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
@@ -115,10 +124,6 @@ impl Delete {
         res
     }
 }
-
-// DELETE FROM origin ----> POR AHORA NO BORRA NADA
-// DELETE FROM origin WHERE airport = MEX AND date = 24-12-24 AND destination = AEP
-// SELECT * FROM origin WHERE airport = MEX AND date = 24-12-24 AND destination = AEP
 
 #[cfg(test)]
 mod tests {

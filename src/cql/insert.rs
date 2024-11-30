@@ -1,6 +1,6 @@
 // Representa a las consultas del tipo INSERT
 // Aca se parsea la consulta y se ejecuta
-use crate::config::{ENCRIPT_DATA, TABLE_PATH};
+use crate::config::ENCRIPT_DATA;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
 use chrono::Utc;
@@ -64,7 +64,6 @@ impl Insert {
         println!("INSERT en tabla: {}", self.table);
 
         let headers: Vec<String> = self.extract_values(&parts, skip_index);
-        // headers.push("timestamp".to_string());
 
         skip_index += headers
             .iter()
@@ -139,35 +138,11 @@ impl Insert {
         Ok(())
     }
 
-    fn add_unencrypted_rows(&self, headers: &[String], map: HashMap<&str, &str>) -> Vec<String> {
-        let mut new_record: Vec<String> = Vec::new();
-        for header in headers {
-            if let Some(value) = map.get(header.as_str()) {
-                new_record.push(value.to_string());
-            } else {
-                new_record.push(String::new());
-            }
-        }
-        new_record.pop(); // sacas el timestamp vacio porque nunca lo llenas
-        new_record.push(Utc::now().to_string()); // metes lo mas nuevo
-        new_record
-    }
-
-
     pub fn execute_command(&mut self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
         let my_path: Arc<RwLock<String>> = path_table.clone();
-        let headers: Vec<String>;
-        if ENCRIPT_DATA {
-            let file_lines =  read_encrypted_file(my_path)?;
-            let decrepted_columns = match file_lines.get(0) {
-                Some(v) => v,
-                None => return Err(MyError::Error("Error".to_string())),
-            };
-            headers = decrepted_columns.split(",").map(|s| s.to_string()).collect::<Vec<String>>();
-        } else {
-            let mut rdr_read = get_reader_read(&my_path)?;
-            headers = get_file_headers(&mut rdr_read)?;
-        }
+        
+        let mut rdr_read = get_reader_read(&my_path)?;
+        let headers = get_file_headers(&mut rdr_read)?;
 
         let mut file_open = get_file_to_write(&path_table)?; // Se usa para hacer append
 
@@ -245,10 +220,7 @@ mod tests {
     use super::*;
     use crate::errors::my_errors::MyError;
     use std::collections::HashMap;
-    use aes_gcm::{
-        aead::{KeyInit, OsRng},
-        Aes256Gcm, Key
-    };
+
 
     #[test]
     fn test_parse_insert_valid_query() {

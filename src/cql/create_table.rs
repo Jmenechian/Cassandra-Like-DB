@@ -26,8 +26,6 @@ use crate::errors::my_errors::MyError;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
-use aes_gcm::{Aes256Gcm, aead::Key, aead::OsRng, aead::KeyInit};
-use crate::utils::*;
 use crate::messagestuff::encrypt::*;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -207,7 +205,6 @@ impl CreateTable {
             let table_name = format!("{}/{}_{}.csv", TABLE_PATH,self.table_name, i);
             let encrypted_columns: Vec<u8> = encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
             let mut f = File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
-
             f.write_all(&encrypted_columns)
                 .map_err(|e| MyError::FileError(e.to_string()))?;
             writeln!(f).map_err(|e| MyError::FileError(e.to_string()))?;

@@ -5,7 +5,6 @@ use crate::cql::delete::Delete;
 use crate::cql::insert::Insert;
 use crate::cql::select::Select;
 use crate::cql::update::Update;
-use aes_gcm::{Aes256Gcm, aead::Key};
 use crate::errors::my_errors::MyError;
 
 #[derive(Debug, Eq, PartialEq)]

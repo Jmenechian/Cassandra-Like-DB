@@ -115,10 +115,10 @@ pub fn handle_connection_client(
 fn process_results(
     results: &mut Vec<Vec<String>>,
     nodes_with_result: &Vec<NeighborNode>,
-    table: &String,
+    table: &str,
 ) -> Vec<String> {
     println!("\n - pr ===> {:?}", results);
-    let mut table_name = table.clone();
+    let mut table_name = table.to_owned();
     table_name.pop();
     table_name.pop();
     if table_name != TABLE_ORIGIN_NAME && table_name != TABLE_DESTINATION_NAME {

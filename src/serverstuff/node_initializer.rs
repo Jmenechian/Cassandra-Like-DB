@@ -1,4 +1,4 @@
-use crate::config::{self, PORTS_FILE, TABLE_PATH, KEYS_FILE};
+use crate::config::PORTS_FILE;
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::{message::*, message_server::gossipmessage::*};
 use crate::serverstuff::neighbor_node::NeighborNode;
@@ -18,7 +18,6 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
-use aes_gcm::{Aes256Gcm, aead::Key, aead::OsRng, aead::KeyInit};
 
 /// Funcion de inicializacíon, donde se crea el nodo indicado y se escucha y responde por los puertos correspondientes.
 pub fn node_initialize(port: String) -> Result<(), MyError> {

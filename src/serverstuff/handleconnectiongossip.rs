@@ -77,10 +77,8 @@ fn handle_message_gossip(
                 println!("{:?}", neighbor);
             }
         }
-    } else {
-        if let Some(false) = gossip.decrease_ttl() {
-            return Ok(())
-        }
+    } else if let Some(false) = gossip.decrease_ttl() {
+        return Ok(())
     }
     reenviar_gossip(&mut node_guard, gossip.clone(), show)?;
     Ok(())
