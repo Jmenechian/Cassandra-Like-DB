@@ -3,9 +3,9 @@
 use crate::config::ENCRIPT_DATA;
 use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
+use crate::encryption::encrypt::decrypt_body_aes128;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
-use crate::messagestuff::encrypt::*;
 use std::io::BufRead;
 use std::sync::{Arc, RwLock};
 
@@ -114,7 +114,6 @@ impl Select {
         &mut self,
         path_table: Arc<RwLock<String>>,
     ) -> Result<Vec<String>, MyError> {
-
         let my_path: Arc<RwLock<String>> = path_table.clone();
         let mut rdr_read = get_reader_read(&my_path)?;
         let headers = get_file_headers(&mut rdr_read)?;
@@ -124,7 +123,7 @@ impl Select {
             let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
             let final_line: String = if ENCRIPT_DATA {
                 let decrypted_line = decrypt_body_aes128(line.as_bytes().to_vec())?;
-                match  String::from_utf8(decrypted_line) {
+                match String::from_utf8(decrypted_line) {
                     Ok(s) => s,
                     Err(e) => return Err(MyError::DecryptionError(e.to_string())),
                 }

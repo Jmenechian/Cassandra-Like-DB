@@ -99,7 +99,7 @@ impl ConsistentHash<NeighborNode> {
                 }
             }
         }
-        
+
         nodes
     }
 }

@@ -1,13 +1,13 @@
 // Representa a las consultas del tipo INSERT
 // Aca se parsea la consulta y se ejecuta
 use crate::config::ENCRIPT_DATA;
+use crate::encryption::encrypt::*;
 use crate::errors::my_errors::MyError;
 use crate::utils::*;
 use chrono::Utc;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-use crate::messagestuff::encrypt::*;
 use std::io::Write;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
 /// Representa a las consultas del tipo INSERT
@@ -140,9 +140,12 @@ impl Insert {
         Ok(())
     }
 
-    pub fn execute_command(&mut self, path_table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
+    pub fn execute_command(
+        &mut self,
+        path_table: Arc<RwLock<String>>,
+    ) -> Result<Vec<String>, MyError> {
         let my_path: Arc<RwLock<String>> = path_table.clone();
-        
+
         let mut rdr_read = get_reader_read(&my_path)?;
         let headers = get_file_headers(&mut rdr_read)?;
 
@@ -153,8 +156,11 @@ impl Insert {
             if self.values.len() == headers.len() {
                 self.values.push(Utc::now().to_string());
                 if ENCRIPT_DATA {
-                    let encrypted_columns: Vec<u8> = encrypt_body_aes128(self.values.join(",").as_bytes().to_vec())?;
-                    file_open.write_all(&encrypted_columns).map_err(|e| MyError::FileError(e.to_string()))?;
+                    let encrypted_columns: Vec<u8> =
+                        encrypt_body_aes128(self.values.join(",").as_bytes().to_vec())?;
+                    file_open
+                        .write_all(&encrypted_columns)
+                        .map_err(|e| MyError::FileError(e.to_string()))?;
                     writeln!(file_open).map_err(|e| MyError::FileError(e.to_string()))?;
                 } else {
                     append_row(&mut file_open, &self.values)?;
@@ -183,9 +189,12 @@ impl Insert {
 
         if ENCRIPT_DATA {
             println!("encriptando");
-            let encrypted_columns: Vec<u8> = encrypt_body_aes128(new_record.join(",").as_bytes().to_vec())?;
+            let encrypted_columns: Vec<u8> =
+                encrypt_body_aes128(new_record.join(",").as_bytes().to_vec())?;
             println!("termine encriptando");
-            file_open.write_all(&encrypted_columns).map_err(|e| MyError::FileError(e.to_string()))?;
+            file_open
+                .write_all(&encrypted_columns)
+                .map_err(|e| MyError::FileError(e.to_string()))?;
             writeln!(file_open).map_err(|e| MyError::FileError(e.to_string()))?;
         } else {
             append_row(&mut file_open, &new_record)?;
@@ -224,7 +233,6 @@ mod tests {
     use super::*;
     use crate::errors::my_errors::MyError;
     use std::collections::HashMap;
-
 
     #[test]
     fn test_parse_insert_valid_query() {
@@ -299,5 +307,4 @@ mod tests {
         let result = insert.check_columns_are_valid(&file_headers);
         assert!(matches!(result, Err(MyError::InvalidColumn(_))));
     }
-
 }

@@ -6,11 +6,11 @@
 // - `CqlMessage`: Contiene al mensaje en si
 
 use crate::config;
+use crate::encryption::encrypt::{decrypt_body_aes128, encrypt_body_aes128};
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::{
     message::*, message_cql::errormessage::ErrorMessage, message_cql::querymessage::QueryMessage,
     message_cql::resultmessage::ResultMessage,
-    encrypt::*,
 };
 use std::{io::Read, net::TcpStream};
 
@@ -103,7 +103,7 @@ impl Envelope {
         }
 
         let decrypted_body = decrypt_body_aes128(_body_buffer)?;
-        let body_length =decrypted_body.len() as i32;
+        let body_length = decrypted_body.len() as i32;
 
         let _body = match _opcode {
             CqlOpcode::ErrorMessage => {

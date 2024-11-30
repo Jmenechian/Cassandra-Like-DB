@@ -58,8 +58,6 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
     let gossip_ip = current_node.gossip_ip.clone();
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node));
 
-    
-
     // Seccion servidor-servidor
     listen(server_ip, &current_node, handle_connection_server, show_s)?;
 
@@ -89,16 +87,23 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
 fn read_ports_from_file(filename: &str) -> Result<Vec<u16>, MyError> {
     let file = match File::open(filename) {
         Ok(f) => f,
-        Err(e) => return Err(MyError::FileError(format!("Error 1 {:?}, en archivo: {:?}, dir: {:?}",e, filename, std::env::current_dir()))),
+        Err(e) => {
+            return Err(MyError::FileError(format!(
+                "Error 1 {:?}, en archivo: {:?}, dir: {:?}",
+                e,
+                filename,
+                std::env::current_dir()
+            )))
+        }
     };
     let reader = BufReader::new(file);
     reader
         .lines()
         .map(|l| {
-            let l_string = l.map_err(|e| MyError::FileError(format!("Error 2 {:?}",e)))?;
+            let l_string = l.map_err(|e| MyError::FileError(format!("Error 2 {:?}", e)))?;
             l_string
                 .parse::<u16>()
-                .map_err(|e| MyError::FileError(format!("Error 3 {:?}",e)))
+                .map_err(|e| MyError::FileError(format!("Error 3 {:?}", e)))
         })
         .collect()
 }

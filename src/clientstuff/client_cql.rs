@@ -96,7 +96,7 @@ impl Client {
         if !message.is_empty() {
             let msg: QueryMessage = QueryMessage {
                 query: message,
-                consistency: consistency, //config::QUORUM or ONE
+                consistency, //config::QUORUM or ONE
             };
             let _ = msg.send_through(stream);
         }
