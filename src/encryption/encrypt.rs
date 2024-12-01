@@ -11,7 +11,7 @@ pub fn load_key_from_file(filename: &str) -> Result<[u8; 16], MyError> {
     };
 
     let mut key = [0u8; 16];
-    if let Err(_) = file.read_exact(&mut key) {
+    if file.read_exact(&mut key).is_err() {
         return Err(MyError::FileError("Error".to_string()));
     }
     Ok(key)
@@ -133,7 +133,7 @@ mod tests {
         println!("Texto Desencriptado: {:?}", string_from_vec);
 
         println!("El '/n' es: {:?}", b' ');
-        assert_ne!(string, string_from_vec);
+        assert_eq!(string, string_from_vec);
         Ok(())
     }
 

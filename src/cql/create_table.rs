@@ -223,7 +223,7 @@ impl CreateTable {
 
     /// Se ejecuta la query.
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
-        let _ = self.create_table()?;
+        self.create_table()?;
 
         // Creo un solo archivo de metadata
         let path_metadata = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, "metadata");

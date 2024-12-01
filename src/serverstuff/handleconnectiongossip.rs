@@ -62,18 +62,16 @@ fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode) {
             return;
         }
     };
-    for line in rdr.lines() {
-        if let Ok(line) = line {
-            println!("line: {:?}", line);
-            if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
-                let msg = QueryServerMessage {
-                    query: line.clone(),
-                    consistency: 0,
-                };
-                let _ = msg.send_server_through(&mut socket);
+    for line in rdr.lines().map_while(Result::ok) {
+        println!("line: {:?}", line);
+        if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
+            let msg = QueryServerMessage {
+                query: line.clone(),
+                consistency: 0,
+            };
+            let _ = msg.send_server_through(&mut socket);
 
-                let _ = Packet::from_stream(&mut socket);
-            }
+            let _ = Packet::from_stream(&mut socket);
         }
     }
     println!("borrando archivo");
