@@ -21,12 +21,9 @@ eframe = "0.29"
 egui = "0.29"
 image = "0.24" # Para manejar imágenes
 
-aes-gcm = "0.10.3"
-base64 = "0.22.1"
 aes = "0.8.4"
 
 
-walkers = "0.25.0"
 [target.x86_64-apple-darwin]
 linker = "clang"
 rustflags = ["-C", "target-feature=+crt-static"]

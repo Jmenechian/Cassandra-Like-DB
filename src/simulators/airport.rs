@@ -60,7 +60,6 @@ impl Airport {
         let mut flights: Vec<Flight> = vec![];
         for line in response {
             if line.is_empty() || line == "linea fue agregada" {
-                //ojo no se si rompe algo esto
                 continue;
             }
 
@@ -91,7 +90,10 @@ impl Airport {
                 values[2].clone(),
                 0.0.to_string(),
             ) {
-                Ok(f) => f,
+                Ok(mut f) => {
+                    f.set_coordinates(f.midpoint.0, f.midpoint.1);
+                    f
+                },
                 Err(e) => {
                     return Err(MyError::Error(e.to_string()));
                 }
@@ -136,7 +138,6 @@ impl Airport {
         let mut flights: Vec<Flight> = vec![];
         for line in response {
             if line.is_empty() || line == "linea fue agregada" {
-                //ojo no se si rompe algo esto
                 continue;
             }
             let values: Vec<String> = line.split(",").map(|f| f.to_string()).collect();

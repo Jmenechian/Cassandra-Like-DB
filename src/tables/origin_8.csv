@@ -1,0 +1,4 @@
+airport,destination,date,flight,status,timestamp
+AEP,YZF,24-12-24,6,scheduled,2024-12-01 20:38:49.840779468 UTC
+AEP,JNB,24-12-24,7,scheduled,2024-12-01 20:38:49.852788589 UTC
+AEP,ZRH,24-12-24,8,scheduled,2024-12-01 20:38:49.854588942 UTC

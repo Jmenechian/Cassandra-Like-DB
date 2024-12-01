@@ -245,14 +245,12 @@ impl FlightSimulator {
             if flight.status == FlightStatus::Scheduled {
                 flight.set_status(FlightStatus::Boarding);
                 FlightSimulator::update_flight(&flight, stream)?;
-                //println!("\nEl vuelo {:?} está por salir.\n", flight);
                 continue;
             }
 
             // Si status es boarding -> actualizamos a Airborne
             if flight.status == FlightStatus::Boarding {
                 flight.set_status(FlightStatus::Airborne);
-                //println!("\nEl vuelo {:?} despego.\n", flight);
             }
 
             flight.update_speed();
@@ -267,7 +265,6 @@ impl FlightSimulator {
                 flight.update_speed();
                 flight.update_height();
                 FlightSimulator::update_flight(&flight, stream)?;
-                //println!("\nEl vuelo {:?} llegó a destino.\n", flight);
             } else {
                 FlightSimulator::update_flight(&flight, stream)?;
             }
