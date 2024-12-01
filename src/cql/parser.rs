@@ -4,6 +4,7 @@ use crate::cql::where_clause::WhereClause;
 use crate::errors::my_errors::MyError;
 
 #[derive(Debug, PartialEq)]
+/// Nos permite identicar dónde estamos posicionados. Puediendo avanzar y retroceder en el numero de posicion indicado.
 pub struct Pos {
     pos: usize,
 }
@@ -33,7 +34,7 @@ impl Pos {
 }
 
 #[derive(Debug, PartialEq)]
-/// Logica detras del parseo de las condiciones WHERE en las consultas del tipo CQL
+/// Logica detras del parseo de las condiciones WHERE en las consultas del tipo CQL.
 pub struct Parser {
     tokens: Vec<Token>,
 }
@@ -47,6 +48,7 @@ impl Parser {
         &self.tokens[pos]
     }
 
+    /// Se parsean las relaciones en la query indicada.
     pub fn parse_relation(&self, pos: &mut Pos) -> Result<Relation, MyError> {
         let arg1;
         if let Token::Identifier(name) = self.show(pos.head()) {
@@ -97,6 +99,7 @@ impl Parser {
         Ok(relation)
     }
 
+    /// Se parsea los valores de la query.
     pub fn parse_whereclause(&self, pos: &mut Pos, _last: Token) -> Result<WhereClause, MyError> {
         match *self.show(pos.head()) {
             Token::Lpar => {

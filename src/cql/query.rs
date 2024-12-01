@@ -35,6 +35,7 @@ impl Query {
         }
     }
 
+    /// Se ejecuta la query sobre la tabla indicada.
     pub fn execute(&mut self, table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
         self.execute_command(table)
     }
@@ -62,8 +63,7 @@ impl Query {
 
         match &mut self.qtype {
             QType::Select(select) => {
-                //nada
-                select.get_key(); //sacar -> esta para clippy
+                select.get_key();
                 "SELECT".to_string()
             }
             QType::Insert(insert) => insert.get_values(),
@@ -95,7 +95,7 @@ impl Query {
         self.qtype = QType::CreateTable(CreateTable::new());
     }
 
-    /// Delegates the parsing
+    /// Delegamos el paseo de la query a cada tipo de query.
     pub fn parse_query(&mut self) -> Result<(), MyError> {
         self.get_type();
 
@@ -109,7 +109,7 @@ impl Query {
         }
     }
 
-    /// Delegates the command execution
+    /// Se delega la ejecición de la query a cada tipo de estructura de query.
     pub fn execute_command(&mut self, table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
         println!("\n - Query: {:?} \n", self.qtype);
         match &mut self.qtype {

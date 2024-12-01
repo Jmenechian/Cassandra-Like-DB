@@ -1,5 +1,6 @@
 use std::io::{self, stdin, stdout, Write};
 
+/// Se le preguntan por consola al usuario los datos del vuelo.
 pub fn ask_user_flight_values() -> Result<Vec<String>, io::Error> {
     let requests = vec![
         "numero",

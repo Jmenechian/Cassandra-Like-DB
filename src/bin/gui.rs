@@ -2,6 +2,7 @@ use aerolineas_rusticas::gui::app::MapApp;
 use std::env;
 use std::process::exit;
 
+/// Binario que permite la ejecución de la Interfaz gráfica de usuario.
 fn main() -> Result<(), eframe::Error> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {

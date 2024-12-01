@@ -1,12 +1,11 @@
-// Representa en su totalidad a la condicion WHERE de la consulta
-// 'WhereClause': Utiliza recursion para representar la condicion WHERE
-
 use crate::cql::lexer::*;
 use crate::cql::parser::*;
 use crate::cql::relation::Relation;
 use crate::errors::my_errors::MyError;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+/// Representa en su totalidad a la condicion WHERE de la consulta.
+/// 'WhereClause': Utiliza recursion para representar la condicion WHERE.
 pub enum WhereClause {
     True,
     Relation(Relation),

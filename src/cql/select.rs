@@ -1,5 +1,3 @@
-// Representa las consultas del tipo SELECT
-// Aca se parsea la consulta y se ejecuta
 use crate::config::ENCRIPT_DATA;
 use crate::cql::filter::Filter;
 use crate::cql::where_clause::WhereClause;
@@ -10,6 +8,8 @@ use std::io::BufRead;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
+/// Representa las consultas del tipo SELECT
+/// Se parsea la consulta y se ejecuta
 pub struct Select {
     pub columns: Vec<String>,
     pub table: String,
@@ -33,6 +33,7 @@ impl Select {
         }
     }
 
+    /// Se parsea la query.
     pub fn parse_select(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
         let port = match address_node.chars().last() {
             Some(c) => c,
@@ -62,8 +63,8 @@ impl Select {
         Ok(())
     }
 
-    // Setea lista de columnas
-    // Columnas entre comillas, quedan entre comillas
+    /// Setea lista de columnas.
+    /// Columnas entre comillas, quedan entre comillas.
     fn parse_columns(&mut self, parts: &[&str]) {
         let joined_parts = parts.join(" ");
         let comma_separated: Vec<&str> = joined_parts.split(",").collect();
@@ -85,8 +86,8 @@ impl Select {
         self.columns = columns
     }
 
-    // Setea el nombre de la tabla con el numero de nodo
-    // Si el nombre de la tabla tiene comillas, se las saca
+    /// Setea el nombre de la tabla con el numero de nodo.
+    /// Si el nombre de la tabla tiene comillas, se las saca.
     fn parse_table(&mut self, parts: &[&str], index: usize) {
         if parts[index].contains("'") {
             self.table = get_full_quote(parts, index);
@@ -97,8 +98,8 @@ impl Select {
         println!("SELECT en tabla: {}", self.table);
     }
 
-    // Setea condicion WHERE
-    // Devuelve error si la condicion no es valida
+    /// Setea condicion WHERE.
+    /// Devuelve error si la condicion no es valida.
     fn parse_where_condition(&mut self, parts: &mut [&str]) -> Result<(), MyError> {
         if let Some(where_index) = parts.iter().position(|&x| x == "WHERE") {
             let (_, right) = parts.split_at(where_index);
@@ -142,12 +143,14 @@ impl Select {
         Ok(tabla)
     }
 
+    /// Se devuelven los valores que representa las pasticiones de las tablas.
+    /// Es decir, el nombre del aeropuerto y la fecha, y se la devuleve como un string de la forma: "<airport>,<date>""
     pub fn get_key(&self) -> String {
         println!("Where = {:?}", self.whereclause);
         let aeropuerto = if let Some(aeropuerto) = self.whereclause.find_value_for_key("airport") {
             aeropuerto
         } else {
-            "".to_string() // algun error
+            "".to_string()
         };
         let date = if let Some(date) = self.whereclause.find_value_for_key("date") {
             date

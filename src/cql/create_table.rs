@@ -57,6 +57,7 @@ impl CreateTable {
         }
     }
 
+    /// Se parsean los clausulas y valores de la query para crear una tabla.
     pub fn parse_create_table(&mut self, query: &str) -> Result<(), MyError> {
         let parts: Vec<&str> = query.split_whitespace().collect();
         if parts.len() < 7 || parts[0] != "CREATE" || parts[1] != "TABLE" {
@@ -218,7 +219,7 @@ impl CreateTable {
         Ok(())
     }
     
-    // Se ejecuta la query
+    /// Se ejecuta la query.
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         let _ = self.create_table()?;
         

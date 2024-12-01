@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq)]
-/// Representa las palabras claves de la condicion WHERE
+/// Representa las palabras claves de la condicion WHERE.
 pub enum Token {
     Where,
     And,
@@ -23,8 +23,8 @@ pub enum Token {
 }
 
 #[derive(Debug)]
-/// Crea a los Tokens que representan las palabras claves de la condicion WHERE
-/// 'Token': Representa las palabras claves de la condicion WHERE
+/// Crea a los Tokens que representan las palabras claves de la condicion WHERE.
+/// 'Token': Representa las palabras claves de la condicion WHERE.
 pub struct Lexer {
     input: String,
 }

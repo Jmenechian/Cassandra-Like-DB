@@ -1,5 +1,3 @@
-// Representa las consultas del tipo DELETE
-// Aca se parsea la consulta y se ejecuta
 use crate::config::{ENCRIPT_DATA, TABLE_PATH};
 use crate::cql::{filter::Filter, where_clause::WhereClause};
 use crate::encryption::encrypt::decrypt_body_aes128;
@@ -32,7 +30,7 @@ impl Delete {
         }
     }
 
-    /// Parsea la consulta para ejecutar mas tarde
+    /// Parsea la consulta para ejecutar mas tarde.
     pub fn parse_delete(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
         let port = match address_node.chars().last() {
             Some(c) => c,
@@ -64,7 +62,7 @@ impl Delete {
         Ok(())
     }
 
-    /// Ejecuta la consulta
+    /// Ejecuta la consulta.
     pub fn execute_command(
         &mut self,
         path_table: Arc<RwLock<String>>,

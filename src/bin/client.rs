@@ -1,11 +1,10 @@
-// Binario que va a correr el cliente para conectarse al servidor
-// Por ahora solo se conecta al ultimo nodo creado en el servidor
-
 use aerolineas_rusticas::clientstuff::client_cql::Client;
 use std::env;
 use std::io::Result;
 use std::process::exit;
 
+/// Binario que va a correr el cliente que se conectará al servidor.
+/// Posibilita realizar consultas CQL a las Tablas de Estado y las Tablas de Seguimiento de vuelos en curso.
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {

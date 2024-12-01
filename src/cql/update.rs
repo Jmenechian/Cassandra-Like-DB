@@ -1,5 +1,3 @@
-// Representa las consultas del tipo UPDATE
-// Aca se parsea la consulta y se ejecuta
 use crate::config::ENCRIPT_DATA;
 use crate::config::TABLE_PATH;
 use crate::cql::filter::Filter;
@@ -13,6 +11,8 @@ use std::io::BufRead;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
+/// Representa las consultas del tipo UPDATE.
+/// Se parsea la consulta y se ejecuta.
 pub struct Update {
     pub table: String,
     pub set: HashMap<String, String>,
@@ -36,7 +36,7 @@ impl Update {
         }
     }
 
-    // Parser query for later execution
+    /// Se parsea la query.
     pub fn parse_update(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
         let port = match address_node.chars().last() {
             Some(c) => c,
@@ -73,7 +73,7 @@ impl Update {
         Ok(())
     }
 
-    // Saves SET values in self.set
+    /// Se guardan los valores a actualizar de la clausula SET.
     fn get_set_values(&mut self, parts: &[&str]) -> Result<(), MyError> {
         let cleaned_parts = self.get_cleaned_parts(parts);
         let chunks_iter = cleaned_parts.chunks(3);
@@ -99,8 +99,7 @@ impl Update {
         Ok(())
     }
 
-    // Cleans the parts in the vector
-    // Joins elements inside ' '
+    /// Se normalizan los strings.
     fn get_cleaned_parts(&self, parts: &[&str]) -> Vec<String> {
         let mut cleaned_parts: Vec<String> = Vec::new();
 
@@ -127,7 +126,7 @@ impl Update {
         cleaned_parts
     }
 
-    // Checks if SET columns are found in the file
+    /// Chequea si las columnas de la clausula SET están en el archivo.
     fn check_columns_are_valid(&self, file_headers: &[String]) -> Result<(), MyError> {
         for header in self.set.keys() {
             if !file_headers.contains(header) {
@@ -140,8 +139,7 @@ impl Update {
         Ok(())
     }
 
-    // Executes the query
-
+    /// Ejecuta la query sobre la tabla.
     pub fn execute_command(
         &mut self,
         path_table: Arc<RwLock<String>>,
@@ -198,6 +196,8 @@ impl Update {
         Ok(vec!["Se updateo la tabla".to_string()])
     }
 
+    /// Se devuelven los valores que representa las pasticiones de las tablas.
+    /// Es decir, el nombre del aeropuerto y la fecha, y se la devuleve como un string de la forma: "<airport>,<date>"".
     pub fn get_key(&self) -> String {
         println!("Where = {:?}", self.whereclause);
         let aeropuerto = if let Some(aeropuerto) = self.whereclause.find_value_for_key("airport") {
