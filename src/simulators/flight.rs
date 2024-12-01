@@ -254,13 +254,10 @@ impl Flight {
         .sqrt();
 
         if dist_origin_flight < dist_origin_and_m_min {
-            //println!("Esta en zona previa a crucero.");
             return -1;
         } else if dist_origin_flight > dist_origin_and_m_max {
-            //println!("Esta en zona posterior a crucero.");
             return 1;
         }
-        //println!("Esta en la zona crucero.");
         0
     }
 
@@ -270,5 +267,11 @@ impl Flight {
     fn get_flight_step(z1: f32, z2: f32) -> f32 {
         let distance = (z2 - z1).abs(); // longitud/longitud de la recta que unuria el punto de origen del avion y el punto medio del recorrido.
         distance / FLIGHT_STEP
+    }
+
+    /// Se actuliza la posicion actual del vuelo
+    pub fn set_coordinates(&mut self, longitude: f32, latitude: f32) {
+        self.longitude = longitude;
+        self.latitude = latitude;
     }
 }

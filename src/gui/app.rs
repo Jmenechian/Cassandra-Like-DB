@@ -75,7 +75,7 @@ impl MapApp {
         let username = "".to_string();
         let password = "".to_string();
         let user = None;
-        let login_status = "Por favor ingresar usuario y contraseña".to_string();
+        let login_status = "Please enter username and password".to_string();
         Self {
             airports,
             map_texture,
@@ -597,12 +597,12 @@ impl MapApp {
         match User::new(self.username.clone(), self.password.clone()) {
             Ok(user) => {
                 println!("Login successful: {:?}", user);
-                self.login_status = format!("Bienvenido {}!", user.username);
+                self.login_status = format!("Welcome {}!", user.username);
                 self.user = Some(user);
             }
             Err(err) => {
                 println!("Login failed: {:?}", err);
-                self.login_status = "Usuario o contraseña incorrectos".to_string();
+                self.login_status = "Username or password incorrect".to_string();
                 self.user = None;
             }
         };
@@ -633,7 +633,7 @@ impl eframe::App for MapApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label(egui::RichText::new("Mapa de Aeropuertos").heading());
+            ui.label(egui::RichText::new("Aiports Map").heading());
 
             self.initialize_fields(ctx);
 

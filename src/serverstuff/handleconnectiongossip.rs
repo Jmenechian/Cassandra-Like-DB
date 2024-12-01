@@ -83,7 +83,6 @@ fn handle_message_gossip(
     gossip: &mut GossipMessage,
     show: bool,
 ) -> Result<(), MyError> {
-    // println!("entro a gossip");
     let mut node_guard: std::sync::RwLockWriteGuard<'_, Node> = match node.write() {
         Ok(n) => n,
         Err(e) => {

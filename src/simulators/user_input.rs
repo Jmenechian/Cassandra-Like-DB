@@ -4,8 +4,8 @@ use std::io::{self, stdin, stdout, Write};
 pub fn ask_user_flight_values() -> Result<Vec<String>, io::Error> {
     let requests = vec![
         "numero",
-        "aeropuesto de origen",
-        "aeropuesto de destino",
+        "aeropuerto de origen",
+        "aeropuerto de destino",
         "velocidad promedio estimada",
     ];
     let mut result: Vec<String> = vec![];
