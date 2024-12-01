@@ -133,6 +133,7 @@ mod tests {
         println!("Texto Desencriptado: {:?}", string_from_vec);
 
         println!("El '/n' es: {:?}", b' ');
+        
         assert_eq!(string, string_from_vec);
         Ok(())
     }
