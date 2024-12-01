@@ -10,25 +10,30 @@ use std::net::TcpStream;
 use std::thread;
 
 #[derive(Debug)]
+/// Estructura que representará al cliente conectandose al server.
+/// Podrá realizarse consultas al server y recibir su respuesta.
 pub struct Client {
     pub server_ip: String,
     pub ip: String,
 }
 
 impl Client {
+    /// Se inicializan los puertos del cliente.
     pub fn initialize(port: String) -> Self {
         Self {
             server_ip: format!("127.0.0.1:800{}", port),
-            ip: "127.0.0.1:45450".to_string(), //randint?
+            ip: "127.0.0.1:45450".to_string(),
         }
     }
 
+    /// Devuelve Ok si se puede conectar con el server.
     pub fn handle_input(&mut self) -> Result<()> {
         let mut _stream = TcpStream::connect(&self.server_ip)?;
 
         Ok(())
     }
 
+    /// Se conecta con el server y devuelve el stream.
     pub fn connect(&mut self) -> Result<TcpStream> {
         if let Ok(stream) = TcpStream::connect(&self.server_ip) {
             Ok(stream)
@@ -37,6 +42,9 @@ impl Client {
         }
     }
 
+    /// Se conecta con el server.
+    /// Lee las consultas por stdin y las envía al server.
+    /// Recibe la respuesta del server como Envelope y la imprime por pantalla.
     pub fn handle_connection(&self) -> io::Result<()> {
         let mut stream = match TcpStream::connect(&self.server_ip) {
             Ok(s) => s,
@@ -92,6 +100,8 @@ impl Client {
         Ok(())
     }
 
+    /// Envía la consulta por el stream al server.
+    /// El mensaje que se envía es de tipo QueryMessage.
     pub fn send_message(stream: &mut TcpStream, message: String, consistency: u16) -> Result<()> {
         if !message.is_empty() {
             let msg: QueryMessage = QueryMessage {
@@ -103,6 +113,7 @@ impl Client {
         Ok(())
     }
 
+    /// Se lee la respuesta del server por el stream y se devuelve el resultado.
     pub fn read_response(stream: &mut TcpStream) -> Result<Vec<String>> {
         loop {
             match Envelope::from_stream(stream) {

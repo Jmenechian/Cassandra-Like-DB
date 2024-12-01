@@ -57,6 +57,7 @@ impl CreateTable {
         }
     }
 
+    /// Se parsean los clausulas y valores de la query para crear una tabla.
     pub fn parse_create_table(&mut self, query: &str) -> Result<(), MyError> {
         let parts: Vec<&str> = query.split_whitespace().collect();
         if parts.len() < 7 || parts[0] != "CREATE" || parts[1] != "TABLE" {
@@ -200,28 +201,30 @@ impl CreateTable {
     fn create_table(&mut self) -> Result<(), MyError> {
         for i in 1..=RING_SIZE {
             // Creo nueva tabla por nodo
-            let table_name = format!("{}/{}_{}.csv", TABLE_PATH,self.table_name, i);
+            let table_name = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
             let columns: String = self.columns.join(",");
             let columns_final: String = if ENCRIPT_DATA {
-                let encripted_column = encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
-                match  String::from_utf8(encripted_column) {
+                let encripted_column =
+                    encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
+                match String::from_utf8(encripted_column) {
                     Ok(s) => s,
                     Err(e) => return Err(MyError::DecryptionError(e.to_string())),
                 }
             } else {
                 columns
             };
-            
-            let mut f = File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
+
+            let mut f =
+                File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
             writeln!(f, "{}", columns_final).map_err(|e| MyError::FileError(e.to_string()))?;
         }
         Ok(())
     }
-    
-    // Se ejecuta la query
+
+    /// Se ejecuta la query.
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         let _ = self.create_table()?;
-        
+
         // Creo un solo archivo de metadata
         let path_metadata = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, "metadata");
         let mut f_metadata =

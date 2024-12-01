@@ -11,8 +11,8 @@ pub struct Value {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-/// Aca se hacen las comparaciones de las condiciones WHERE de la consulta
-/// 'Relation': Representa la operacion en su nivel atomico, ie: 'val1 op val2'
+/// Se hacen las comparaciones de las condiciones WHERE de la consulta.
+/// 'Relation': Representa la operacion en su nivel atomico, ie: 'val1 op val2'.
 pub enum Relation {
     Equal(String, String),
     NotEqual(String, String),

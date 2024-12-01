@@ -1,5 +1,3 @@
-// Representa a las consultas del tipo INSERT
-// Aca se parsea la consulta y se ejecuta
 use crate::config::ENCRIPT_DATA;
 use crate::encryption::encrypt::*;
 use crate::errors::my_errors::MyError;
@@ -11,7 +9,7 @@ use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Eq, PartialEq)]
 /// Representa a las consultas del tipo INSERT
-/// Aca se parsea la consulta y se ejecuta
+/// Se parsea la consulta y se ejecuta
 pub struct Insert {
     pub table: String,
     pub columns: Vec<String>,
@@ -35,7 +33,7 @@ impl Insert {
         }
     }
 
-    /// Parses the query for later execution
+    /// Parsea la consulta para ejecutar mas tarde.
     pub fn parse_insert(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
         let port = match address_node.chars().last() {
             Some(c) => c,
@@ -80,7 +78,7 @@ impl Insert {
         Ok(())
     }
 
-    /// Extracts columns names and values to insert
+    /// Obtiene los nombres de las columnas y valores a insertar.
     fn extract_values(&self, parts: &[&str], skip_index: usize) -> Vec<String> {
         let mut values: Vec<String> = Vec::new();
         let mut parts_iter = parts.iter().skip(skip_index).peekable();
@@ -109,7 +107,7 @@ impl Insert {
         values
     }
 
-    /// Returns columns and values mapped into a HashMap
+    /// Retorna las columnas y sus valores mapeados en un HashMap.
     fn get_mapped_values(&self) -> Result<HashMap<&str, &str>, MyError> {
         let mut map: HashMap<&str, &str> = HashMap::new();
         for (key, value) in self.columns.iter().zip(self.values.iter()) {
@@ -121,7 +119,6 @@ impl Insert {
         Ok(map)
     }
 
-    /// No se si es necesaria
     fn check_columns_are_valid(&self, file_headers: &[String]) -> Result<(), MyError> {
         for header in &self.columns {
             if !file_headers.contains(header) {
@@ -140,6 +137,7 @@ impl Insert {
         Ok(())
     }
 
+    /// Se ejecuta la query.
     pub fn execute_command(
         &mut self,
         path_table: Arc<RwLock<String>>,
@@ -204,8 +202,6 @@ impl Insert {
 
     /// Se obtiene los valores de los campos de las particiones de la tabla.
     pub fn get_key(&self) -> String {
-        //suponiendo que siempre se manda bien
-
         let index_col_airport = self
             .columns
             .iter()
@@ -221,7 +217,7 @@ impl Insert {
         res
     }
 
-    /// Devuleve los valores a insertar.
+    /// Devuelve los valores a insertar.
     pub fn get_values(&mut self) -> String {
         self.values.push(Utc::now().to_string());
         self.values.join(",")
