@@ -93,7 +93,7 @@ impl Airport {
                 Ok(mut f) => {
                     f.set_coordinates(f.midpoint.0, f.midpoint.1);
                     f
-                },
+                }
                 Err(e) => {
                     return Err(MyError::Error(e.to_string()));
                 }
