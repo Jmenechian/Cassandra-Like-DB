@@ -80,7 +80,7 @@ impl Client {
                             }
                         }
                         ResultBody::Empty(_) => {
-                            println!("");
+                            println!();
                         }
                         ResultBody::Void(_) => {
                             println!("Error: Error en la consulta ingresada");

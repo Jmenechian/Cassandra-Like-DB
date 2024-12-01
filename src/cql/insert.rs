@@ -201,6 +201,7 @@ impl Insert {
     }
 
     /// Se obtiene los valores de los campos de las particiones de la tabla.
+    /// Es decir, el nombre del aeropuerto y la fecha, y se la devuleve como un string de la forma: "airport,date".
     pub fn get_key(&self) -> String {
         let index_col_airport = self
             .columns
