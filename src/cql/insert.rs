@@ -202,7 +202,6 @@ impl Insert {
 
     /// Se obtiene los valores de los campos de las particiones de la tabla.
     pub fn get_key(&self) -> String {
-
         let index_col_airport = self
             .columns
             .iter()
