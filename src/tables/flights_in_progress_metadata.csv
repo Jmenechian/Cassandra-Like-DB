@@ -1,4 +1,0 @@
-partition: number,origin,date
-clusters: 
-clustering_orderby: timestamp ASC,
-columns: flight STR,airport STR,destination STR,status STR,date DATETIME,speed STR,latitude STR,longitude STR,height STR,timestamp TIMESTAMP,
