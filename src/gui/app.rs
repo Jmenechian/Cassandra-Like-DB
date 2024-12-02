@@ -667,12 +667,7 @@ impl eframe::App for MapApp {
                                 let _ =
                                     self.add_all_connections(airport, texture, screen_x, screen_y);
                             }
-                        } // else if !self.date_selected.is_empty() && !self.selected_origin_airport.is_empty() {
-                          //     // TODO: Vemos si se agregaron vuelos por el simulador para el refresh de la pantalla.
-                          //     // Esto no funciona:
-                          //     self.reset_connection();
-                          //     let _ = self.add_all_connections(airport, texture, screen_x, screen_y);
-                          // }
+                        }
                     }
 
                     self.draw_connections_with_flight(texture, ui);
@@ -683,6 +678,7 @@ impl eframe::App for MapApp {
                 self.super_function(ui, texture);
             }
         });
+        
         // Actualizamos la pantalla para que se muestre la nueva posición de los vuelos del simulador.
         ctx.request_repaint();
     }
