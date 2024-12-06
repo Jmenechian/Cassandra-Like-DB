@@ -37,7 +37,7 @@ impl Insert {
     pub fn parse_insert(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
         let port = match address_node.chars().last() {
             Some(c) => c,
-            None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
+            None => return Err(MyError::Error("No pude obtener el puerto".to_string())),
         };
         self.num_node = port.to_string();
 
