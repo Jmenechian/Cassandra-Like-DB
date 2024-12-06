@@ -307,20 +307,6 @@ pub fn send_query_to_nodes(
     let mut hash = ConsistentHash::new(RF);
     let mut query: Query = Query::new(_query.clone(), node.number.clone(), node.client_ip.clone());
 
-    // // Si es un create table, lo ejecuto:
-    // if query.query.contains("CREATE TABLE") {
-    //     match node.process_query(&mut query) {
-    //         Ok(_) => return Ok(vec!["Se crean las tablas.".to_string()]),
-    //         Err(e) => {
-    //             let _error = format!("Error al procesar la query: {:?}", e);
-    //             if show {
-    //                 println!("C   {:?}", _error);
-    //             }
-    //             return Err(MyError::Error(_error));
-    //         }
-    //     }
-    // }
-
     hash.add_nodes(node.neighbors.to_vec());
     let key = query.get_key_representing_partition(&node.server_ip);
     let nodes_with_result: Vec<NeighborNode> = if key == *"" {
