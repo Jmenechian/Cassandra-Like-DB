@@ -305,25 +305,17 @@ pub fn send_query_to_nodes(
     let mut all_response: Vec<Vec<String>> = vec![];
     let mut all_response_dict: HashMap<String, Vec<String>> = HashMap::new();
     let mut hash = ConsistentHash::new(RF);
-    let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());
-
-    // Si es un create table, lo ejecuto:
-    if query.query.contains("CREATE TABLE") {
-        match node.process_query(&mut query) {
-            Ok(_) => return Ok(vec!["Se crean las tablas.".to_string()]),
-            Err(e) => {
-                let _error = format!("Error al procesar la query: {:?}", e);
-                if show {
-                    println!("C   {:?}", _error);
-                }
-                return Err(MyError::Error(_error));
-            }
-        }
-    }
+    let mut query: Query = Query::new(_query.clone(), node.number.clone(), node.client_ip.clone());
 
     hash.add_nodes(node.neighbors.to_vec());
     let key = query.get_key_representing_partition(&node.server_ip);
-    let nodes_with_result = hash.get_nodes(&key);
+    let nodes_with_result: Vec<NeighborNode> = if key == *"" {
+        // Create table
+        node.neighbors.clone()
+    } else {
+        // otras queries
+        hash.get_nodes(&key)
+    };
 
     if show {
         println!("\n - La key es: {}", key);

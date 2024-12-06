@@ -1,9 +1,10 @@
-use crate::config::{ENCRIPT_DATA, RING_SIZE, TABLE_PATH};
+use crate::config::{ENCRIPT_DATA, TABLE_PATH};
 use crate::encryption::encrypt::encrypt_body_aes128;
 use crate::errors::my_errors::MyError;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 
 #[derive(Debug, PartialEq, Eq)]
 /// Representa las consultas del tipo CREATE TABLE
@@ -31,6 +32,7 @@ use std::io::Write;
 pub struct CreateTable {
     pub if_not_exists: bool, // si contiene [IF NOT EXISTS] en la query
     pub table_name: String,
+    pub num_node: String,
     pub column_type: HashMap<String, String>, // nombre de columna, tipo de columna
     pub columns: Vec<String>,
     pub partition_keys: Vec<String>, // {"partition": ["app_name", "env"], "clustering": ["hostname", "log_datetime"]}
@@ -49,6 +51,7 @@ impl CreateTable {
         CreateTable {
             if_not_exists: false,
             table_name: "".to_string(),
+            num_node: "0".to_string(),
             column_type: HashMap::new(),
             columns: Vec::new(),
             partition_keys: Vec::new(),
@@ -58,7 +61,7 @@ impl CreateTable {
     }
 
     /// Se parsean los clausulas y valores de la query para crear una tabla.
-    pub fn parse_create_table(&mut self, query: &str) -> Result<(), MyError> {
+    pub fn parse_create_table(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
         let parts: Vec<&str> = query.split_whitespace().collect();
         if parts.len() < 7 || parts[0] != "CREATE" || parts[1] != "TABLE" {
             return Err(MyError::InvalidSyntax(
@@ -66,6 +69,7 @@ impl CreateTable {
             ));
         }
 
+        self.num_node = address_node.to_string();
         self.if_not_exists = query.contains("IF NOT EXISTS");
 
         // no acepta nombre de tablas con espacios
@@ -199,25 +203,52 @@ impl CreateTable {
     }
 
     fn create_table(&mut self) -> Result<(), MyError> {
-        for i in 1..=RING_SIZE {
-            // Creo nueva tabla por nodo
-            let table_name = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, i);
-            let columns: String = self.columns.join(",");
-            let columns_final: String = if ENCRIPT_DATA {
-                let encripted_column =
-                    encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
-                match String::from_utf8(encripted_column) {
-                    Ok(s) => s,
-                    Err(e) => return Err(MyError::DecryptionError(e.to_string())),
-                }
-            } else {
-                columns
-            };
+        let table_name = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, self.num_node);
+        let columns: String = self.columns.join(",");
+        let columns_final: String = if ENCRIPT_DATA {
+            let encripted_column =
+                encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
+            match String::from_utf8(encripted_column) {
+                Ok(s) => s,
+                Err(e) => return Err(MyError::DecryptionError(e.to_string())),
+            }
+        } else {
+            columns
+        };
 
-            let mut f =
-                File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
-            writeln!(f, "{}", columns_final).map_err(|e| MyError::FileError(e.to_string()))?;
-        }
+        let mut f =
+            File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
+        writeln!(f, "{}", columns_final).map_err(|e| MyError::FileError(e.to_string()))?;
+        Ok(())
+    }
+
+    fn create_metadata_table(&self, path_metadata: String) -> Result<(), MyError>  {
+         // Creo un solo archivo de metadata
+         
+         let mut f_metadata =
+             File::create_new(path_metadata).map_err(|e| MyError::FileError(e.to_string()))?;
+ 
+         let display_orderby: String = self
+             .clustering_orderby
+             .iter()
+             .map(|(k, v)| format!("{} {},", k, v))
+             .collect::<Vec<String>>()
+             .join(",");
+ 
+         let display_columns = self.get_display_columns();
+ 
+         f_metadata
+             .write_all(
+                 format!(
+                     "partition: {}\nclusters: {}\nclustering_orderby: {}\ncolumns: {}",
+                     self.partition_keys.join(","),
+                     self.clustering_keys.join(","),
+                     display_orderby,
+                     display_columns
+                 )
+                 .as_bytes(),
+             )
+             .map_err(|e| MyError::FileError(e.to_string()))?;
         Ok(())
     }
 
@@ -225,33 +256,11 @@ impl CreateTable {
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         self.create_table()?;
 
-        // Creo un solo archivo de metadata
         let path_metadata = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, "metadata");
-        let mut f_metadata =
-            File::create_new(path_metadata).map_err(|e| MyError::FileError(e.to_string()))?;
-
-        let display_orderby: String = self
-            .clustering_orderby
-            .iter()
-            .map(|(k, v)| format!("{} {},", k, v))
-            .collect::<Vec<String>>()
-            .join(",");
-
-        let display_columns = self.get_display_columns();
-
-        f_metadata
-            .write_all(
-                format!(
-                    "partition: {}\nclusters: {}\nclustering_orderby: {}\ncolumns: {}",
-                    self.partition_keys.join(","),
-                    self.clustering_keys.join(","),
-                    display_orderby,
-                    display_columns
-                )
-                .as_bytes(),
-            )
-            .map_err(|e| MyError::FileError(e.to_string()))?;
-
+        let path = Path::new(path_metadata.as_str());
+        if !path.exists() {
+            self.create_metadata_table(path_metadata)?;
+        }
         Ok(vec!["tabla creada".to_string()])
     }
 }
@@ -264,7 +273,7 @@ mod tests {
     pub fn test_parse_table_name() {
         let mut create_table = CreateTable::new();
         let query = "CREATE TABLE application_logs (id INT, PRIMARY KEY (id)) WITH CLUSTERING ORDER BY (id);".to_string();
-        let _ = create_table.parse_create_table(&query);
+        let _ = create_table.parse_create_table(&query, "0");
         assert_eq!(create_table.table_name, "application_logs".to_string());
     }
 
@@ -326,7 +335,7 @@ mod tests {
     pub fn parse_create_table() {
         let mut create_table = CreateTable::new();
         let query = "CREATE TABLE application_logs (id INT, app_name VARCHAR, hostname VARCHAR, log_datetime TIMESTAMP, PRIMARY KEY ((app_name,env), hostname, log_datetime)) WITH CLUSTERING ORDER BY (hostname ASC, log_datetime DESC)";
-        let _ = create_table.parse_create_table(query);
+        let _ = create_table.parse_create_table(query, "0");
 
         let mut expected_columns = HashMap::new();
         expected_columns.insert("id".to_string(), "INT".to_string());
