@@ -82,6 +82,9 @@ pub mod simulators {
     pub mod flight_status;
     pub mod queries;
     pub mod user_input;
+    pub mod flight_updater;
+    pub mod input_flight;
+    pub mod connection_server;
 }
 
 pub mod errors {
