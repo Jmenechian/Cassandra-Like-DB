@@ -70,6 +70,7 @@ impl FlightUpdater {
     /// Se ejecutan las queries.
     pub fn update_flights(&mut self) -> Result<(), MyError> {
 
+        // TODO: el dequeue se tiene que hacer dentro del hilo! Por eso Mutex
         if let Some((query, consistency)) = self.dequeue()? {
             let mut stream = self.stream.try_clone().map_err(|e| MyError::TcpStreamError(e.to_string()))?;
             self.threadpool.execute(move || {
