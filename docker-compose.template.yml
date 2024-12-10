@@ -1,0 +1,13 @@
+
+  "${NODE_NAME}":
+    image: rust:latest
+    networks:
+      network_net:
+        ipv4_address: "${IP_ADDRESS}"
+    stdin_open: true
+    tty: true
+    volumes:
+      - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
+    working_dir: /app
+    command: bash -c "apt-get update && apt-get install -y iputils-ping && rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
+

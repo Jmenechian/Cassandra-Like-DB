@@ -56,3 +56,4 @@ UPDATE origin SET status = boarding WHERE flight = 101 AND airport = MEX AND dat
 ``` sql
 DELETE FROM origin WHERE flight = 101 AND airport = MEX AND date = 24-12-24
 ```
+UPDATE origin SET status = delayed WHERE flight = 123 AND airport = MEX AND date = 24-12-24 

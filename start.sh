@@ -1,0 +1,127 @@
+#!/bin/bash
+
+# Asegúrate de recibir el número de nodos como argumento
+if [ -z "$1" ]; then
+  echo "Uso: $0 <número_de_nodos>"
+  exit 1
+fi
+
+NUM_NODOS=$1
+
+# Validar que el número de nodos sea válido
+if ! [[ "$NUM_NODOS" =~ ^[0-9]+$ ]] || [ "$NUM_NODOS" -le 0 ]; then
+  echo "Error: El número de nodos debe ser un número entero positivo."
+  exit 1
+fi
+
+# Limpiar todas las redes de Docker excepto las predeterminadas
+echo "Eliminando todas las redes de Docker excepto las predeterminadas..."
+
+docker network ls --format '{{.Name}}' | grep -vE '^(bridge|host|none)$' | while read -r network; do
+  echo "Eliminando contenedores en la red $network..."
+  
+    # Obtener todos los contenedores conectados a la red y procesarlos individualmente
+    docker network inspect "$network" --format '{{range .Containers}}{{.Name}}{{"\n"}}{{end}}' | while read -r container; do
+    if [ -n "$container" ]; then
+        echo "Deteniendo y eliminando contenedor $container..."
+        docker stop "$container" >/dev/null 2>&1
+        docker rm "$container" >/dev/null 2>&1
+    fi
+    done
+
+
+  # Intentar eliminar la red
+  echo "Eliminando red $network..."
+  docker network rm "$network" >/dev/null 2>&1 || {
+    echo "Error: No se pudo eliminar la red $network. Verifica los permisos o si aún hay contenedores activos."
+  }
+done
+
+TEMPLATE_FILE="docker-compose.template.yml"
+TMP_COMPOSE_FILE="docker-compose.yml"
+
+NETWORK_NAME="network_net"
+SUBNET="10.0.0.0/24"
+
+echo "Verificando la red network_net..."
+if ! docker network inspect network_net >/dev/null 2>&1; then
+  echo "Creando la red network_net con el subnet 10.0.0.0/24..."
+  docker network create --driver bridge --subnet=10.0.0.0/24 network_net || {
+    echo "Error: No se pudo crear la red. Verifica los permisos de Docker."
+    exit 1
+  }
+else
+  echo "La red network_net ya existe. Usándola."
+fi
+
+# Crear el archivo docker-compose.yml vacío con la cabecera
+echo "version: '3.8'" > "$TMP_COMPOSE_FILE"
+echo "services:" >> "$TMP_COMPOSE_FILE"
+
+# Crear nodos dinámicamente
+for i in $(seq 2 $((NUM_NODOS + 1))); do
+  IP_ADDRESS="10.0.0.$((i))"  # La IP empieza desde 10.0.0.2
+  NODE_NAME="node$i"
+
+  echo "Creando nodo $NODE_NAME con IP $IP_ADDRESS"
+
+  # Exportar las variables de entorno
+  export NODE_NAME=$NODE_NAME
+  export IP_ADDRESS=$IP_ADDRESS
+  # Usar envsubst para sustituir las variables en la plantilla y agregarlas al archivo
+  envsubst < "$TEMPLATE_FILE" >> "$TMP_COMPOSE_FILE"
+
+  # Limpiar las variables de entorno después de usarlas
+  unset NODE_NAME
+  unset IP_ADDRESS
+done
+
+# Añadir el bloque de red al final
+cat <<EOF >> "$TMP_COMPOSE_FILE"
+networks:
+  network_net:
+    external: true
+EOF
+
+# Ejecutar docker-compose para levantar los contenedores
+if docker-compose -f "$TMP_COMPOSE_FILE" up -d; then
+  echo "Todos los contenedores se levantaron correctamente."
+else
+  echo "Hubo un error al levantar los contenedores."
+  exit 1
+fi
+
+# Abrir una terminal para cada contenedor solo si está en ejecución
+for i in $(seq 2 $((NUM_NODOS + 1))); do
+    NODE_NAME="node$i"
+    CONTAINER_NAME=$(docker ps --filter "name=$NODE_NAME" --format "{{.Names}}")
+
+    if [ -n "$CONTAINER_NAME" ]; then
+        echo "Abriendo terminal para $CONTAINER_NAME"
+        # Detectar el sistema operativo
+        OS=$(uname)
+
+        if [ "$OS" == "Darwin" ]; then
+            # Para macOS
+            osascript -e "
+            tell application \"Terminal\"
+                do script \"arch -x86_64 zsh\"
+                delay 1 -- Espera 1 segundo para asegurarte de que el comando anterior se ejecute
+                do script \"docker run --platform linux/amd64 -it $CONTAINER_NAME bash\" in front window
+            end tell
+            "
+        elif [ "$OS" == "Linux" ]; then
+            # Para Linux (suponiendo que usas gnome-terminal)
+            gnome-terminal -- bash -c "docker exec -it $CONTAINER_NAME bash -c '/app/ping_check.sh $NUM_NODOS'; exec bash"
+        else
+            echo "Sistema operativo no soportado"
+        fi
+    else
+        echo "El contenedor $NODE_NAME no está en ejecución."
+    fi
+done
+
+# Limpiar archivo temporal
+rm -f "$TMP_COMPOSE_FILE"
+#-c '/app/ping_check.sh $NUM_NODOS'
+echo "Todos los nodos han sido creados."
