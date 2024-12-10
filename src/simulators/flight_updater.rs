@@ -1,9 +1,6 @@
 use std::{
     net::TcpStream,
-    sync::{
-        mpsc::Sender,
-        Arc, Mutex,
-    },
+    sync::{mpsc::Sender, Arc, Mutex},
 };
 use threadpool::ThreadPool;
 
@@ -11,7 +8,7 @@ use crate::{
     client_cql::Client,
     config::{N_WORKERS, QUERIES_PATH},
     errors::{my_errors::MyError, simulator_errors::SimulatorErrors},
-    utils::{append_row, get_and_remove_first_line, open_file},
+    utils::{append_row, get_and_remove_first_line, is_file_empty, open_file},
 };
 
 use super::channel_type::ChannelType;
@@ -50,6 +47,7 @@ impl FlightUpdater {
                 .receiver
                 .recv()
                 .map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
+
             self.enqueue(query, consistency)?;
         }
     }
@@ -60,8 +58,11 @@ impl FlightUpdater {
             .queries_path
             .lock()
             .map_err(|e| MyError::LockingError(e.to_string()))?;
+
         let mut file = open_file(path.to_string())?;
+
         append_row(&mut file, &[query, consistency.to_string()])?;
+
         Ok(())
     }
 
@@ -70,26 +71,38 @@ impl FlightUpdater {
         let path = path_queries
             .lock()
             .map_err(|e| MyError::LockingError(e.to_string()))?;
+
         let result = get_and_remove_first_line(path.to_string())?;
-        if result.len() > 2 {
+
+        if result.len() >= 2 {
             let consistency = result[1]
                 .parse::<u16>()
                 .map_err(|e| MyError::Error(e.to_string()))?;
             return Ok((result[0].clone(), consistency));
         }
+
         Err(MyError::Error("Empty query file".to_string()))
     }
 
     /// Se ejecutan las queries.
     pub fn update_flights(path: Arc<Mutex<String>>) -> Result<(), MyError> {
-        loop {
-            let mut stream: TcpStream = if let Ok(stream) = Client::connect_with_node() {
-                stream
-            } else {
-                return Err(MyError::AllNodesDisconnected());
-            };
+        // Buscamos un nodo conectado:
+        let stream: TcpStream = if let Ok(stream) = Client::connect_with_node() {
+            stream
+        } else {
+            return Err(MyError::AllNodesDisconnected());
+        };
 
-            let threadpool = ThreadPool::new(N_WORKERS);
+        let threadpool = ThreadPool::new(N_WORKERS);
+
+        loop {
+            if is_file_empty(QUERIES_PATH) {
+                continue;
+            }
+
+            let mut stream = stream
+                .try_clone()
+                .map_err(|e| MyError::TcpStreamError(e.to_string()))?;
 
             let path = Arc::clone(&path);
 
@@ -103,16 +116,11 @@ impl FlightUpdater {
 
     /// Se ejecuta la query.
     /// Se envia por el channel la respuesta.
-    fn make_query(
-        stream: &mut TcpStream,
-        query: String,
-        consistency: u16,
-    ) -> Result<(), MyError> {
+    fn make_query(stream: &mut TcpStream, query: String, consistency: u16) -> Result<(), MyError> {
         if Client::send_message(stream, query, consistency).is_ok() {
             Client::read_response(stream).map_err(|e| MyError::Error(e.to_string()))?;
         }
 
-        println!("Ok send result query");
         Ok(())
     }
 }

@@ -23,7 +23,7 @@ fn main() -> Result<(), eframe::Error> {
     };
 
     eframe::run_native(
-        "Mapa de Aeropuertos",
+        "Aiports Map",
         options,
         Box::new(|_cc| Ok(Box::new(MapApp::new(port)))),
     )

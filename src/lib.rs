@@ -76,6 +76,7 @@ pub mod gui {
 
 pub mod simulators {
     pub mod airport;
+    pub mod channel_type;
     pub mod connection_server;
     pub mod coordinates;
     pub mod flight;
@@ -85,7 +86,6 @@ pub mod simulators {
     pub mod input_flight;
     pub mod queries;
     pub mod user_input;
-    pub mod channel_type;
 }
 
 pub mod errors {

@@ -3,6 +3,7 @@
 use crate::encryption::encrypt::*;
 use crate::{config::ENCRIPT_DATA, errors::my_errors::MyError};
 use std::collections::VecDeque;
+use std::fs::metadata;
 use std::{
     fs::{File, OpenOptions},
     io::{BufRead, BufReader, Seek, SeekFrom, Write},
@@ -213,6 +214,10 @@ pub fn get_and_remove_first_line(path: String) -> Result<Vec<String>, MyError> {
         .collect::<Result<_, _>>()
         .map_err(|e| MyError::FileError(e.to_string()))?;
 
+    if lines.is_empty() {
+        return Ok(vec![]);
+    }
+
     if let Some(first_line) = lines.pop_front() {
         let mut file = OpenOptions::new()
             .write(true)
@@ -224,8 +229,25 @@ pub fn get_and_remove_first_line(path: String) -> Result<Vec<String>, MyError> {
             writeln!(file, "{}", line).map_err(|e| MyError::FileError(e.to_string()))?;
         }
 
-        return Ok(first_line.split(",").map(|s| s.to_string()).collect());
+        return Ok(split_with_last_comma(first_line));
     }
 
     Ok(vec![])
+}
+
+fn split_with_last_comma(line: String) -> Vec<String> {
+    let mut parts = line.rsplitn(2, ',');
+
+    // rsplitn(2, ',') divide el string en dos partes, tomando la última coma como separador
+    let last = parts.next().unwrap_or_default();
+    let first = parts.next().unwrap_or_default(); // Todo lo anterior al último elemento
+
+    vec![first.to_string(), last.to_string()]
+}
+
+pub fn is_file_empty(path: &str) -> bool {
+    match metadata(path) {
+        Ok(metadata) => metadata.len() == 0,
+        Err(_) => false,
+    }
 }

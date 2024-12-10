@@ -40,7 +40,7 @@ impl FlightSimulator {
         })
     }
 
-    /// Pone en marcha la creación de vuelos y su simulación de despegue y llegada a destino.
+    /// Pone en marcha la creación de vuelos y su simulación desde despegue hasta la llegada a destino.
     pub fn run() -> Result<(), MyError> {
         if FlightSimulator::create_flight_table().is_err() {
             println!("Las tablas ya estaban creadas.\n");
@@ -75,7 +75,9 @@ impl FlightSimulator {
 
         // Loop encargado de simular los vuelos y enviar al modulo anterior las queries de update del estado y seguimiento del vuelo.
         // Se lanza un thread por cada vuelo que se simula:
+        let mut i = 1;
         loop {
+            println!("\n - Simulacion {}", i);
             let flight_simulator = FlightSimulator::new(channel_sender.clone())?;
             let input_flight = InputFlight::new().map_err(|e| MyError::Error(e.to_string()))?;
             thread::spawn({
@@ -86,6 +88,7 @@ impl FlightSimulator {
                     }
                 }
             });
+            i += 1;
         }
     }
 
@@ -226,7 +229,7 @@ impl FlightSimulator {
     fn simulate_flight(&self, mut flight: Flight) -> Result<(), MyError> {
         // Escribimos el vuelo en la tabla flights_in_progress.csv -> hacemos INSERT como Client
         self.insert_flight(&flight)?;
-        println!("\nSe agrego el vuelo {:?} correctamente.\n", flight);
+        println!("\nInicio de vuelo simulado:\n{:?}\n", flight);
 
         while flight.status != FlightStatus::Landed {
             thread::sleep(Duration::from_secs(2));

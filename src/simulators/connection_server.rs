@@ -32,12 +32,11 @@ impl ConnectionServer {
 
     pub fn initialize_with_any_node() -> Result<Self, MyError> {
         // Buscamos un nodo conectado:
-        let stream: Option<TcpStream> = if let Ok(stream) = Client::connect_with_node() {
-            Some(stream)
-        } else {
-            return Err(MyError::TcpStreamError(
-                "No nos pudimos conectarnos a un nodo.\n".to_string(),
-            ));
+        let stream: Option<TcpStream> = match Client::connect_with_node() {
+            Ok(stream) => Some(stream),
+            Err(e) => {
+                return Err(MyError::TcpStreamError(e.to_string()));
+            }
         };
 
         Ok(Self {
@@ -65,7 +64,6 @@ impl ConnectionServer {
     /// Se lanza un thread que realizará la query indicada al nodo con el que mantenemos la conexion.
     /// Se envia por el channel la respuesta.
     pub fn make_query(&self, query: String, consistency: u16) -> Result<(), MyError> {
-        println!("\n- Query: {}\n", query);
         let mut stream_server: TcpStream = if let Ok(stream) = self.get_connection_server() {
             stream
         } else {
@@ -83,7 +81,6 @@ impl ConnectionServer {
                 }
             }
         });
-        println!("Ok send result query");
         Ok(())
     }
 }

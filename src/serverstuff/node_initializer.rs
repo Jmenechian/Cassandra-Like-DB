@@ -23,7 +23,7 @@ use std::time::Duration;
 pub fn node_initialize(port: String) -> Result<(), MyError> {
     let show_g: bool = false;
     let show_s: bool = false;
-    let show_c: bool = true;
+    let show_c: bool = false;
 
     let mut current_node: Node = Node::new(&port);
     println!("Nodo actual: {:?}", current_node);
@@ -59,7 +59,7 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
                 };
                 let _ = gossip_msg.send_server_through(&mut s);
             }
-            None => println!("No encuentre otro nodo."),
+            None => {}
         };
     }
 }

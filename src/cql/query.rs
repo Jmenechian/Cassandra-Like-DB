@@ -130,7 +130,6 @@ impl Query {
     pub fn get_key_representing_partition(&mut self, address_node: &str) -> String {
         //devolveme el nombre del aeropuerto
         self.get_type();
-        println!("type: {:?}", self.qtype);
         match &mut self.qtype {
             QType::Select(select) => {
                 let _ = select.parse_select(self.query.as_str(), address_node);
