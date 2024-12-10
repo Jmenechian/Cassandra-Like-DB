@@ -1,14 +1,14 @@
 use std::{
-    collections::VecDeque, 
     net::TcpStream, 
-    sync::{mpsc::{self, Receiver, Sender}, Arc, Mutex}
+    sync::{mpsc::{self, Receiver, Sender}, Arc, Mutex}, vec
 };
 use threadpool::ThreadPool;
 
 use crate::{
     client_cql::Client, 
-    config::N_WORKERS, 
-    errors::{my_errors::MyError, simulator_errors::SimulatorErrors}
+    config::{N_WORKERS, QUERIES_PATH}, 
+    errors::{my_errors::MyError, simulator_errors::SimulatorErrors}, 
+    utils::{append_row, get_and_remove_first_line, open_file}
 };
 
 #[derive(Debug)]
@@ -18,26 +18,17 @@ use crate::{
 /// El agregado de una nueva query estará Lockeado para no perder ninguna.
 /// Los Threads estarán sincronizados por channel.
 pub struct FlightUpdater {
-    queries: Arc<Mutex<VecDeque<(String, u16)>>>,
-    threadpool: ThreadPool,
-    stream: TcpStream,
     channel: (Sender<(String, u16)>, Receiver<(String, u16)>),
+    queries_path: Arc<Mutex<String>>,
 }
 
 impl FlightUpdater {
 
     pub fn new() -> Result<Self, SimulatorErrors> {
-        let stream_server: TcpStream = if let Ok(stream) = Client::connect_with_node() {
-            stream
-        } else {
-            return Err(SimulatorErrors::AllNodesDisconnected());
-        };
         
         Ok(Self {
-            queries: Arc::new(Mutex::new(VecDeque::new())),
-            threadpool: ThreadPool::new(N_WORKERS),
-            stream: stream_server,
             channel: mpsc::channel(), //(tx, rx) -> send, receive
+            queries_path: Arc::new(Mutex::new(QUERIES_PATH.to_string())),
         })
     }
 
@@ -45,40 +36,55 @@ impl FlightUpdater {
         self.channel.0.clone()
     }
 
-    pub fn listen_queries_and_execute(&mut self) -> Result<(), MyError> {
+    pub fn get_mutex_path(&self) -> Arc<Mutex<String>> {
+        Arc::clone(&self.queries_path)
+    }
+
+    pub fn listen_queries(&mut self) -> Result<(), MyError> {
         loop {
             let (query, consistency) = self.channel.1.recv().map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
             self.enqueue(query, consistency)?;
-
-            self.update_flights()?;
         }
     }
 
     /// Se agrega la query a la cola de ejecucion.
     fn enqueue(&mut self, query: String, consistency: u16) -> Result<(), MyError> {
-        let mut queue = self.queries.lock().map_err(|e| MyError::LockingError(e.to_string()))?;
-        queue.push_back((query, consistency));
+        let path = self.queries_path.lock().map_err(|e| MyError::LockingError(e.to_string()))?;
+        let mut file = open_file(path.to_string())?;
+        append_row(&mut file, &vec![query, consistency.to_string()])?;
         Ok(())
     }
 
     /// Devuelve la primer query encolada, y None en caso de no haber más queries.
-    fn dequeue(&mut self) -> Result<Option<(String, u16)>, MyError> {
-        let mut queue = self.queries.lock().map_err(|e| MyError::LockingError(e.to_string()))?;
-        Ok(queue.pop_front())
+    fn dequeue(path_queries: Arc<Mutex<String>>) -> Result<(String, u16), MyError> {
+        let path = path_queries.lock().map_err(|e| MyError::LockingError(e.to_string()))?;
+        let result = get_and_remove_first_line(path.to_string())?;
+        if result.len() > 2 {
+            let consistency = result[1].parse::<u16>().map_err(|e| MyError::Error(e.to_string()))?;
+            return Ok((result[0].clone(), consistency));
+        }
+        Err(MyError::Error("Empty query file".to_string()))
     }
 
     /// Se ejecutan las queries.
-    pub fn update_flights(&mut self) -> Result<(), MyError> {
+    pub fn update_flights(path: Arc<Mutex<String>>) -> Result<(), MyError> {
+        loop {
+            let mut stream: TcpStream = if let Ok(stream) = Client::connect_with_node() {
+                stream
+            } else {
+                return Err(MyError::AllNodesDisconnected());
+            };
+    
+            let threadpool = ThreadPool::new(N_WORKERS);
 
-        // TODO: el dequeue se tiene que hacer dentro del hilo! Por eso Mutex
-        if let Some((query, consistency)) = self.dequeue()? {
-            let mut stream = self.stream.try_clone().map_err(|e| MyError::TcpStreamError(e.to_string()))?;
-            self.threadpool.execute(move || {
-                let _ = FlightUpdater::make_query(&mut stream, query, consistency);
+            let path = Arc::clone(&path);
+            
+            threadpool.clone().execute(move || {
+                if let Ok((query, consistency)) = FlightUpdater::dequeue(path) {
+                    let _ = FlightUpdater::make_query(&mut stream, query, consistency);
+                }
             });
         }
-
-        Ok(())
     }
 
     /// Se ejecuta la query.

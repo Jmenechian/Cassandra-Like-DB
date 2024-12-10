@@ -6,7 +6,6 @@ pub enum SimulatorErrors {
     FlightIsAlreadySimulated(),
     UncreatedFlight(),
     InputError(),
-    AllNodesDisconnected(),
 }
 
 impl fmt::Display for SimulatorErrors {
@@ -21,9 +20,6 @@ impl fmt::Display for SimulatorErrors {
             }
             SimulatorErrors::InputError() => {
                 write!(f, "ERROR: No se pudo leer el input correctamente.")
-            }
-            SimulatorErrors::AllNodesDisconnected() => {
-                write!(f, "ERROR: No se encontró un nodo conectado.")
             }
         }
     }

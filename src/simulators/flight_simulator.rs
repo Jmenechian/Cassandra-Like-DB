@@ -56,10 +56,12 @@ impl FlightSimulator {
         // Se crea el modulo encargado de escuchar las queries y ejecutarlas:
         let mut flight_updater = FlightUpdater::new().map_err(|e| MyError::Error(e.to_string()))?;
         let channel_sender: Sender<(String, u16)> = flight_updater.get_channel_to_send();
+        let path_queries = flight_updater.get_mutex_path();
 
+        // Thread que escucha y guarda las queries:
         thread::spawn({
             move || {
-                match flight_updater.listen_queries_and_execute() {
+                match flight_updater.listen_queries() {
                     Ok(_) => {}
                     Err(e) => {
                         println!("{}", e);
@@ -68,7 +70,20 @@ impl FlightSimulator {
             }
         });
 
-        // Loop encargado de simular los vuelos y enviar al modulo anterior las queries de update del estado y seguimiento del vuelo:
+        // Thread que ejecuta las queries, usando Threadpools:
+        thread::spawn({
+            move || {
+                match FlightUpdater::update_flights(path_queries) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        println!("{}", e);
+                    }
+                }
+            }
+        });
+
+        // Loop encargado de simular los vuelos y enviar al modulo anterior las queries de update del estado y seguimiento del vuelo.
+        // Se lanza un thread por cada vuelo que se simula:
         loop {
             let flight_simulator = FlightSimulator::new(channel_sender.clone())?;
             let input_flight = InputFlight::new().map_err(|e| MyError::Error(e.to_string()))?;

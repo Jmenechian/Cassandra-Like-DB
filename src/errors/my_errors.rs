@@ -24,6 +24,7 @@ pub enum MyError {
     UserError(String),
     EncryptionError(String),
     DecryptionError(String),
+    AllNodesDisconnected(),
 }
 
 impl fmt::Display for MyError {
@@ -49,6 +50,7 @@ impl fmt::Display for MyError {
             MyError::UserError(ref msg) => write!(f, "[USER_ERROR]: [{}]", msg),
             MyError::EncryptionError(ref msg) => write!(f, "[ENCRYPTION_ERROR]: [{}]", msg),
             MyError::DecryptionError(ref msg) => write!(f, "[DECRYPTION_ERROR]: [{}]", msg),
+            MyError::AllNodesDisconnected() => write!(f, "[ALL_NODES_DISCONNECTED]: [No se encontró un nodo conectado.]"),
         }
     }
 }
