@@ -208,7 +208,10 @@ pub fn get_and_remove_first_line(path: String) -> Result<Vec<String>, MyError> {
     let file = open_file(path.clone())?;
     let rdr = BufReader::new(file);
 
-    let mut lines: VecDeque<String> = rdr.lines().collect::<Result<_, _>>().map_err(|e| MyError::FileError(e.to_string()))?;
+    let mut lines: VecDeque<String> = rdr
+        .lines()
+        .collect::<Result<_, _>>()
+        .map_err(|e| MyError::FileError(e.to_string()))?;
 
     if let Some(first_line) = lines.pop_front() {
         let mut file = OpenOptions::new()
@@ -216,7 +219,7 @@ pub fn get_and_remove_first_line(path: String) -> Result<Vec<String>, MyError> {
             .truncate(true)
             .open(path)
             .map_err(|e| MyError::FileError(e.to_string()))?;
-        
+
         for line in lines {
             writeln!(file, "{}", line).map_err(|e| MyError::FileError(e.to_string()))?;
         }

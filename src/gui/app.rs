@@ -678,7 +678,7 @@ impl eframe::App for MapApp {
                 self.super_function(ui, texture);
             }
         });
-        
+
         // Actualizamos la pantalla para que se muestre la nueva posición de los vuelos del simulador.
         ctx.request_repaint();
     }

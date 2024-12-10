@@ -36,10 +36,10 @@ impl ConnectionServer {
             Some(stream)
         } else {
             return Err(MyError::TcpStreamError(
-                    "No nos pudimos conectarnos a un nodo.\n".to_string(),
+                "No nos pudimos conectarnos a un nodo.\n".to_string(),
             ));
         };
-    
+
         Ok(Self {
             stream,
             channels: mpsc::channel(), //(tx, rx) -> send, receive

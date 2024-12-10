@@ -33,7 +33,7 @@ impl InputFlight {
                 date,
             });
         }
-        
-        return Err(SimulatorErrors::InputError());
+
+        Err(SimulatorErrors::InputError())
     }
 }

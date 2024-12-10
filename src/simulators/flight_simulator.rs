@@ -12,16 +12,11 @@ use crate::{
         flight_updater::FlightUpdater,
         input_flight::InputFlight,
         queries::{
-            get_query_create_simulator_table,
-            get_query_insert_in_destination,
-            get_query_insert_in_origin,
-            get_query_insert_in_simulator,
-            get_query_select_in_destination,
-            get_query_select_in_origin,
-            get_query_select_in_simulator,
-            get_query_update_in_destination,
-            get_query_update_in_origin,
-            get_query_update_in_simulator
+            get_query_create_simulator_table, get_query_insert_in_destination,
+            get_query_insert_in_origin, get_query_insert_in_simulator,
+            get_query_select_in_destination, get_query_select_in_origin,
+            get_query_select_in_simulator, get_query_update_in_destination,
+            get_query_update_in_origin, get_query_update_in_simulator,
         },
     },
 };
@@ -60,24 +55,20 @@ impl FlightSimulator {
 
         // Thread que escucha y guarda las queries:
         thread::spawn({
-            move || {
-                match flight_updater.listen_queries() {
-                    Ok(_) => {}
-                    Err(e) => {
-                        println!("{}", e);
-                    }
+            move || match flight_updater.listen_queries() {
+                Ok(_) => {}
+                Err(e) => {
+                    println!("{}", e);
                 }
             }
         });
 
         // Thread que ejecuta las queries, usando Threadpools:
         thread::spawn({
-            move || {
-                match FlightUpdater::update_flights(path_queries) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        println!("{}", e);
-                    }
+            move || match FlightUpdater::update_flights(path_queries) {
+                Ok(_) => {}
+                Err(e) => {
+                    println!("{}", e);
                 }
             }
         });
@@ -88,12 +79,10 @@ impl FlightSimulator {
             let flight_simulator = FlightSimulator::new(channel_sender.clone())?;
             let input_flight = InputFlight::new().map_err(|e| MyError::Error(e.to_string()))?;
             thread::spawn({
-                move || {
-                    match flight_simulator.obtain_flight_and_simulate_it(&input_flight) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            println!("{}", e);
-                        }
+                move || match flight_simulator.obtain_flight_and_simulate_it(&input_flight) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        println!("{}", e);
                     }
                 }
             });
@@ -108,7 +97,9 @@ impl FlightSimulator {
         let query = get_query_create_simulator_table();
 
         connection_server.make_query(query, ONE)?;
-        channel.recv().map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
+        channel
+            .recv()
+            .map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
 
         Ok(())
     }
@@ -123,8 +114,7 @@ impl FlightSimulator {
     /// Si el vuelo no está en las tablas de estados (origin, destnation) se crea en estado "scheduled".
     /// Lo inicializamos con velocidad 0 y en la posicion del aeropuesto de origen.
     fn create_flight(&self, input_flight: &InputFlight) -> Result<Flight, SimulatorErrors> {
-
-        if let Ok((airport_origin, airport_return)) = self.get_airports(&input_flight) {
+        if let Ok((airport_origin, airport_return)) = self.get_airports(input_flight) {
             let flight = Flight::new(
                 input_flight.flight_number.clone(),
                 airport_origin,
@@ -170,7 +160,7 @@ impl FlightSimulator {
                 flight.number.clone(),
             )
         } else {
-            get_query_select_in_simulator(                
+            get_query_select_in_simulator(
                 flight.departure_date.clone(),
                 flight.origin_airport.name.clone(),
                 flight.number.clone(),
@@ -181,7 +171,9 @@ impl FlightSimulator {
 
         self.connection_server.make_query(query, QUORUM)?;
 
-        let response = channel_receive.recv().map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
+        let response = channel_receive
+            .recv()
+            .map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
 
         for line in response {
             if line.is_empty() {
@@ -195,11 +187,7 @@ impl FlightSimulator {
     }
 
     /// Verifica si el vuelo está en la tabla y en caso de no estar lo crea.
-    fn flight_in_status_table(
-        &self,
-        flight: &Flight,
-        table: &str,
-    ) -> Result<(), MyError> {
+    fn flight_in_status_table(&self, flight: &Flight, table: &str) -> Result<(), MyError> {
         if let Ok(exists) = self.flight_in_table(flight, table) {
             if !exists {
                 let query = if table == "destination" {
@@ -210,18 +198,24 @@ impl FlightSimulator {
 
                 let channel = self.connection_server.get_channel_to_receive();
                 self.connection_server.make_query(query, QUORUM)?;
-                channel.recv().map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
+                channel
+                    .recv()
+                    .map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
             }
         }
         Ok(())
     }
 
-    fn get_airports(&self, input_flight: &InputFlight) -> Result<(Airport, Airport), AirportErrors> {
+    fn get_airports(
+        &self,
+        input_flight: &InputFlight,
+    ) -> Result<(Airport, Airport), AirportErrors> {
         let airports = get_airport_coordinates();
 
-        if let (Some(airport_o), Some(airport_r)) =
-            (airports.get(&input_flight.origin), airports.get(&input_flight.destination))
-        {
+        if let (Some(airport_o), Some(airport_r)) = (
+            airports.get(&input_flight.origin),
+            airports.get(&input_flight.destination),
+        ) {
             return Ok((airport_o.clone(), airport_r.clone()));
         }
 
@@ -276,7 +270,9 @@ impl FlightSimulator {
 
         self.connection_server.make_query(query, ONE)?;
 
-        channel.recv().map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
+        channel
+            .recv()
+            .map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
 
         Ok(())
     }
@@ -296,7 +292,9 @@ impl FlightSimulator {
                 _ => continue,
             };
 
-            self.channel_updater_sender.send((query, consistency)).map_err(|e| MyError::ChannelSendError(e.to_string()))?;
+            self.channel_updater_sender
+                .send((query, consistency))
+                .map_err(|e| MyError::ChannelSendError(e.to_string()))?;
         }
 
         Ok(())
