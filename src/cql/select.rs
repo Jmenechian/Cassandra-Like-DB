@@ -146,7 +146,6 @@ impl Select {
     /// Se devuelven los valores que representa las pasticiones de las tablas.
     /// Es decir, el nombre del aeropuerto y la fecha, y se la devuleve como un string de la forma: "airport,date".
     pub fn get_key(&self) -> String {
-        println!("Where = {:?}", self.whereclause);
         let aeropuerto = if let Some(aeropuerto) = self.whereclause.find_value_for_key("airport") {
             aeropuerto
         } else {

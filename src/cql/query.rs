@@ -107,7 +107,9 @@ impl Query {
             QType::Update(update) => update.parse_update(&self.query, &self.sender_node_ip),
             QType::Insert(insert) => insert.parse_insert(&self.query, &self.sender_node_ip),
             QType::Delete(delete) => delete.parse_delete(&self.query, &self.sender_node_ip),
-            QType::CreateTable(create_table) => create_table.parse_create_table(&self.query, &self.sender_node),
+            QType::CreateTable(create_table) => {
+                create_table.parse_create_table(&self.query, &self.sender_node)
+            }
         }
     }
 
@@ -128,7 +130,6 @@ impl Query {
     pub fn get_key_representing_partition(&mut self, address_node: &str) -> String {
         //devolveme el nombre del aeropuerto
         self.get_type();
-        println!("type: {:?}", self.qtype);
         match &mut self.qtype {
             QType::Select(select) => {
                 let _ = select.parse_select(self.query.as_str(), address_node);

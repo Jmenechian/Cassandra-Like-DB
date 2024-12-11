@@ -206,8 +206,7 @@ impl CreateTable {
         let table_name = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, self.num_node);
         let columns: String = self.columns.join(",");
         let columns_final: String = if ENCRIPT_DATA {
-            let encripted_column =
-                encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
+            let encripted_column = encrypt_body_aes128(self.columns.join(",").as_bytes().to_vec())?;
             match String::from_utf8(encripted_column) {
                 Ok(s) => s,
                 Err(e) => return Err(MyError::DecryptionError(e.to_string())),
@@ -216,39 +215,38 @@ impl CreateTable {
             columns
         };
 
-        let mut f =
-            File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
+        let mut f = File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
         writeln!(f, "{}", columns_final).map_err(|e| MyError::FileError(e.to_string()))?;
         Ok(())
     }
 
-    fn create_metadata_table(&self, path_metadata: String) -> Result<(), MyError>  {
-         // Creo un solo archivo de metadata
-         
-         let mut f_metadata =
-             File::create_new(path_metadata).map_err(|e| MyError::FileError(e.to_string()))?;
- 
-         let display_orderby: String = self
-             .clustering_orderby
-             .iter()
-             .map(|(k, v)| format!("{} {},", k, v))
-             .collect::<Vec<String>>()
-             .join(",");
- 
-         let display_columns = self.get_display_columns();
- 
-         f_metadata
-             .write_all(
-                 format!(
-                     "partition: {}\nclusters: {}\nclustering_orderby: {}\ncolumns: {}",
-                     self.partition_keys.join(","),
-                     self.clustering_keys.join(","),
-                     display_orderby,
-                     display_columns
-                 )
-                 .as_bytes(),
-             )
-             .map_err(|e| MyError::FileError(e.to_string()))?;
+    fn create_metadata_table(&self, path_metadata: String) -> Result<(), MyError> {
+        // Creo un solo archivo de metadata
+
+        let mut f_metadata =
+            File::create_new(path_metadata).map_err(|e| MyError::FileError(e.to_string()))?;
+
+        let display_orderby: String = self
+            .clustering_orderby
+            .iter()
+            .map(|(k, v)| format!("{} {},", k, v))
+            .collect::<Vec<String>>()
+            .join(",");
+
+        let display_columns = self.get_display_columns();
+
+        f_metadata
+            .write_all(
+                format!(
+                    "partition: {}\nclusters: {}\nclustering_orderby: {}\ncolumns: {}",
+                    self.partition_keys.join(","),
+                    self.clustering_keys.join(","),
+                    display_orderby,
+                    display_columns
+                )
+                .as_bytes(),
+            )
+            .map_err(|e| MyError::FileError(e.to_string()))?;
         Ok(())
     }
 

@@ -20,6 +20,7 @@ pub static FLIGHT_STEP: f32 = 10.0; // Cantidad de pasos que da un avión hasta 
 pub static CRUISING_SPEED: f32 = 840.0; // Velocidad crucero de un avion, en km/h
 pub static STEPS_AT_CRUISING_SPEED: f32 = 2.0; // Mitad de pasos en los que el avion viajara a la velocidad crucero.
 pub static CRUISING_HEIGHT: f32 = 10000.0; // Altura crucero de 10mil metros.
+pub static QUERIES_PATH: &str = "src/simulators/update_queries.csv";
 
 //GUI:
 pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";
