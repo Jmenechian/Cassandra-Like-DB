@@ -58,12 +58,10 @@ pub mod encryption {
     pub mod encrypt;
 }
 
-pub use cql::query::Query;
-
-pub use clientstuff::client_cql;
-pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
-
-pub use consistent_hashing::ConsistentHash;
+pub mod loggerstuff {
+    pub mod logger;
+    pub mod loggable;
+}
 
 pub mod gui {
     pub mod app;
@@ -89,3 +87,10 @@ pub mod errors {
     pub mod my_errors;
     pub mod simulator_errors;
 }
+
+pub use cql::query::Query;
+pub use clientstuff::client_cql;
+pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
+
+pub use consistent_hashing::ConsistentHash;
+pub use loggerstuff::logger::Logger;

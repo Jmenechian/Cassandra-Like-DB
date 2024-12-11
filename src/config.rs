@@ -9,6 +9,10 @@ pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Ha
 
 pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 
+pub const SHOW_GOSSIP: bool = false; // Para hacer registro de mensajes de gossip
+pub const SHOW_SERVER: bool = true;  // Para hacer registro de mensajes de servidor
+pub const SHOW_CLIENT: bool = true;  // Para hacer registro de mensajes de cliente
+
 pub static TABLE_PATH: &str = "src/tables";
 pub static TABLE_ORIGIN_NAME: &str = "origin";
 pub static TABLE_DESTINATION_NAME: &str = "destination";

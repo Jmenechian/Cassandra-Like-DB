@@ -12,6 +12,7 @@ use crate::messagestuff::{
     message::*, message_cql::errormessage::ErrorMessage, message_cql::querymessage::QueryMessage,
     message_cql::resultmessage::ResultMessage,
 };
+use crate::loggerstuff::loggable::Loggable;
 use std::{io::Read, net::TcpStream};
 
 #[derive(Copy, Clone, Debug)]
@@ -75,7 +76,7 @@ impl Envelope {
         bytes
     }
 
-    pub fn from_stream(stream: &mut TcpStream) -> Result<Self, MyError> {
+    pub fn from_stream<T: Loggable>(stream: &mut TcpStream, loggable: &T) -> Result<Self, MyError> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 9];
         if let Err(e) = stream.read_exact(&mut header_buffer) {
@@ -119,15 +120,20 @@ impl Envelope {
                 CqlMessage::Result(result)
             }
         };
-        Ok(Envelope {
+
+        let env = Envelope {
             version: _version,
             flags: _flags,
             stream: _stream_id,
             opcode: _opcode,
             length: body_length,
             body: _body,
-        })
+        };
+
+        loggable.write_log(&format!("\nC   El env recibido es: {:?}", env))?;
+        Ok(env)
     }
+
 }
 
 pub trait IntoEnvelope: std::fmt::Debug {

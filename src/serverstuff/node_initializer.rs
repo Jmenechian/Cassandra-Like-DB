@@ -21,9 +21,9 @@ use std::time::Duration;
 
 /// Funcion de inicializacíon, donde se crea el nodo indicado y se escucha y responde por los puertos correspondientes.
 pub fn node_initialize(port: String) -> Result<(), MyError> {
-    let show_g: bool = false;
-    let show_s: bool = false;
-    let show_c: bool = true;
+    // let show_g: bool = false;
+    // let show_s: bool = false;
+    // let show_c: bool = true;
 
     let mut current_node: Node = Node::new(&port);
     println!("Nodo actual: {:?}", current_node);
@@ -40,17 +40,17 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node));
 
     // Seccion servidor-servidor
-    listen(server_ip, &current_node, handle_connection_server, show_s)?;
+    listen(server_ip, &current_node, handle_connection_server)?;
 
     // Seccion Gossip
-    listen(gossip_ip, &current_node, handle_connection_gossip, show_g)?;
+    listen(gossip_ip, &current_node, handle_connection_gossip)?;
 
     // Seccion cliente-servidor
-    listen(client_ip, &current_node, handle_connection_client, show_c)?;
+    listen(client_ip, &current_node, handle_connection_client)?;
 
     loop {
         thread::sleep(Duration::from_secs(2));
-        match connect_to_random_gossip(ports.clone(), &port, show_g) {
+        match connect_to_random_gossip(ports.clone(), &port) {
             Some((mut s, _)) => {
                 let gossip_msg = GossipMessage {
                     ip: my_ip.clone(),
@@ -101,10 +101,9 @@ fn listen<F>(
     ip: String,
     node: &Arc<RwLock<Node>>,
     handler: F,
-    show: bool,
 ) -> Result<JoinHandle<Result<(), MyError>>, MyError>
 where
-    F: Fn(Arc<RwLock<Node>>, &mut TcpStream, bool) -> Result<(), MyError> + Send + 'static + Copy,
+    F: Fn(Arc<RwLock<Node>>, &mut TcpStream) -> Result<(), MyError> + Send + 'static + Copy,
 {
     let current_node = Arc::clone(node);
 
@@ -130,7 +129,7 @@ where
             let node_thread = Arc::clone(&current_node);
 
             thread::spawn(move || {
-                match handler(node_thread, &mut s, show) {
+                match handler(node_thread, &mut s) {
                     Ok(_) => {}
                     Err(e) => println!("Error: {:?}", e),
                 };

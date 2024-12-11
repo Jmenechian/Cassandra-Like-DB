@@ -5,12 +5,13 @@ use crate::cql::query::Query;
 use crate::errors::my_errors::*;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node_status::Status;
+use crate::loggerstuff::{logger::Logger, loggable::Loggable};
 
 use rand::seq::SliceRandom;
 use std::sync::{Arc, RwLock};
 
 /// Estructura que eepresenta al nodo en el que estamos parados.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Node {
     pub number: String,
     pub server_ip: String, // IP donde nodo se pone a escuchar conexiones de servidores
@@ -20,11 +21,29 @@ pub struct Node {
     pub path_table_origin: Arc<RwLock<String>>, // path donde se encuntra el archivo que representan la tabla
     pub path_table_destination: Arc<RwLock<String>>,
     pub path_table_simulator: Arc<RwLock<String>>,
+    pub logger: Logger, // logger para guardar los logs
+}
+
+impl Loggable for Arc<RwLock<Node>>  {
+    fn write_log(&self, message: &str) -> Result<(), MyError> {
+        let mut node_guard: std::sync::RwLockWriteGuard<'_, Node> = match self.write() {
+            Ok(n) => n,
+            Err(_) => {
+                return Err(MyError::LockingError("No puedo usar el nodo para log".to_string()));
+            }
+        };
+        node_guard.logger.write_log(message)?;
+        Ok(())
+    }
 }
 
 impl Node {
     /// Se crea el nodo.
     pub fn new(number: &str) -> Self {
+        let logger = match Logger::new(number.to_string()) { //////////////////// REVISAR!!!
+            Ok(logger) => logger,
+            Err(e) => panic!("Error al crear logger: {:?}", e),
+        };
         Self {
             number: number.to_string(),
             server_ip: format!("127.0.0.1:700{}", number),
@@ -34,6 +53,7 @@ impl Node {
             path_table_origin: Self::lock_path_table(number, "origin"),
             path_table_destination: Self::lock_path_table(number, "destination"),
             path_table_simulator: Self::lock_path_table(number, "simulator"),
+            logger,
         }
     }
 
@@ -146,4 +166,5 @@ impl Node {
         }
         query.execute(path_table)
     }
+    
 }

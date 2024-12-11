@@ -1,4 +1,4 @@
-use crate::config::{self, TABLE_PATH};
+use crate::config::{self, TABLE_PATH, SHOW_CLIENT};
 use crate::config::{RF, TABLE_DESTINATION_NAME, TABLE_ORIGIN_NAME};
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
@@ -27,16 +27,14 @@ fn handle_message_query(
     node: &Arc<RwLock<Node>>,
     querymessage: QueryMessage,
     stream: &mut TcpStream,
-    show: bool,
 ) -> Result<(), MyError> {
-    let table = match send_query_to_nodes(node, querymessage.query, querymessage.consistency, show)
+    let table = match send_query_to_nodes(node, querymessage.query, querymessage.consistency)
     {
         Ok(r) => r,
         Err(e) => {
             handle_message_error(
                 stream,
                 "Error: algo fallo en send_query_to_node".to_string(),
-                show,
             );
             return Err(e);
         }
@@ -44,7 +42,7 @@ fn handle_message_query(
     if table.is_empty() {
         let void_msg = ResultEmptyMessage;
         if let Err(e) = void_msg.send_through(stream) {
-            if show {
+            if SHOW_CLIENT {
                 println!("C   Error: {:?}", e);
             }
         }
@@ -55,7 +53,7 @@ fn handle_message_query(
             rows_content: content,
         };
         if let Err(e) = rows_msg.send_through(stream) {
-            if show {
+            if SHOW_CLIENT {
                 println!("C   Error: {:?}", e);
             }
         }
@@ -63,13 +61,13 @@ fn handle_message_query(
     Ok(())
 }
 
-fn handle_message_error(stream: &mut TcpStream, _error: String, show: bool) {
+fn handle_message_error(stream: &mut TcpStream, _error: String) {
     let msg = ErrorMessage {
         error: _error,
         code: 0_i32,
     };
     if let Err(e) = msg.send_through(stream) {
-        if show {
+        if SHOW_CLIENT {
             println!("C   Error al enviarle un ErrorMessage al cliente: {:?}", e);
         }
     }
@@ -80,29 +78,27 @@ fn handle_message_error(stream: &mut TcpStream, _error: String, show: bool) {
 pub fn handle_connection_client(
     node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
-    show: bool,
 ) -> Result<(), MyError> {
     loop {
-        match Envelope::from_stream(stream) {
+        match Envelope::from_stream(stream, &node) {
             Ok(env) => {
-                if show {
-                    println!("\nC   El env recibido es: {:?}", env);
-                }
+                // if SHOW_CLIENT {
+                //     println!("\nC   El env recibido es: {:?}", env);
+                // }
                 match env.body {
                     CqlMessage::Query(querymessage) => {
-                        handle_message_query(&node, querymessage, stream, show)?;
+                        handle_message_query(&node, querymessage, stream)?;
                     }
                     _ => {
                         handle_message_error(
                             stream,
                             "Error: Solo me puede llegar un QueryMessage".to_string(),
-                            show,
                         );
                     }
                 }
             }
             Err(e) => {
-                if show {
+                if SHOW_CLIENT {
                     println!("C    Error al leer el env: {:?}", e);
                 }
                 break;
@@ -290,13 +286,12 @@ pub fn send_query_to_nodes(
     node: &Arc<RwLock<Node>>,
     _query: String,
     consistency_level: u16,
-    show: bool,
 ) -> Result<Vec<String>, MyError> {
-    let node = match node.read() {
+    let node_guard = match node.read() {
         Ok(n) => n,
         Err(e) => {
             let _error = format!("Error al tratar de usar el nodo: {:?}", e);
-            if show {
+            if SHOW_CLIENT {
                 println!("C   {:?}", _error);
             }
             return Err(MyError::LockingError(_error));
@@ -305,15 +300,15 @@ pub fn send_query_to_nodes(
     let mut all_response: Vec<Vec<String>> = vec![];
     let mut all_response_dict: HashMap<String, Vec<String>> = HashMap::new();
     let mut hash = ConsistentHash::new(RF);
-    let mut query: Query = Query::new(_query.clone(), node.client_ip.clone());
+    let mut query: Query = Query::new(_query.clone(), node_guard.client_ip.clone());
 
     // Si es un create table, lo ejecuto:
     if query.query.contains("CREATE TABLE") {
-        match node.process_query(&mut query) {
+        match node_guard.process_query(&mut query) {
             Ok(_) => return Ok(vec!["Se crean las tablas.".to_string()]),
             Err(e) => {
                 let _error = format!("Error al procesar la query: {:?}", e);
-                if show {
+                if SHOW_CLIENT {
                     println!("C   {:?}", _error);
                 }
                 return Err(MyError::Error(_error));
@@ -321,18 +316,18 @@ pub fn send_query_to_nodes(
         }
     }
 
-    hash.add_nodes(node.neighbors.to_vec());
-    let key = query.get_key_representing_partition(&node.server_ip);
+    hash.add_nodes(node_guard.neighbors.to_vec());
+    let key = query.get_key_representing_partition(&node_guard.server_ip);
     let nodes_with_result = hash.get_nodes(&key);
 
-    if show {
+    if SHOW_CLIENT {
         println!("\n - La key es: {}", key);
         println!("\n - La query es: {:?}", query);
         println!(
             "
         C   vecinos: {:?}
         C   Los nodos que tienen la info son: {:?}\n",
-            node.neighbors, nodes_with_result
+            node_guard.neighbors, nodes_with_result
         );
     }
     println!("nodes with result: {:?}", nodes_with_result);
@@ -341,14 +336,14 @@ pub fn send_query_to_nodes(
 
     for neighbor in &nodes_with_result {
         // El nodo original porque puede tener el resultado de la query:
-        if neighbor.server_ip == node.server_ip {
-            if show {
+        if neighbor.server_ip == node_guard.server_ip {
+            if SHOW_CLIENT {
                 println!(
                     "C   - Buscando el resultado en el nodo original: {}",
                     neighbor.server_ip
                 );
             }
-            match node.process_query(&mut query) {
+            match node_guard.process_query(&mut query) {
                 Ok(result) => {
                     // all_response.push(result);
                     all_response_dict.insert(neighbor.server_ip.clone(), result);
@@ -379,9 +374,9 @@ pub fn send_query_to_nodes(
             continue;
         } else if neighbor.status == Status::Disconnected {
             if !query.query.contains("SELECT") {
-                hinted_handoff(&node.number, &neighbor.number, &query)?;
+                hinted_handoff(&node_guard.number, &neighbor.number, &query)?;
             }
-            if show {
+            if SHOW_CLIENT {
                 println!("C   - Nodo desconectado: {}", neighbor.server_ip);
             }
             continue;
@@ -394,9 +389,9 @@ pub fn send_query_to_nodes(
             };
             let _ = msg.send_server_through(&mut socket);
 
-            match Packet::from_stream(&mut socket) {
+            match Packet::from_stream(&mut socket, node.clone()) {
                 Ok(packet) => {
-                    if show {
+                    if SHOW_CLIENT {
                         println!("\nC   El packet recibido es: {:?}", packet);
                     }
                     match packet.body {
@@ -416,14 +411,14 @@ pub fn send_query_to_nodes(
                             ResultServerBody::Empty(_) => {}
                         },
                         _ => {
-                            if show {
+                            if SHOW_CLIENT {
                                 println!("C   Error entre server y servers");
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    if show {
+                    if SHOW_CLIENT {
                         println!("C   Error al leer el paket: {:?}", e);
                     }
                 }

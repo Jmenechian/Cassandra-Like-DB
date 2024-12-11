@@ -1,4 +1,4 @@
-use crate::config::TABLE_ORIGIN_NAME;
+use crate::config::{TABLE_ORIGIN_NAME, SHOW_SERVER};
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
@@ -19,13 +19,12 @@ fn handle_message_query(
     node: Arc<RwLock<Node>>,
     query: QueryServerMessage,
     stream: &mut TcpStream,
-    show: bool,
 ) -> Result<(), MyError> {
     let node = match node.read() {
         Ok(n) => n,
         Err(e) => {
             let _error = format!("Error al tratar de usar el nodo: {:?}", e);
-            if show {
+            if SHOW_SERVER {
                 println!("S   {:?}", _error);
             }
             return Err(MyError::LockingError(_error));
@@ -35,7 +34,7 @@ fn handle_message_query(
     let mut query = Query::new(query.query.clone(), node.server_ip.clone());
     let msg = match node.process_query(&mut query) {
         Ok(s) => {
-            if show {
+            if SHOW_SERVER {
                 println!("RESULTADO, TABLA: {:?}", s);
             }
             ResultRowsServerMessage {
@@ -111,13 +110,7 @@ fn handle_message_read_repair(
         } else {
             let query_str = format!(
                 "INSERT INTO {} (airport, {}, date, flight, status) VALUES ({}, {}, {}, {}, {})",
-                query.table,
-                column,
-                row_vec[ap],
-                row_vec[place],
-                row_vec[date],
-                row_vec[flight],
-                row_vec[stat]
+                query.table, column, row_vec[ap], row_vec[place], row_vec[date], row_vec[flight], row_vec[stat]
             );
             println!("\nRR   {}\n", query_str);
             let mut query = Query::new(query_str, node.server_ip.clone());
@@ -158,19 +151,18 @@ fn contains_row(rows: &Vec<String>, row: &str) -> bool {
 pub fn handle_connection_server(
     node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
-    show: bool,
 ) -> Result<(), MyError> {
-    match Packet::from_stream(stream) {
+    match Packet::from_stream(stream, node.clone()) {
         Ok(packet) => {
-            if show {
+            if SHOW_SERVER {
                 println!("S   El packet recibido es: {:?}", packet);
             }
             match packet.body {
-                ServerMessage::Query(query) => handle_message_query(node, query, stream, show),
+                ServerMessage::Query(query) => handle_message_query(node, query, stream),
                 ServerMessage::ReadRepair(msg) => handle_message_read_repair(node, msg),
                 _ => {
                     let _error = "Error entre server y servers".to_string();
-                    if show {
+                    if SHOW_SERVER {
                         println!("S   {:?}", _error);
                     }
                     Err(MyError::ServerMessageError(_error))

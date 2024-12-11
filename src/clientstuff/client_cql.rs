@@ -4,6 +4,7 @@ use crate::messagestuff::message::Sendable;
 use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_cql::resultmessage::ResultBody;
+use crate::loggerstuff::loggable::Loggable;
 use std::io::{self, BufRead, Result};
 use std::net::TcpStream;
 
@@ -15,6 +16,13 @@ use std::thread;
 pub struct Client {
     pub server_ip: String,
     pub ip: String,
+}
+
+///////////////////////////////////////////////////// HAY QUE CAMBIARLO!!!!
+impl Loggable for Client {
+    fn write_log(&self, _: &str) -> std::result::Result<(), MyError> {
+        Ok(())
+    }
 }
 
 impl Client {
@@ -71,7 +79,7 @@ impl Client {
         });
 
         loop {
-            match Envelope::from_stream(&mut stream) {
+            match Envelope::from_stream(&mut stream, self) {
                 Ok(env) => match env.body {
                     CqlMessage::Result(r) => match r.body {
                         ResultBody::Rows(r) => {
@@ -116,7 +124,7 @@ impl Client {
     /// Se lee la respuesta del server por el stream y se devuelve el resultado.
     pub fn read_response(stream: &mut TcpStream) -> Result<Vec<String>> {
         loop {
-            match Envelope::from_stream(stream) {
+            match Envelope::from_stream(stream, &Client::initialize("1".to_string())) {
                 Ok(env) => match env.body {
                     CqlMessage::Result(result) => match result.body {
                         ResultBody::Void(_) => {

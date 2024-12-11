@@ -15,6 +15,9 @@ use crate::messagestuff::{
     message_server::resultservermessage::ResultServerMessage,
 };
 use std::{io::Read, net::TcpStream};
+use crate::serverstuff::node::Node;
+use std::sync::{Arc, RwLock};
+use crate::config::{SHOW_GOSSIP, SHOW_SERVER};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -81,7 +84,7 @@ impl Packet {
     }
 
     // Para deseriarlizar el mensaje
-    pub fn from_stream(stream: &mut TcpStream) -> Result<Self, MyError> {
+    pub fn from_stream(stream: &mut TcpStream, node: Arc<RwLock<Node>>) -> Result<Self, MyError> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 5];
         if let Err(e) = stream.read_exact(&mut header_buffer) {
@@ -130,11 +133,40 @@ impl Packet {
                 ServerMessage::ReadRepair(readrepair)
             }
         };
-        Ok(Packet {
+        let packet = Packet {
             opcode: _opcode,
             length: body_length,
             body: _body,
-        })
+        };
+
+        Packet::write_log(node, &packet)?;
+
+        Ok(packet)
+    }
+
+    fn write_log(node: Arc<RwLock<Node>>, packet: &Packet) -> Result<(), MyError> {
+        let mut node_guard: std::sync::RwLockWriteGuard<'_, Node> = match node.write() {
+            Ok(n) => n,
+            Err(_) => {
+                return Err(MyError::LockingError("No puedo usar el nodo para log".to_string()));
+            }
+        };
+
+        match packet.opcode {
+            ServerOpcode::GossipMessage => {
+                if SHOW_GOSSIP {
+                    let message = format!("\nG   El packet recibido es: {:?}", packet);
+                    node_guard.logger.write_log(message.as_str())?;
+                }
+            }
+            _ => {
+                if SHOW_SERVER{
+                    let message = format!("\nS   El packet recibido es: {:?}", packet);
+                    node_guard.logger.write_log(message.as_str())?;
+                }
+            }
+        };
+        Ok(())
     }
 }
 
