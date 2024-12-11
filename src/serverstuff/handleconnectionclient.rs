@@ -300,7 +300,7 @@ pub fn send_query_to_nodes(
     let mut all_response: Vec<Vec<String>> = vec![];
     let mut all_response_dict: HashMap<String, Vec<String>> = HashMap::new();
     let mut hash = ConsistentHash::new(RF);
-    let mut query: Query = Query::new(_query.clone(), node_guard.client_ip.clone());
+    let mut query: Query = Query::new(_query.clone(), node_guard.number.clone(), node_guard.client_ip.clone());
 
     // Si es un create table, lo ejecuto:
     if query.query.contains("CREATE TABLE") {
