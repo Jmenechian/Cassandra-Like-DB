@@ -2,6 +2,8 @@
 
 use crate::encryption::encrypt::*;
 use crate::{config::ENCRIPT_DATA, errors::my_errors::MyError};
+use std::collections::VecDeque;
+use std::fs::metadata;
 use std::{
     fs::{File, OpenOptions},
     io::{BufRead, BufReader, Seek, SeekFrom, Write},
@@ -70,19 +72,17 @@ pub fn get_reader_read(path: &Arc<RwLock<String>>) -> Result<BufReader<File>, My
 
 /// Open file in mode write, returns an iterable reader
 pub fn get_file_to_write(path: &Arc<RwLock<String>>) -> Result<File, MyError> {
-    println!("en get, table: {:?}", path);
     let path_table_file = path
         .write()
         .map_err(|e| MyError::FileError(e.to_string()))?;
     let table_file = open_file(path_table_file.clone())?;
-    println!("table_file: {:?}", table_file);
     table_file
         .try_clone()
         .map_err(|e| MyError::FileError(e.to_string()))
 }
 
 /// Open file
-fn open_file(path: String) -> Result<File, MyError> {
+pub fn open_file(path: String) -> Result<File, MyError> {
     let file = OpenOptions::new()
         .append(true)
         .read(true)
@@ -203,4 +203,51 @@ fn empty_table(table: &File) -> Result<(), MyError> {
         .set_len(0)
         .map_err(|e| MyError::FileError(e.to_string()))?;
     Ok(())
+}
+
+pub fn get_and_remove_first_line(path: String) -> Result<Vec<String>, MyError> {
+    let file = open_file(path.clone())?;
+    let rdr = BufReader::new(file);
+
+    let mut lines: VecDeque<String> = rdr
+        .lines()
+        .collect::<Result<_, _>>()
+        .map_err(|e| MyError::FileError(e.to_string()))?;
+
+    if lines.is_empty() {
+        return Ok(vec![]);
+    }
+
+    if let Some(first_line) = lines.pop_front() {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(path)
+            .map_err(|e| MyError::FileError(e.to_string()))?;
+
+        for line in lines {
+            writeln!(file, "{}", line).map_err(|e| MyError::FileError(e.to_string()))?;
+        }
+
+        return Ok(split_with_last_comma(first_line));
+    }
+
+    Ok(vec![])
+}
+
+fn split_with_last_comma(line: String) -> Vec<String> {
+    let mut parts = line.rsplitn(2, ',');
+
+    // rsplitn(2, ',') divide el string en dos partes, tomando la última coma como separador
+    let last = parts.next().unwrap_or_default();
+    let first = parts.next().unwrap_or_default(); // Todo lo anterior al último elemento
+
+    vec![first.to_string(), last.to_string()]
+}
+
+pub fn is_file_empty(path: &str) -> bool {
+    match metadata(path) {
+        Ok(metadata) => metadata.len() == 0,
+        Err(_) => false,
+    }
 }

@@ -1,6 +1,7 @@
 use super::node_initializer::try_connect;
-use crate::config::{TABLE_PATH, SHOW_GOSSIP};
+use crate::config::{SHOW_GOSSIP, TABLE_PATH};
 use crate::errors::my_errors::*;
+use crate::loggerstuff::logger::Logger;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
 use crate::messagestuff::{
     message::*,
@@ -11,17 +12,13 @@ use crate::messagestuff::{
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
 use crate::serverstuff::node_status::Status;
-use crate::loggerstuff::logger::{self, Logger};
 use crate::utils::{delete_file, get_reader};
 use rand::seq::SliceRandom;
 use std::io::BufRead;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
-fn reenviar_gossip(
-    node: &mut std::sync::RwLockWriteGuard<'_, Node>,
-    gossip: GossipMessage,
-) {
+fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: GossipMessage) {
     if let Some(n) = node.get_random_neighbor() {
         if SHOW_GOSSIP {
             println!(
@@ -30,7 +27,10 @@ fn reenviar_gossip(
             );
         }
         if let Some(mut stream) = try_connect(n.gossip_ip.clone()) {
-            if let Err(e) = gossip.clone().send_server_through(&mut stream, node.logger.clone()) {
+            if let Err(e) = gossip
+                .clone()
+                .send_server_through(&mut stream, node.logger.clone())
+            {
                 if SHOW_GOSSIP {
                     println!("G   Error al eviarle mensaje gossip: {:?}", e);
                 }
@@ -135,7 +135,6 @@ pub fn handle_connection_gossip(
     stream: &mut TcpStream,
     logger: Arc<RwLock<Logger>>,
 ) -> Result<(), MyError> {
-    
     let logger_clone = Arc::clone(&logger);
     match Packet::from_stream(stream, logger) {
         Ok(packet) => {
@@ -165,10 +164,7 @@ pub fn handle_connection_gossip(
 }
 
 /// Nos conectamos con un nodo al azar y devolvemos el stream.
-pub fn connect_to_random_gossip(
-    ports: Vec<u16>,
-    my_port: &String,
-) -> Option<(TcpStream, String)> {
+pub fn connect_to_random_gossip(ports: Vec<u16>, my_port: &String) -> Option<(TcpStream, String)> {
     let mut shuffeld_ports = ports.clone();
     shuffeld_ports.shuffle(&mut rand::thread_rng());
     if SHOW_GOSSIP {

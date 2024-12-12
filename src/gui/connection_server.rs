@@ -67,17 +67,15 @@ impl ConnectionServer {
         };
 
         let tx = self.channels.0.clone();
-        let logger = self.client.logger.clone();
-
         let _ = thread::spawn({
             move || {
                 if let Ok(origin_flights) =
-                    airport.get_origin_flights_from(&mut Some(stream_server), &date, logger.clone())
+                    airport.get_origin_flights_from(&mut Some(stream_server), &date)
                 {
                     let _ = tx.send(origin_flights);
                 }
                 if let Ok(return_flights) =
-                    airport.get_flights_that_return_to(&mut Some(stream_server_2), &date, logger)
+                    airport.get_flights_that_return_to(&mut Some(stream_server_2), &date)
                 {
                     let _ = tx.send(return_flights);
                 }
@@ -89,21 +87,19 @@ impl ConnectionServer {
     /// Se lanza un thread que realizará la query indicada al nodo con el que mantenemos la conexion.
     /// Se envia por el channel la respuesta.
     pub fn make_query(&self, query: String, consistency: u16) -> Result<(), MyError> {
-        println!("\n- Query: {}\n", query);
-        let mut stream_server: TcpStream = if let Ok(stream) = self.get_connection_server() {
-            stream
-        } else {
-            return Err(MyError::TcpStreamError("Error in stream".to_string()));
+        let mut stream_server: TcpStream = match self.get_connection_server() {
+            Ok(stream) => stream,
+            Err(e) => {
+                return Err(MyError::TcpStreamError(e.to_string()));
+            }
         };
 
         let tx = self.channels.0.clone();
-        let logger_send = self.client.logger.clone();
-        let logger_read = self.client.logger.clone();
 
         let _ = thread::spawn({
             move || {
-                if Client::send_message(&mut stream_server, query, consistency, logger_send).is_ok() {
-                    if let Ok(response) = Client::read_response(&mut stream_server, logger_read) {
+                if Client::send_message(&mut stream_server, query, consistency).is_ok() {
+                    if let Ok(response) = Client::read_response(&mut stream_server) {
                         let _ = tx.send(response);
                     }
                 }

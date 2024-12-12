@@ -169,7 +169,6 @@ impl Insert {
         }
 
         self.check_columns_are_valid(&headers)?;
-        println!("columnas son validas");
 
         let map: HashMap<&str, &str> = self.get_mapped_values()?;
 
@@ -181,15 +180,13 @@ impl Insert {
                 new_record.push(String::new());
             }
         }
-        println!("ya estan los valores en new_record");
+
         new_record.pop(); // sacamos el timestamp vacio porque nunca lo llenas
         new_record.push(Utc::now().to_string());
 
         if ENCRIPT_DATA {
-            println!("encriptando");
             let encrypted_columns: Vec<u8> =
                 encrypt_body_aes128(new_record.join(",").as_bytes().to_vec())?;
-            println!("termine encriptando");
             file_open
                 .write_all(&encrypted_columns)
                 .map_err(|e| MyError::FileError(e.to_string()))?;

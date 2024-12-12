@@ -3,9 +3,9 @@ use crate::config::{
 };
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
+use crate::loggerstuff::logger::Logger;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node_status::Status;
-use crate::loggerstuff::logger::Logger;
 
 use rand::seq::SliceRandom;
 use std::sync::{Arc, RwLock};
@@ -27,11 +27,12 @@ pub struct Node {
 impl Node {
     /// Se crea el nodo.
     pub fn new(number: &str) -> Result<Self, MyError> {
-        let logger = match Logger::new(number.to_string()) { //////////////////// REVISAR!!!
+        let logger = match Logger::new(number.to_string()) {
+            //////////////////// REVISAR!!!
             Ok(logger) => Arc::new(RwLock::new(logger)),
             Err(_) => return Err(MyError::LoggerError("Error al crear logger".to_string())),
         };
-        
+
         Ok(Self {
             number: number.to_string(),
             server_ip: format!("127.0.0.1:700{}", number),
@@ -154,5 +155,4 @@ impl Node {
         }
         query.execute(path_table)
     }
-    
 }

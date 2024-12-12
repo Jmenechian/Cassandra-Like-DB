@@ -5,6 +5,7 @@
 //   - Para enviar el packet y leerlo por stream estan las funciones to_bytes() y from_stream().
 
 use crate::config;
+use crate::config::{SHOW_GOSSIP, SHOW_SERVER};
 use crate::encryption::encrypt::{decrypt_body_aes128, encrypt_body_aes128};
 use crate::errors::my_errors::MyError;
 use crate::loggerstuff::logger::Logger;
@@ -15,9 +16,8 @@ use crate::messagestuff::{
     message_server::readrepairmessage::ReadRepairMessage,
     message_server::resultservermessage::ResultServerMessage,
 };
-use std::{io::Read, net::TcpStream};
 use std::sync::{Arc, RwLock};
-use crate::config::{SHOW_GOSSIP, SHOW_SERVER};
+use std::{io::Read, net::TcpStream};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -86,7 +86,10 @@ impl Packet {
     }
 
     // Para deseriarlizar el mensaje
-    pub fn from_stream(stream: &mut TcpStream, logger: Arc<RwLock<Logger>>) -> Result<Self, MyError> {
+    pub fn from_stream(
+        stream: &mut TcpStream,
+        logger: Arc<RwLock<Logger>>,
+    ) -> Result<Self, MyError> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 5];
         if let Err(e) = stream.read_exact(&mut header_buffer) {
@@ -146,7 +149,11 @@ impl Packet {
         Ok(packet)
     }
 
-    fn write_log(logger: Arc<RwLock<Logger>>, packet: &Packet, msg_type: String) -> Result<(), MyError> {
+    fn write_log(
+        logger: Arc<RwLock<Logger>>,
+        packet: &Packet,
+        msg_type: String,
+    ) -> Result<(), MyError> {
         let mut logger_guard = match logger.write() {
             Ok(l) => l,
             Err(e) => {
@@ -154,7 +161,7 @@ impl Packet {
                 return Err(MyError::LockingError(error));
             }
         };
-        
+
         match packet.opcode {
             ServerOpcode::GossipMessage => {
                 if SHOW_GOSSIP {
@@ -164,7 +171,7 @@ impl Packet {
             }
             _ => {
                 if SHOW_SERVER {
-                    let message = format!("[{}],[SERVER],{:?}",msg_type, packet);
+                    let message = format!("[{}],[SERVER],{:?}", msg_type, packet);
                     logger_guard.write_log(message.as_str())?;
                 }
             }

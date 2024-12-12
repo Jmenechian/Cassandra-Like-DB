@@ -1,9 +1,7 @@
 use crate::errors::my_errors::MyError;
+use crate::utils::append_row;
 use chrono::prelude::*;
 use std::fs::{self, File};
-use std::io::BufWriter;
-use std::io::Write;
-use crate::utils::append_row;
 
 #[derive(Debug)]
 /// Estructura Logger que se encarga de guardar
@@ -20,13 +18,10 @@ impl Logger {
             .write(true)
             .create(true)
             .append(true)
-            .open(format!("src/loggerstuff/logs/log_{}.txt",num_node))
+            .open(format!("src/loggerstuff/logs/log_{}.txt", num_node))
             .map_err(|_| MyError::FileError("Error al abrir archivo de logs".to_string()))?;
 
-        Ok(Logger {
-            file,
-            num_node,
-        })
+        Ok(Logger { file, num_node })
     }
 
     /// Escribe un mensaje en el archivo de logs

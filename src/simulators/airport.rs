@@ -4,8 +4,6 @@ use super::flight::Flight;
 use crate::clientstuff::client_cql::Client;
 use crate::config;
 use crate::errors::my_errors::MyError;
-use crate::loggerstuff::logger::Logger;
-use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone, PartialEq)]
 /// Estructura que representa un aeropuesto, con su nombre y coordenadas "geográficas" (en el mapa de la interfaz).
@@ -33,7 +31,6 @@ impl Airport {
         &self,
         stream: &mut Option<TcpStream>,
         date: &str,
-        logger: Arc<RwLock<Logger>>,
     ) -> Result<Vec<String>, MyError> {
         let query = format!(
             "SELECT * FROM origin WHERE date = {} AND airport = {}",
@@ -41,10 +38,10 @@ impl Airport {
         );
         println!("query: {:?}", query);
         if let Some(stream) = stream {
-            Client::send_message(stream, query, config::QUORUM, logger.clone())
+            Client::send_message(stream, query, config::QUORUM)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
-            let response = Client::read_response(stream, logger)
+            let response = Client::read_response(stream)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
             return Ok(response);
@@ -112,7 +109,6 @@ impl Airport {
         &self,
         stream: &mut Option<TcpStream>,
         date: &str,
-        logger: Arc<RwLock<Logger>>
     ) -> Result<Vec<String>, MyError> {
         let query = format!(
             "SELECT * FROM destination WHERE date = {} AND airport = {}",
@@ -120,10 +116,10 @@ impl Airport {
         );
 
         if let Some(stream) = stream {
-            Client::send_message(stream, query, config::QUORUM, logger.clone())
+            Client::send_message(stream, query, config::QUORUM)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
-            let response = Client::read_response(stream, logger)
+            let response = Client::read_response(stream)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
             return Ok(response);

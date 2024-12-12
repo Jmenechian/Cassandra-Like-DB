@@ -1,8 +1,8 @@
-use crate::config::{self, TABLE_PATH, SHOW_CLIENT};
+use crate::config::{self, SHOW_CLIENT, TABLE_PATH};
 use crate::config::{RF, TABLE_DESTINATION_NAME, TABLE_ORIGIN_NAME};
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
-use crate::loggerstuff::logger::{self, Logger};
+use crate::loggerstuff::logger::Logger;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
@@ -30,21 +30,20 @@ fn handle_message_query(
     stream: &mut TcpStream,
     logger: Arc<RwLock<Logger>>,
 ) -> Result<(), MyError> {
-    let table = match send_query_to_nodes(node, querymessage.query, querymessage.consistency)
-    {
+    let table = match send_query_to_nodes(node, querymessage.query, querymessage.consistency) {
         Ok(r) => r,
         Err(e) => {
             handle_message_error(
                 stream,
                 "Error: algo fallo en send_query_to_node".to_string(),
-                logger
+                logger,
             );
             return Err(e);
         }
     };
     if table.is_empty() {
         let void_msg = ResultEmptyMessage;
-        if let Err(e) = void_msg.send_through(stream, logger) {
+        if let Err(e) = void_msg.send_through(stream, Some(logger)) {
             if SHOW_CLIENT {
                 println!("C   Error: {:?}", e);
             }
@@ -55,7 +54,7 @@ fn handle_message_query(
             rows_count: content.len() as i32,
             rows_content: content,
         };
-        if let Err(e) = rows_msg.send_through(stream, logger) {
+        if let Err(e) = rows_msg.send_through(stream, Some(logger)) {
             if SHOW_CLIENT {
                 println!("C   Error: {:?}", e);
             }
@@ -69,7 +68,7 @@ fn handle_message_error(stream: &mut TcpStream, _error: String, logger: Arc<RwLo
         error: _error,
         code: 0_i32,
     };
-    if let Err(e) = msg.send_through(stream, logger) {
+    if let Err(e) = msg.send_through(stream, Some(logger)) {
         if SHOW_CLIENT {
             println!("C   Error al enviarle un ErrorMessage al cliente: {:?}", e);
         }
@@ -85,7 +84,8 @@ pub fn handle_connection_client(
 ) -> Result<(), MyError> {
     loop {
         let logger_clone = Arc::clone(&logger);
-        match Envelope::from_stream(stream, logger_clone) { /////////////////////// REVISAR
+        match Envelope::from_stream(stream, Some(logger_clone)) {
+            /////////////////////// REVISAR
             Ok(env) => {
                 // if SHOW_CLIENT {
                 //     println!("\nC   El env recibido es: {:?}", env);
@@ -99,7 +99,7 @@ pub fn handle_connection_client(
                         handle_message_error(
                             stream,
                             "Error: Solo me puede llegar un QueryMessage".to_string(),
-                            logger_clone
+                            logger_clone,
                         );
                     }
                 }
@@ -122,7 +122,7 @@ fn process_results(
     results: &mut HashMap<String, Vec<String>>,
     nodes_with_result: &Vec<NeighborNode>,
     table: &str,
-    logger: Arc<RwLock<Logger>>
+    logger: Arc<RwLock<Logger>>,
 ) -> Vec<String> {
     println!("\n - pr ===> {:?}", results);
     let mut table_name = table.to_owned();
@@ -245,7 +245,7 @@ fn read_repair(
     nodes_with_result: &Vec<NeighborNode>,
     node: &String,
     table: &str,
-    logger: Arc<RwLock<Logger>>
+    logger: Arc<RwLock<Logger>>,
 ) {
     println!("Mandando mensaje de Read Repair");
 
@@ -310,7 +310,11 @@ pub fn send_query_to_nodes(
     let mut all_response: Vec<Vec<String>> = vec![];
     let mut all_response_dict: HashMap<String, Vec<String>> = HashMap::new();
     let mut hash = ConsistentHash::new(RF);
-    let mut query: Query = Query::new(_query.clone(), node_guard.number.clone(), node_guard.client_ip.clone());
+    let mut query: Query = Query::new(
+        _query.clone(),
+        node_guard.number.clone(),
+        node_guard.client_ip.clone(),
+    );
 
     hash.add_nodes(node_guard.neighbors.to_vec());
     let key = query.get_key_representing_partition(&node_guard.server_ip);
@@ -321,7 +325,6 @@ pub fn send_query_to_nodes(
         // otras queries
         hash.get_nodes(&key)
     };
-
 
     if SHOW_CLIENT {
         println!("\n - La key es: {}", key);

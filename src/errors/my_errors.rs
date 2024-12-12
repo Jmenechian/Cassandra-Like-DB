@@ -12,6 +12,8 @@ pub enum MyError {
     InvalidSyntax(String),
     TestError(String),
     ThreadError(String),
+    ChannelReceiveError(String),
+    ChannelSendError(String),
     TcpStreamError(String),
     TcpListenerError(String),
     ServerMessageError(String),
@@ -23,6 +25,7 @@ pub enum MyError {
     EncryptionError(String),
     DecryptionError(String),
     LoggerError(String),
+    AllNodesDisconnected(),
 }
 
 impl fmt::Display for MyError {
@@ -34,6 +37,10 @@ impl fmt::Display for MyError {
             MyError::InvalidSyntax(ref msg) => write!(f, "[INVLAID_SYNTAX]: [{}]", msg),
             MyError::TestError(ref msg) => write!(f, "[TEST_ERROR]: [{}]", msg),
             MyError::ThreadError(ref msg) => write!(f, "[THREAD_ERROR]: [{}]", msg),
+            MyError::ChannelReceiveError(ref msg) => {
+                write!(f, "[CHANNEL_RECEIVE_ERROR]: [{}]", msg)
+            }
+            MyError::ChannelSendError(ref msg) => write!(f, "[CHANNEL_SEND_ERROR]: [{}]", msg),
             MyError::TcpStreamError(ref msg) => write!(f, "[TCP_STREAM_ERROR]: [{}]", msg),
             MyError::TcpListenerError(ref msg) => write!(f, "[TCP_LISTENER_ERROR]: [{}]", msg),
             MyError::ServerMessageError(ref msg) => write!(f, "[SERVER_MESSAGE_ERROR]: [{}]", msg),
@@ -47,6 +54,10 @@ impl fmt::Display for MyError {
             MyError::EncryptionError(ref msg) => write!(f, "[ENCRYPTION_ERROR]: [{}]", msg),
             MyError::DecryptionError(ref msg) => write!(f, "[DECRYPTION_ERROR]: [{}]", msg),
             MyError::LoggerError(ref msg) => write!(f, "[LOGGER_ERROR]: [{}]", msg),
+            MyError::AllNodesDisconnected() => write!(
+                f,
+                "[ALL_NODES_DISCONNECTED]: [No se encontró un nodo conectado.]"
+            ),
         }
     }
 }

@@ -73,10 +73,14 @@ pub mod gui {
 
 pub mod simulators {
     pub mod airport;
+    pub mod channel_type;
+    pub mod connection_server;
     pub mod coordinates;
     pub mod flight;
     pub mod flight_simulator;
     pub mod flight_status;
+    pub mod flight_updater;
+    pub mod input_flight;
     pub mod queries;
     pub mod user_input;
 }
@@ -87,8 +91,8 @@ pub mod errors {
     pub mod simulator_errors;
 }
 
-pub use cql::query::Query;
 pub use clientstuff::client_cql;
+pub use cql::query::Query;
 pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
 
 pub use consistent_hashing::ConsistentHash;

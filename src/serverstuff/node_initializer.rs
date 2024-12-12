@@ -1,5 +1,6 @@
 use crate::config::PORTS_FILE;
 use crate::errors::my_errors::MyError;
+use crate::loggerstuff::logger::Logger;
 use crate::messagestuff::{message::*, message_server::gossipmessage::*};
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
@@ -10,7 +11,6 @@ use crate::serverstuff::{
     handleconnectiongossip::handle_connection_gossip,
     handleconnectionserver::handle_connection_server,
 };
-use crate::loggerstuff::logger::Logger;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::net::{TcpListener, TcpStream};
@@ -18,7 +18,6 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
-
 
 /// Funcion de inicializacíon, donde se crea el nodo indicado y se escucha y responde por los puertos correspondientes.
 pub fn node_initialize(port: String) -> Result<(), MyError> {
@@ -42,13 +41,28 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node));
 
     // Seccion servidor-servidor
-    listen(server_ip, &current_node, logger.clone(), handle_connection_server)?;
+    listen(
+        server_ip,
+        &current_node,
+        logger.clone(),
+        handle_connection_server,
+    )?;
 
     // Seccion Gossip
-    listen(gossip_ip, &current_node, logger.clone(), handle_connection_gossip)?;
+    listen(
+        gossip_ip,
+        &current_node,
+        logger.clone(),
+        handle_connection_gossip,
+    )?;
 
     // Seccion cliente-servidor
-    listen(client_ip, &current_node, logger.clone(), handle_connection_client)?;
+    listen(
+        client_ip,
+        &current_node,
+        logger.clone(),
+        handle_connection_client,
+    )?;
 
     loop {
         thread::sleep(Duration::from_secs(2));
@@ -62,7 +76,7 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
                 };
                 let _ = gossip_msg.send_server_through(&mut s, logger_clone);
             }
-            None => println!("No encuentre otro nodo."),
+            None => {}
         };
     }
 }
@@ -107,7 +121,10 @@ fn listen<F>(
     handler: F,
 ) -> Result<JoinHandle<Result<(), MyError>>, MyError>
 where
-    F: Fn(Arc<RwLock<Node>>, &mut TcpStream, Arc<RwLock<Logger>>, ) -> Result<(), MyError> + Send + 'static + Copy,
+    F: Fn(Arc<RwLock<Node>>, &mut TcpStream, Arc<RwLock<Logger>>) -> Result<(), MyError>
+        + Send
+        + 'static
+        + Copy,
 {
     let current_node = Arc::clone(node);
 
@@ -134,7 +151,7 @@ where
             let logger = Arc::clone(&logger);
 
             thread::spawn(move || {
-                match handler(node_thread, &mut s,logger) {
+                match handler(node_thread, &mut s, logger) {
                     Ok(_) => {}
                     Err(e) => println!("Error: {:?}", e),
                 };

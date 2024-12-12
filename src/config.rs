@@ -10,8 +10,8 @@ pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Ha
 pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
 
 pub const SHOW_GOSSIP: bool = false; // Para hacer registro de mensajes de gossip
-pub const SHOW_SERVER: bool = true;  // Para hacer registro de mensajes de servidor
-pub const SHOW_CLIENT: bool = true;  // Para hacer registro de mensajes de cliente
+pub const SHOW_SERVER: bool = true; // Para hacer registro de mensajes de servidor
+pub const SHOW_CLIENT: bool = true; // Para hacer registro de mensajes de cliente
 
 pub static TABLE_PATH: &str = "src/tables";
 pub static TABLE_ORIGIN_NAME: &str = "origin";
@@ -24,6 +24,7 @@ pub static FLIGHT_STEP: f32 = 10.0; // Cantidad de pasos que da un avión hasta 
 pub static CRUISING_SPEED: f32 = 840.0; // Velocidad crucero de un avion, en km/h
 pub static STEPS_AT_CRUISING_SPEED: f32 = 2.0; // Mitad de pasos en los que el avion viajara a la velocidad crucero.
 pub static CRUISING_HEIGHT: f32 = 10000.0; // Altura crucero de 10mil metros.
+pub static QUERIES_PATH: &str = "src/simulators/update_queries.csv";
 
 //GUI:
 pub static AIRPORTS_PATH: &str = "src/tables/airports.csv";
