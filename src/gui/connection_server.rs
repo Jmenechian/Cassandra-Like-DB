@@ -13,6 +13,7 @@ use crate::{client_cql::Client, errors::my_errors::MyError, simulators::airport:
 pub struct ConnectionServer {
     pub stream: Option<TcpStream>,
     pub channels: (Sender<Vec<String>>, Receiver<Vec<String>>),
+    pub client: Client,
 }
 
 impl ConnectionServer {
@@ -27,6 +28,7 @@ impl ConnectionServer {
         Self {
             stream,
             channels: mpsc::channel(), //(tx, rx) -> send, receive
+            client,
         }
     }
 
@@ -65,16 +67,17 @@ impl ConnectionServer {
         };
 
         let tx = self.channels.0.clone();
+        let logger = self.client.logger.clone();
 
         let _ = thread::spawn({
             move || {
                 if let Ok(origin_flights) =
-                    airport.get_origin_flights_from(&mut Some(stream_server), &date)
+                    airport.get_origin_flights_from(&mut Some(stream_server), &date, logger.clone())
                 {
                     let _ = tx.send(origin_flights);
                 }
                 if let Ok(return_flights) =
-                    airport.get_flights_that_return_to(&mut Some(stream_server_2), &date)
+                    airport.get_flights_that_return_to(&mut Some(stream_server_2), &date, logger)
                 {
                     let _ = tx.send(return_flights);
                 }
@@ -94,11 +97,13 @@ impl ConnectionServer {
         };
 
         let tx = self.channels.0.clone();
+        let logger_send = self.client.logger.clone();
+        let logger_read = self.client.logger.clone();
 
         let _ = thread::spawn({
             move || {
-                if Client::send_message(&mut stream_server, query, consistency).is_ok() {
-                    if let Ok(response) = Client::read_response(&mut stream_server) {
+                if Client::send_message(&mut stream_server, query, consistency, logger_send).is_ok() {
+                    if let Ok(response) = Client::read_response(&mut stream_server, logger_read) {
                         let _ = tx.send(response);
                     }
                 }

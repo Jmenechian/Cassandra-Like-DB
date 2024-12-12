@@ -4,9 +4,10 @@ use crate::messagestuff::message::Sendable;
 use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_cql::resultmessage::ResultBody;
-use crate::loggerstuff::loggable::Loggable;
-use std::io::{self, BufRead, Result};
+use crate::loggerstuff::logger::Logger;
+use std::io::{self, BufRead};
 use std::net::TcpStream;
+use std::sync::{Arc, RwLock};
 
 use std::thread;
 
@@ -16,33 +17,34 @@ use std::thread;
 pub struct Client {
     pub server_ip: String,
     pub ip: String,
-}
-
-///////////////////////////////////////////////////// HAY QUE CAMBIARLO!!!!
-impl Loggable for Client {
-    fn write_log(&self, _: &str) -> std::result::Result<(), MyError> {
-        Ok(())
-    }
+    pub logger: Arc<RwLock<Logger>>,
 }
 
 impl Client {
     /// Se inicializan los puertos del cliente.
-    pub fn initialize(port: String) -> Self {
-        Self {
+    pub fn initialize(port: String) -> Result<Self, MyError> {
+
+        let logger = match Logger::new("client".to_string()) { //////////////////// REVISAR!!!
+            Ok(logger) => Arc::new(RwLock::new(logger)),
+            Err(_) => return Err(MyError::LoggerError("Error al crear logger".to_string())),
+        };
+
+        Ok(Self {
             server_ip: format!("127.0.0.1:800{}", port),
             ip: "127.0.0.1:45450".to_string(),
-        }
+            logger,
+        })
     }
 
     /// Devuelve Ok si se puede conectar con el server.
-    pub fn handle_input(&mut self) -> Result<()> {
-        let mut _stream = TcpStream::connect(&self.server_ip)?;
+    pub fn handle_input(&mut self) -> Result<(), MyError> {
+        let mut _stream = TcpStream::connect(&self.server_ip).map_err(|e| MyError::TcpStreamError(e.to_string()))?;
 
         Ok(())
     }
 
     /// Se conecta con el server y devuelve el stream.
-    pub fn connect(&mut self) -> Result<TcpStream> {
+    pub fn connect(&mut self) -> Result<TcpStream, MyError> {
         if let Ok(stream) = TcpStream::connect(&self.server_ip) {
             Ok(stream)
         } else {
@@ -53,33 +55,34 @@ impl Client {
     /// Se conecta con el server.
     /// Lee las consultas por stdin y las envía al server.
     /// Recibe la respuesta del server como Envelope y la imprime por pantalla.
-    pub fn handle_connection(&self) -> io::Result<()> {
+    pub fn handle_connection(&self) -> Result<(), MyError> {
         let mut stream = match TcpStream::connect(&self.server_ip) {
             Ok(s) => s,
             Err(e) => {
-                println!("Error al conectarme al TcpStream: {:?}", e);
-                return Err(e);
+                return Err(MyError::TcpStreamError(e.to_string()));
             }
         };
         let mut stream_clone = match stream.try_clone() {
             Ok(clone) => clone,
             Err(e) => {
-                println!("Error al clonar el TcpStream: {:?}", e);
-                return Err(e);
+                return Err(MyError::TcpStreamError(e.to_string()));
             }
         };
+
+        let logger = Arc::clone(&self.logger);
         thread::spawn(move || {
             let stdin = io::stdin();
             loop {
                 let mut input = String::new();
                 if stdin.lock().read_line(&mut input).is_ok() {
-                    let _ = Client::send_message(&mut stream_clone, input, config::QUORUM);
+                    let _ = Client::send_message(&mut stream_clone, input, config::QUORUM, logger.clone());
                 }
             }
         });
 
         loop {
-            match Envelope::from_stream(&mut stream, self) {
+            let logger_clone = Arc::clone(&self.logger);
+            match Envelope::from_stream(&mut stream, logger_clone) {
                 Ok(env) => match env.body {
                     CqlMessage::Result(r) => match r.body {
                         ResultBody::Rows(r) => {
@@ -110,21 +113,22 @@ impl Client {
 
     /// Envía la consulta por el stream al server.
     /// El mensaje que se envía es de tipo QueryMessage.
-    pub fn send_message(stream: &mut TcpStream, message: String, consistency: u16) -> Result<()> {
+    pub fn send_message(stream: &mut TcpStream, message: String, consistency: u16, logger: Arc<RwLock<Logger>>) -> Result<(), MyError> {
         if !message.is_empty() {
             let msg: QueryMessage = QueryMessage {
                 query: message,
                 consistency, //config::QUORUM or ONE
             };
-            let _ = msg.send_through(stream);
+            let _ = msg.send_through(stream, logger);
         }
         Ok(())
     }
 
     /// Se lee la respuesta del server por el stream y se devuelve el resultado.
-    pub fn read_response(stream: &mut TcpStream) -> Result<Vec<String>> {
+    pub fn read_response(stream: &mut TcpStream, logger:Arc<RwLock<Logger>>) -> Result<Vec<String>, MyError> {
         loop {
-            match Envelope::from_stream(stream, &Client::initialize("1".to_string())) {
+            let logger_clone = Arc::clone(&logger);
+            match Envelope::from_stream(stream, logger_clone) {
                 Ok(env) => match env.body {
                     CqlMessage::Result(result) => match result.body {
                         ResultBody::Void(_) => {
@@ -150,9 +154,9 @@ impl Client {
 
     /// Devolvemos el stream con el primer nodo conectado que se encuentre.
     /// En caso de no haber nodos conectados se devuleve un error.
-    pub fn connect_with_node() -> Result<TcpStream> {
+    pub fn connect_with_node() -> Result<TcpStream, MyError> {
         for number_node in 1..=RING_SIZE {
-            let mut client = Client::initialize(number_node.to_string());
+            let mut client = Client::initialize(number_node.to_string())?;
             if let Ok(stream) = client.connect() {
                 return Ok(stream);
             }

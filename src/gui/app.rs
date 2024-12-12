@@ -56,11 +56,11 @@ pub struct MapApp {
 
 impl MapApp {
     /// Se inicializan los valores a usar en la interfaz.
-    pub fn new(port: String) -> Self {
+    pub fn new(port: String) -> Result<Self, MyError> {
         let airports = get_airport_coordinates();
         let map_texture = None;
         let plane_texture = HashMap::new();
-        let client = Client::initialize(port);
+        let client = Client::initialize(port)?;
         let connection_server = ConnectionServer::initialize(client);
         let connections = vec![];
 
@@ -76,7 +76,7 @@ impl MapApp {
         let password = "".to_string();
         let user = None;
         let login_status = "Please enter username and password".to_string();
-        Self {
+        Ok(Self {
             airports,
             map_texture,
             plane_texture,
@@ -95,7 +95,7 @@ impl MapApp {
             password,
             user,
             login_status,
-        }
+        })
     }
 
     /// Carga la imagen del avión desde un archivo.

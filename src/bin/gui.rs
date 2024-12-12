@@ -3,7 +3,7 @@ use std::env;
 use std::process::exit;
 
 /// Binario que permite la ejecución de la Interfaz gráfica de usuario.
-fn main() -> Result<(), eframe::Error> {
+fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         eprintln!("Last digit parameter of the port is missing.");
@@ -22,9 +22,11 @@ fn main() -> Result<(), eframe::Error> {
         ..Default::default()
     };
 
-    eframe::run_native(
-        "Mapa de Aeropuertos",
-        options,
-        Box::new(|_cc| Ok(Box::new(MapApp::new(port)))),
-    )
+    if let Ok(map) = MapApp::new(port) {
+        let _ = eframe::run_native(
+            "Mapa de Aeropuertos",
+            options,
+            Box::new(|_cc| Ok(Box::new(map))),
+        );
+    }
 }

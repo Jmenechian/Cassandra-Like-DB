@@ -12,8 +12,9 @@ use crate::messagestuff::{
     message::*, message_cql::errormessage::ErrorMessage, message_cql::querymessage::QueryMessage,
     message_cql::resultmessage::ResultMessage,
 };
-use crate::loggerstuff::loggable::Loggable;
+use crate::loggerstuff::logger::Logger;
 use std::{io::Read, net::TcpStream};
+use std::sync::{Arc, RwLock};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
@@ -52,7 +53,7 @@ pub struct Envelope {
 }
 
 impl Envelope {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self, logger:Arc<RwLock<Logger>>) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&byte_to_byte(self.version));
         bytes.extend_from_slice(&byte_to_byte(self.flags));
@@ -73,10 +74,11 @@ impl Envelope {
         bytes.extend_from_slice(&int_to_bytes(final_length));
         bytes.extend_from_slice(&final_body);
 
+        let _ = Envelope::write_log(logger, self, "SEND".to_string()); /// REVISARRRRRRRRRR
         bytes
     }
 
-    pub fn from_stream<T: Loggable>(stream: &mut TcpStream, loggable: &T) -> Result<Self, MyError> {
+    pub fn from_stream(stream: &mut TcpStream, logger: Arc<RwLock<Logger>>) -> Result<Self, MyError> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 9];
         if let Err(e) = stream.read_exact(&mut header_buffer) {
@@ -130,8 +132,22 @@ impl Envelope {
             body: _body,
         };
 
-        loggable.write_log(&format!("\nC   El env recibido es: {:?}", env))?;
+        Envelope::write_log(logger, &env, "RECEIVED".to_string())?;
         Ok(env)
+    }
+
+    fn write_log(logger: Arc<RwLock<Logger>>, env: &Envelope, msg_type: String) -> Result<(), MyError> {
+        let mut logger_guard = match logger.write() {
+            Ok(l) => l,
+            Err(e) => {
+                let error = format!("Error al leer el logger: {:?}", e);
+                return Err(MyError::LockingError(error));
+            }
+        };
+        
+        let message = format!("[{}],[CLIENT-SERVER],{:?}",msg_type, env);
+        logger_guard.write_log(message.as_str())?;
+        Ok(())
     }
 
 }

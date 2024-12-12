@@ -16,11 +16,13 @@ use crate::{
         airport_errors::AirportErrors, my_errors::MyError, simulator_errors::SimulatorErrors,
     },
     simulators::{flight_status::FlightStatus, queries::get_query_select_in_destination},
+    loggerstuff::logger::Logger,
 };
 
 use chrono::Utc;
 use std::{net::TcpStream, thread, time::Duration};
 use threadpool::ThreadPool;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone)]
 /// Estructura que creará y simulará un vuelo desde su programación, pasando por su despegue hasta su llegada a destino.
@@ -30,10 +32,11 @@ pub struct FlightSimulator {
     destination: String,
     avg_speed: String,
     date: String,
+    logger: Arc<RwLock<Logger>>,
 }
 
 impl FlightSimulator {
-    fn new(flight_number: String, origin: String, destination: String, avg_speed: String) -> Self {
+    fn new(flight_number: String, origin: String, destination: String, avg_speed: String, logger: Arc<RwLock<Logger>>) -> Self {
         let today_utc = Utc::now();
         let date = today_utc.format("%y-%m-%d").to_string();
 
@@ -43,10 +46,11 @@ impl FlightSimulator {
             destination,
             avg_speed,
             date,
+            logger,
         }
     }
 
-    fn initializer() -> Result<Self, SimulatorErrors> {
+    fn initializer(logger: Arc<RwLock<Logger>>) -> Result<Self, SimulatorErrors> {
         let [mut _flight_number, mut _origin, mut _destination, mut _avg_speed] = [
             "".to_string(),
             "".to_string(),
@@ -64,7 +68,7 @@ impl FlightSimulator {
         }
 
         let flight_simulator =
-            FlightSimulator::new(_flight_number, _origin, _destination, _avg_speed);
+            FlightSimulator::new(_flight_number, _origin, _destination, _avg_speed, logger);
 
         Ok(flight_simulator)
     }
@@ -72,7 +76,13 @@ impl FlightSimulator {
     /// Pone en marcha la creación de vuelos y su simulación de despegue y llegada a destino.
     /// Se utilizan thread pool.
     pub fn run() -> Result<(), SimulatorErrors> {
-        if FlightSimulator::create_flight_table().is_err() {
+
+        let logger = match Logger::new("simulator".to_string()) { //////////////////// REVISAR!!!
+            Ok(logger) => Arc::new(RwLock::new(logger)),
+            Err(_) => return Err(SimulatorErrors::Error("Error al crear logger".to_string())),
+        };
+
+        if FlightSimulator::create_flight_table(logger.clone()).is_err() {
             println!("Las tablas ya estaban creadas.\n");
         } else {
             println!("Se creo la tabla flights_in_progress correctamente.\n");
@@ -87,7 +97,8 @@ impl FlightSimulator {
                 return Err(SimulatorErrors::AllNodesDisconnected());
             };
 
-            let flight_simulator = FlightSimulator::initializer()?;
+            let logger_clone = Arc::clone(&logger);
+            let flight_simulator = FlightSimulator::initializer(logger_clone)?;
 
             pool.execute(move || {
                 match flight_simulator.obtain_flight_and_simulate_it(&mut stream_server) {
@@ -103,7 +114,7 @@ impl FlightSimulator {
     }
 
     /// Se crea la tabla flights_in_progress.
-    fn create_flight_table() -> Result<(), MyError> {
+    fn create_flight_table(logger: Arc<RwLock<Logger>>) -> Result<(), MyError> {
         // Buscamos un nodo conectado:
         let mut stream_server: TcpStream = if let Ok(stream) = Client::connect_with_node() {
             stream
@@ -114,7 +125,7 @@ impl FlightSimulator {
         };
 
         let query = get_query_create_simulator_table();
-        Client::send_message(&mut stream_server, query, config::ONE)
+        Client::send_message(&mut stream_server, query, config::ONE, logger)
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
         Ok(())
@@ -177,10 +188,10 @@ impl FlightSimulator {
             )
         };
 
-        Client::send_message(stream, query, config::ONE)
+        Client::send_message(stream, query, config::ONE, self.logger.clone())
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
-        let response = Client::read_response(stream)
+        let response = Client::read_response(stream, self.logger.clone())
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
         for line in response {
@@ -209,10 +220,10 @@ impl FlightSimulator {
                     get_query_insert_in_origin(flight)
                 };
 
-                Client::send_message(stream, query, config::ONE)
+                Client::send_message(stream, query, config::ONE, self.logger.clone())
                     .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
-                let _ = Client::read_response(stream)
+                let _ = Client::read_response(stream, self.logger.clone())
                     .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
             }
         }
@@ -234,7 +245,7 @@ impl FlightSimulator {
     /// Cada thread se acupará de crear un avión y actualizar su estado hasta llegar a destino.
     fn simulate_flight(&self, mut flight: Flight, stream: &mut TcpStream) -> Result<(), MyError> {
         // Escribimos el vuelo en la tabla flights_in_progress.csv -> hacemos INSERT como Client
-        FlightSimulator::insert_flight(&flight, stream)?;
+        self.insert_flight(&flight, stream)?;
         println!("\nSe agrego el vuelo {:?} correctamente.\n", flight);
 
         while flight.status != FlightStatus::Landed {
@@ -244,7 +255,7 @@ impl FlightSimulator {
             // Si vuelo en scheduled -> 3 UPDATE: actualizamos el estado del vuelo a 'Boarding', y en sus corresponientes tablas de origen y destino.
             if flight.status == FlightStatus::Scheduled {
                 flight.set_status(FlightStatus::Boarding);
-                FlightSimulator::update_flight(&flight, stream)?;
+                self.update_flight(&flight, stream)?;
                 continue;
             }
 
@@ -264,28 +275,29 @@ impl FlightSimulator {
                 flight.set_status(FlightStatus::Landed);
                 flight.update_speed();
                 flight.update_height();
-                FlightSimulator::update_flight(&flight, stream)?;
+                self.update_flight(&flight, stream)?;
             } else {
-                FlightSimulator::update_flight(&flight, stream)?;
+                self.update_flight(&flight, stream)?;
             }
         }
         Ok(())
     }
 
-    fn insert_flight(flight: &Flight, stream: &mut TcpStream) -> Result<(), MyError> {
+    fn insert_flight(&self, flight: &Flight, stream: &mut TcpStream) -> Result<(), MyError> {
         let query = get_query_insert_in_simulator(flight);
 
-        Client::send_message(stream, query, config::ONE)
+        Client::send_message(stream, query, config::ONE, self.logger.clone())
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
-        let _ = Client::read_response(stream)
+        let _ = Client::read_response(stream, self.logger.clone())
             .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
         Ok(())
     }
 
-    fn update_flight(flight: &Flight, stream: &mut TcpStream) -> Result<(), MyError> {
+    fn update_flight(&self, flight: &Flight, stream: &mut TcpStream) -> Result<(), MyError> {
         for table in ["origin", "destination", "flights_in_progress"] {
+            let logger = self.logger.clone();
             let query = match table {
                 "origin" => get_query_update_in_origin(flight),
                 "destination" => get_query_update_in_destination(flight),
@@ -293,10 +305,10 @@ impl FlightSimulator {
                 _ => continue,
             };
 
-            Client::send_message(stream, query, config::ONE)
+            Client::send_message(stream, query, config::ONE, logger.clone())
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
 
-            let _ = Client::read_response(stream)
+            let _ = Client::read_response(stream, logger)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;
         }
 

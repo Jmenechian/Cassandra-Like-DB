@@ -22,6 +22,7 @@ pub enum MyError {
     UserError(String),
     EncryptionError(String),
     DecryptionError(String),
+    LoggerError(String),
 }
 
 impl fmt::Display for MyError {
@@ -45,6 +46,7 @@ impl fmt::Display for MyError {
             MyError::UserError(ref msg) => write!(f, "[USER_ERROR]: [{}]", msg),
             MyError::EncryptionError(ref msg) => write!(f, "[ENCRYPTION_ERROR]: [{}]", msg),
             MyError::DecryptionError(ref msg) => write!(f, "[DECRYPTION_ERROR]: [{}]", msg),
+            MyError::LoggerError(ref msg) => write!(f, "[LOGGER_ERROR]: [{}]", msg),
         }
     }
 }

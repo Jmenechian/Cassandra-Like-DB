@@ -1,14 +1,15 @@
 use crate::errors::my_errors::MyError;
 use chrono::prelude::*;
-use std::fs;
+use std::fs::{self, File};
 use std::io::BufWriter;
 use std::io::Write;
+use crate::utils::append_row;
 
 #[derive(Debug)]
 /// Estructura Logger que se encarga de guardar
 /// los logs de los mensajes del nodouse std::io::BufWriter;
 pub struct Logger {
-    pub file: BufWriter<fs::File>,
+    pub file: File,
     pub num_node: String,
 }
 
@@ -23,19 +24,21 @@ impl Logger {
             .map_err(|_| MyError::FileError("Error al abrir archivo de logs".to_string()))?;
 
         Ok(Logger {
-            file: BufWriter::new(file),
+            file,
             num_node,
         })
     }
 
     /// Escribe un mensaje en el archivo de logs
     pub fn write_log(&mut self, message: &str) -> Result<(), MyError> {
+        println!("En write log de Logger con message: {:?}", message);
         let now = Local::now();
         let date = now.format("%Y-%m-%d %H:%M:%S").to_string();
-        let log = format!("{}:{}\n", date, message);
+        let log = format!("{},{}", date, message);
 
         println!("{}", log);
-        self.file.write(log.as_bytes()).map_err(|_| MyError::FileError("Error al escribir en archivo de logs".to_string())).unwrap();
+        append_row(&mut self.file, &[log])?;
+        println!("Despues de write");
         Ok(())
     }
 }

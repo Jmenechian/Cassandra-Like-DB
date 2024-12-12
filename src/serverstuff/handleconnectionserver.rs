@@ -12,6 +12,7 @@ use crate::messagestuff::{
     },
 };
 use crate::serverstuff::node::Node;
+use crate::Logger;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
@@ -49,7 +50,7 @@ fn handle_message_query(
             ResultVoidServerMessage.into_result_server_message()
         }
     };
-    let _ = msg.send_server_through(stream);
+    let _ = msg.send_server_through(stream, node.logger.clone());
     Ok(())
 }
 
@@ -151,8 +152,10 @@ fn contains_row(rows: &Vec<String>, row: &str) -> bool {
 pub fn handle_connection_server(
     node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
+    logger: Arc<RwLock<Logger>>,
 ) -> Result<(), MyError> {
-    match Packet::from_stream(stream, node.clone()) {
+
+    match Packet::from_stream(stream, logger) {
         Ok(packet) => {
             if SHOW_SERVER {
                 println!("S   El packet recibido es: {:?}", packet);

@@ -11,6 +11,7 @@ use crate::messagestuff::{
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
 use crate::serverstuff::node_status::Status;
+use crate::loggerstuff::logger::{self, Logger};
 use crate::utils::{delete_file, get_reader};
 use rand::seq::SliceRandom;
 use std::io::BufRead;
@@ -29,7 +30,7 @@ fn reenviar_gossip(
             );
         }
         if let Some(mut stream) = try_connect(n.gossip_ip.clone()) {
-            if let Err(e) = gossip.clone().send_server_through(&mut stream) {
+            if let Err(e) = gossip.clone().send_server_through(&mut stream, node.logger.clone()) {
                 if SHOW_GOSSIP {
                     println!("G   Error al eviarle mensaje gossip: {:?}", e);
                 }
@@ -52,7 +53,7 @@ fn reenviar_gossip(
     }
 }
 
-fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, node: Arc<RwLock<Node>>) {
+fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, logger: Arc<RwLock<Logger>>) {
     //4 ...
     let file = format!("logs/logs_{}_{}", node_number, neighbor.number);
     let rdr = match get_reader(TABLE_PATH, &file) {
@@ -63,14 +64,16 @@ fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, node: Arc<
     };
     for line in rdr.lines().map_while(Result::ok) {
         println!("line: {:?}", line);
+        let logger_clone = Arc::clone(&logger);
+        let logger_clone_sender = Arc::clone(&logger);
         if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
             let msg = QueryServerMessage {
                 query: line.clone(),
                 consistency: 0,
             };
-            let _ = msg.send_server_through(&mut socket);
+            let _ = msg.send_server_through(&mut socket, logger_clone_sender);
 
-            let _ = Packet::from_stream(&mut socket, node.clone());
+            let _ = Packet::from_stream(&mut socket, logger_clone);
         }
     }
     println!("borrando archivo");
@@ -80,6 +83,7 @@ fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, node: Arc<
 fn handle_message_gossip(
     node: Arc<RwLock<Node>>,
     gossip: &mut GossipMessage,
+    logger: Arc<RwLock<Logger>>,
 ) -> Result<(), MyError> {
     let mut node_guard: std::sync::RwLockWriteGuard<'_, Node> = match node.write() {
         Ok(n) => n,
@@ -108,7 +112,7 @@ fn handle_message_gossip(
     if node_guard.add_neighbor(new_neighbor.clone()) {
         println!("{:?}", new_neighbor);
         if new_neighbor.status == Status::Connected {
-            handle_send_backlog(&node_guard.number, &new_neighbor, node.clone());
+            handle_send_backlog(&node_guard.number, &new_neighbor, logger);
         }
 
         if SHOW_GOSSIP {
@@ -129,15 +133,18 @@ fn handle_message_gossip(
 pub fn handle_connection_gossip(
     node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
+    logger: Arc<RwLock<Logger>>,
 ) -> Result<(), MyError> {
-    match Packet::from_stream(stream, node.clone()) {
+    
+    let logger_clone = Arc::clone(&logger);
+    match Packet::from_stream(stream, logger) {
         Ok(packet) => {
             if SHOW_GOSSIP {
                 println!("G   El packet recibido es: {:?}", packet);
             }
             match packet.body {
                 ServerMessage::Gossip(mut gossip) => {
-                    handle_message_gossip(node, &mut gossip)?;
+                    handle_message_gossip(node, &mut gossip, logger_clone)?;
                 }
                 _ => {
                     if SHOW_GOSSIP {

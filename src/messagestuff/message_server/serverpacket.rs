@@ -7,6 +7,7 @@
 use crate::config;
 use crate::encryption::encrypt::{decrypt_body_aes128, encrypt_body_aes128};
 use crate::errors::my_errors::MyError;
+use crate::loggerstuff::logger::Logger;
 use crate::messagestuff::{
     message::*, message_server::errorservermessage::ErrorServerMessage,
     message_server::gossipmessage::GossipMessage,
@@ -15,7 +16,6 @@ use crate::messagestuff::{
     message_server::resultservermessage::ResultServerMessage,
 };
 use std::{io::Read, net::TcpStream};
-use crate::serverstuff::node::Node;
 use std::sync::{Arc, RwLock};
 use crate::config::{SHOW_GOSSIP, SHOW_SERVER};
 
@@ -60,10 +60,9 @@ pub struct Packet {
 
 impl Packet {
     // Para serializar el mensaje
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self, logger: Arc<RwLock<Logger>>) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&byte_to_byte(self.opcode as u8));
-        //bytes.extend_from_slice(&int_to_bytes(self.length));
 
         let body_bytes = match &self.body {
             ServerMessage::Gossip(msg) => msg.to_bytes(),
@@ -80,11 +79,14 @@ impl Packet {
         let final_length = final_body.len() as i32;
         bytes.extend_from_slice(&int_to_bytes(final_length));
         bytes.extend_from_slice(&final_body);
+
+        let _ = Packet::write_log(logger, self, "SEND".to_string()); //////////// REVISAR
+
         bytes
     }
 
     // Para deseriarlizar el mensaje
-    pub fn from_stream(stream: &mut TcpStream, node: Arc<RwLock<Node>>) -> Result<Self, MyError> {
+    pub fn from_stream(stream: &mut TcpStream, logger: Arc<RwLock<Logger>>) -> Result<Self, MyError> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 5];
         if let Err(e) = stream.read_exact(&mut header_buffer) {
@@ -139,30 +141,31 @@ impl Packet {
             body: _body,
         };
 
-        Packet::write_log(node, &packet)?;
+        Packet::write_log(logger, &packet, "RECEIVED".to_string())?;
 
         Ok(packet)
     }
 
-    fn write_log(node: Arc<RwLock<Node>>, packet: &Packet) -> Result<(), MyError> {
-        let mut node_guard: std::sync::RwLockWriteGuard<'_, Node> = match node.write() {
-            Ok(n) => n,
-            Err(_) => {
-                return Err(MyError::LockingError("No puedo usar el nodo para log".to_string()));
+    fn write_log(logger: Arc<RwLock<Logger>>, packet: &Packet, msg_type: String) -> Result<(), MyError> {
+        let mut logger_guard = match logger.write() {
+            Ok(l) => l,
+            Err(e) => {
+                let error = format!("Error al leer el logger: {:?}", e);
+                return Err(MyError::LockingError(error));
             }
         };
-
+        
         match packet.opcode {
             ServerOpcode::GossipMessage => {
                 if SHOW_GOSSIP {
-                    let message = format!("\nG   El packet recibido es: {:?}", packet);
-                    node_guard.logger.write_log(message.as_str())?;
+                    let message = format!("[{}],[GOSSIP],{:?}", msg_type, packet);
+                    logger_guard.write_log(message.as_str())?;
                 }
             }
             _ => {
-                if SHOW_SERVER{
-                    let message = format!("\nS   El packet recibido es: {:?}", packet);
-                    node_guard.logger.write_log(message.as_str())?;
+                if SHOW_SERVER {
+                    let message = format!("[{}],[SERVER],{:?}",msg_type, packet);
+                    logger_guard.write_log(message.as_str())?;
                 }
             }
         };

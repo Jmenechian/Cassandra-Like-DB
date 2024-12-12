@@ -60,7 +60,6 @@ pub mod encryption {
 
 pub mod loggerstuff {
     pub mod logger;
-    pub mod loggable;
 }
 
 pub mod gui {

@@ -4,6 +4,8 @@ use crate::errors::my_errors::MyError;
 use crate::messagestuff::message_cql::cqlenvelope::IntoEnvelope;
 use crate::messagestuff::message_server::serverpacket::IntoPacket;
 use std::{io::Write, net::TcpStream};
+use std::sync::{Arc, RwLock};
+use crate::loggerstuff::logger::{self, Logger};
 pub trait Serialize: std::fmt::Debug {
     fn to_bytes(&self) -> Vec<u8>;
     fn from_bytes(bytes: Vec<u8>) -> Result<(Self, Vec<u8>), MyError>
@@ -12,12 +14,12 @@ pub trait Serialize: std::fmt::Debug {
 }
 
 pub trait Sendable: std::fmt::Debug + IntoEnvelope {
-    fn send_through(self, stream: &mut TcpStream) -> Result<(), MyError>
+    fn send_through(self, stream: &mut TcpStream, logger: Arc<RwLock<Logger>>) -> Result<(), MyError>
     where
         Self: Sized,
     {
         let env = self.into_envelope();
-        let bytes = env.to_bytes();
+        let bytes = env.to_bytes(logger);
         if stream.write_all(&bytes).is_err() {
             return Err(MyError::TcpStreamError(
                 "Error al escribir en el stream".to_string(),
@@ -31,7 +33,7 @@ pub trait Sendable: std::fmt::Debug + IntoEnvelope {
         Ok(())
     }
 
-    fn sent_to(self, addres: String) -> Result<(), MyError>
+    fn sent_to(self, addres: String, logger: Arc<RwLock<Logger>>) -> Result<(), MyError>
     where
         Self: Sized,
     {
@@ -43,19 +45,19 @@ pub trait Sendable: std::fmt::Debug + IntoEnvelope {
                 ))
             }
         };
-        self.send_through(&mut stream)
+        self.send_through(&mut stream, logger)
     }
 }
 
 impl<T: IntoEnvelope> Sendable for T {}
 
 pub trait ServerSendable: std::fmt::Debug + IntoPacket {
-    fn send_server_through(self, stream: &mut TcpStream) -> Result<(), MyError>
+    fn send_server_through(self, stream: &mut TcpStream, logger: Arc<RwLock<Logger>>) -> Result<(), MyError>
     where
         Self: Sized,
     {
         let packet = self.into_packet();
-        let bytes = packet.to_bytes();
+        let bytes = packet.to_bytes(logger);
         if stream.write_all(&bytes).is_err() {
             return Err(MyError::TcpStreamError(
                 "Error al escribir en el stream".to_string(),
@@ -69,7 +71,7 @@ pub trait ServerSendable: std::fmt::Debug + IntoPacket {
         Ok(())
     }
 
-    fn sent_to(self, addres: String) -> Result<(), MyError>
+    fn sent_to(self, addres: String, logger: Arc<RwLock<Logger>> ) -> Result<(), MyError>
     where
         Self: Sized,
     {
@@ -81,7 +83,7 @@ pub trait ServerSendable: std::fmt::Debug + IntoPacket {
                 ))
             }
         };
-        self.send_server_through(&mut stream)
+        self.send_server_through(&mut stream, logger)
     }
 }
 
