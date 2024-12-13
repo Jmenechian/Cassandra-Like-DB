@@ -14,7 +14,7 @@ use crate::messagestuff::{
 };
 use crate::serverstuff::node_status::Status;
 use crate::serverstuff::{neighbor_node::NeighborNode, node::Node};
-use crate::ConsistentHash;
+use crate::partitioning::consistent_hashing::ConsistentHash;
 use chrono::NaiveDateTime;
 use std::collections::HashMap;
 use std::net::TcpStream;

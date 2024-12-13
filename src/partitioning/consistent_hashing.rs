@@ -1,7 +1,7 @@
-use crate::config::RING_SIZE;
 use crate::serverstuff::neighbor_node::NeighborNode;
-use fasthash::murmur;
 use std::collections::HashMap;
+
+use super::token_map::TokenMap;
 
 #[derive(Debug, Clone)]
 /// El hashing consistente permite la distribución de datos en un clúster,
@@ -14,43 +14,32 @@ use std::collections::HashMap;
 pub struct ConsistentHash<NeighborNode> {
     ring: HashMap<usize, NeighborNode>, // Anillo de nodos con su hash
     rf: usize,                           // Cantidad de réplicas
-    total: usize,
+    token_map: TokenMap,
 }
 
 impl ConsistentHash<NeighborNode> {
     pub fn new(rf: usize) -> Self {
         Self {
-            ring: HashMap::new(),
-            rf,               // Replication Factor
-            total: RING_SIZE, // Cantidad de nodos
+            ring: HashMap::new(),           // Todos los vnodes.
+            rf,                             // Replication Factor
+            token_map: TokenMap::new(rf),   // Posiciones de los vnodes.
         }
     }
 
-    /// Función para calcular el hash de un nodo
-    /// Aplicamos el hash a la dirección del nodo y normalizamos este valor en el anillo de nodos.
-    /// Esto nos da la posicion del nodo en el anillo.
-    pub fn hash(&self, key: &str) -> usize {
-        let tocken: usize = murmur::hash32_aligned_with_seed(key, 0).try_into().unwrap_or(0);
-        tocken % self.total
-    }
-
-    /// Agregar un nodo al anillo
+    /// Se agrega un nodo físico al anillo como tantos vitual nodes nos indica RF.
     pub fn add_node(&mut self, node: NeighborNode) {
-        let mut hash = self.hash(&node.server_ip);
+        let tokens = self.token_map.get_tokens(&node.server_ip);
 
-        while self.ring.contains_key(&hash) {
-            if let Some(node_in_ring) = self.ring.get(&hash) {
-                if *node_in_ring == node {
-                    return;
-                }
+        for hash in tokens {
+            if self.ring.contains_key(&hash) {
+                continue;
             }
-            hash += 1;
-        }
 
-        self.ring.insert(hash, node.clone());
+            self.ring.insert(hash, node.clone());
+        }
     }
 
-    /// Agregar un nodo al anillo
+    /// Asignar los nodos al anillo.
     pub fn add_nodes(&mut self, nodes: Vec<NeighborNode>) {
         for node in nodes {
             self.add_node(node);
@@ -73,7 +62,7 @@ impl ConsistentHash<NeighborNode> {
             }
         }
     }
-    /// Encontrar los nodos responsables de una clave
+    /// Encontrar los nodos responsables de una clave.
     /// Clave: string con los valores que se buscan en la query que corresponden a las columnas de partitions, separados por coma.
     /// Ejemplo: en las tablas de Estados de Vuelo: "Aeropuerto,Date"
     //
@@ -81,15 +70,13 @@ impl ConsistentHash<NeighborNode> {
     /// luego recorremos el anillo hasta que encontramos tres nodos distintos (si RF=3), momento en el cual hemos encontrado
     /// todas las réplicas de esa clave.
     pub fn get_nodes(&self, key: &str) -> Vec<NeighborNode> {
-        //caso borde, 1 o 2 nodos conectados
         let mut nodes: Vec<NeighborNode> = vec![];
 
         if self.ring.is_empty() {
-            println!("Se deben agregar nodos vecinos.");
             return nodes;
         }
 
-        let hash = self.hash(key);
+        let hash = self.token_map.hash(key, None);
         println!("\n\n\nHash: {}", hash);
         println!("Key: {}\n\n\n", key);
         let mut keys = self.ring.keys().collect::<Vec<&usize>>();
@@ -99,8 +86,13 @@ impl ConsistentHash<NeighborNode> {
         let result: Vec<_> = keys[idx..].to_vec();
         println!("\n\n\nRing: {:?}", self.ring);
         println!("Result: {:?}\n\n\n", result);
+
         for node_idx in result {
             let node = self.ring.get(node_idx).unwrap();
+            if nodes.contains(&node) {
+                continue;
+            }
+
             nodes.push(node.clone());
 
             if nodes.len() == self.rf {
@@ -157,9 +149,9 @@ mod tests {
 
         let nodes_result = hashing.get_nodes(&key);
 
-        let first = NeighborNode::new("2");
-        let second = NeighborNode::new("1");
-        let third = NeighborNode::new("4");
+        let first = NeighborNode::new("4");
+        let second = NeighborNode::new("8");
+        let third = NeighborNode::new("6");
 
         assert_eq!(nodes_result[0].server_ip, first.server_ip);
         assert_eq!(nodes_result[1].server_ip, second.server_ip);
@@ -190,9 +182,9 @@ mod tests {
 
         let nodes_result = hashing.get_nodes(&key);
 
-        let first = NeighborNode::new("8");
-        let second = NeighborNode::new("2");
-        let third = NeighborNode::new("1");
+        let first = NeighborNode::new("2");
+        let second = NeighborNode::new("4");
+        let third = NeighborNode::new("5");
 
         assert_eq!(nodes_result[0].server_ip, first.server_ip);
         assert_eq!(nodes_result[1].server_ip, second.server_ip);
@@ -222,14 +214,14 @@ mod tests {
         hashing.add_nodes(nodes);
 
         let nodes_result = hashing.get_nodes(&key);
+        println!("{:?}", nodes_result);
 
         let first = NeighborNode::new("2");
-        let second = NeighborNode::new("1");
-        let third = NeighborNode::new("4");
+        let second = NeighborNode::new("6");
+        let third = NeighborNode::new("3");
 
         assert_eq!(nodes_result[0].server_ip, first.server_ip);
         assert_eq!(nodes_result[1].server_ip, second.server_ip);
         assert_eq!(nodes_result[2].server_ip, third.server_ip);
     }
 }
-

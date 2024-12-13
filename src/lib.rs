@@ -1,5 +1,4 @@
 pub mod config;
-pub mod consistent_hashing;
 pub mod utils;
 
 pub mod cql {
@@ -58,12 +57,14 @@ pub mod encryption {
     pub mod encrypt;
 }
 
-pub use cql::query::Query;
+pub mod partitioning {
+    pub mod consistent_hashing;
+    pub mod token_map;
+}
 
+pub use cql::query::Query;
 pub use clientstuff::client_cql;
 pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
-
-pub use consistent_hashing::ConsistentHash;
 
 pub mod gui {
     pub mod app;

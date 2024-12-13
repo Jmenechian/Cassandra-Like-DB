@@ -1,4 +1,4 @@
-use crate::config::{self, RING_SIZE};
+use crate::config;
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::Sendable;
 use crate::messagestuff::message_cql::cqlenvelope::*;
