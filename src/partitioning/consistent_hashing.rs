@@ -119,6 +119,15 @@ impl ConsistentHash<NeighborNode> {
 
         nodes
     }
+
+    pub fn new_node_in_ring(&mut self, new_node: &NeighborNode) {
+        // Agregar nodo al ring y ver las posiciones de sus vnodes.
+
+        // Ver vnodes siguientes a estas posiciones.
+
+        // Si soy ese nodo le mando INSERT de las lineas que le correspondes (de las 3 tablas que usamos).
+        // Veo si una linea le corresponde viendo los hash de aeroport,date.
+    }
 }
 
 #[cfg(test)]

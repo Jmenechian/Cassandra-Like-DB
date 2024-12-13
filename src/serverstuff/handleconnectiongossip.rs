@@ -1,5 +1,5 @@
 use super::node_initializer::try_connect;
-use crate::config::TABLE_PATH;
+use crate::config::{RF, TABLE_PATH};
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
 use crate::messagestuff::{
@@ -8,6 +8,7 @@ use crate::messagestuff::{
         queryservermessage::QueryServerMessage, serverpacket::Packet, serverpacket::ServerMessage,
     },
 };
+use crate::partitioning::consistent_hashing::ConsistentHash;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
 use crate::serverstuff::node_status::Status;
@@ -108,15 +109,16 @@ fn handle_message_gossip(
         }
     }
     let res = node_guard.add_neighbor(new_neighbor.clone());
-    if res > 0{
-        println!("{:?}", new_neighbor);
+    if res > 0 {
         if res == 1 && new_neighbor.status == Status::Connected {
             handle_send_backlog(&node_guard.number, &new_neighbor);
         }
 
-        // if res == 2 {
-        //     new_node_in_ring(new_node, node.neighbor);
-        // }
+        if res == 2 {
+            let mut hashing = ConsistentHash::new(RF);
+            hashing.add_nodes(node_guard.neighbors.to_vec());
+            hashing.new_node_in_ring(&new_neighbor);
+        }
 
         if show {
             println!("G   Mis vecinos son:");
