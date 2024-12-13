@@ -345,7 +345,7 @@ pub fn send_query_to_nodes(
                     // all_response.push(result);
                     all_response_dict.insert(neighbor.server_ip.clone(), result);
 
-                    if consistency_level == config::ONE && all_response.len() == 1 {
+                    if consistency_level == config::ONE && all_response_dict.len() == 1{
                         if is_select {
                             return Ok(process_results(
                                 &mut all_response_dict,

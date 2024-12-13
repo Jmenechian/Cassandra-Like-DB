@@ -30,9 +30,10 @@ impl ConnectionServer {
         }
     }
 
-    pub fn initialize_with_any_node() -> Result<Self, MyError> {
+    pub fn initialize_with_any_node(port: String) -> Result<Self, MyError> {
         // Buscamos un nodo conectado:
-        let stream: Option<TcpStream> = match Client::connect_with_node() {
+        let mut client = Client::initialize(port.to_string());
+        let stream: Option<TcpStream> = match client.connect() {
             Ok(stream) => Some(stream),
             Err(e) => {
                 return Err(MyError::TcpStreamError(e.to_string()));

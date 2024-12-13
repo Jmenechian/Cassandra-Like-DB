@@ -7,7 +7,7 @@ pub static CLIENT_PORT: &str = "9042";
 
 pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Hashing.
 
-pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
+pub static RING_SIZE: usize = 8000; // Cantidad total de nodos servidor
 
 pub static TABLE_PATH: &str = "src/tables";
 pub static TABLE_ORIGIN_NAME: &str = "origin";

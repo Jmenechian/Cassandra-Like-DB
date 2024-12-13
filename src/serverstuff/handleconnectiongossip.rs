@@ -107,11 +107,16 @@ fn handle_message_gossip(
             new_neighbor.disconnect_node();
         }
     }
-    if node_guard.add_neighbor(new_neighbor.clone()) {
+    let res = node_guard.add_neighbor(new_neighbor.clone());
+    if res > 0{
         println!("{:?}", new_neighbor);
-        if new_neighbor.status == Status::Connected {
+        if res == 1 && new_neighbor.status == Status::Connected {
             handle_send_backlog(&node_guard.number, &new_neighbor);
         }
+
+        // if res == 2 {
+        //     new_node_in_ring(new_node, node.neighbor);
+        // }
 
         if show {
             println!("G   Mis vecinos son:");

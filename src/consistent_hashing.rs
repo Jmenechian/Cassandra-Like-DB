@@ -1,7 +1,7 @@
 use crate::config::RING_SIZE;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use fasthash::murmur;
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 /// El hashing consistente permite la distribución de datos en un clúster,
@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 /// Anillo de nodos: Se utiliza un arbol binario que permite encontrar los nodos en el anillo, se guarda:
 /// el hash de la Adress (IP:puerto) del nodo normalizada por la cantidad de nodos, y el nodo.
 pub struct ConsistentHash<NeighborNode> {
-    ring: BTreeMap<usize, NeighborNode>, // Anillo de nodos con su hash
+    ring: HashMap<usize, NeighborNode>, // Anillo de nodos con su hash
     rf: usize,                           // Cantidad de réplicas
     total: usize,
 }
@@ -20,7 +20,7 @@ pub struct ConsistentHash<NeighborNode> {
 impl ConsistentHash<NeighborNode> {
     pub fn new(rf: usize) -> Self {
         Self {
-            ring: BTreeMap::new(),
+            ring: HashMap::new(),
             rf,               // Replication Factor
             total: RING_SIZE, // Cantidad de nodos
         }
@@ -30,7 +30,7 @@ impl ConsistentHash<NeighborNode> {
     /// Aplicamos el hash a la dirección del nodo y normalizamos este valor en el anillo de nodos.
     /// Esto nos da la posicion del nodo en el anillo.
     pub fn hash(&self, key: &str) -> usize {
-        let tocken: usize = murmur::hash32(key).try_into().unwrap_or(0);
+        let tocken: usize = murmur::hash32_aligned_with_seed(key, 0).try_into().unwrap_or(0);
         tocken % self.total
     }
 
@@ -57,6 +57,22 @@ impl ConsistentHash<NeighborNode> {
         }
     }
 
+
+    fn find_closest_greater_index(&self, vec: &Vec<&usize>, target: &usize) -> Option<usize> {
+        // Realizamos la búsqueda binaria
+        let result = vec.binary_search(&target);
+    
+        match result {
+            Ok(index) => Some(index), // Si encontramos el valor exacto, devolvemos el índice
+            Err(index) => {
+                if index < vec.len() {
+                    Some(index) // El índice del siguiente valor mayor
+                } else {
+                    None // Si el índice es fuera de los límites del vector
+                }
+            }
+        }
+    }
     /// Encontrar los nodos responsables de una clave
     /// Clave: string con los valores que se buscan en la query que corresponden a las columnas de partitions, separados por coma.
     /// Ejemplo: en las tablas de Estados de Vuelo: "Aeropuerto,Date"
@@ -74,11 +90,18 @@ impl ConsistentHash<NeighborNode> {
         }
 
         let hash = self.hash(key);
+        println!("\n\n\nHash: {}", hash);
+        println!("Key: {}\n\n\n", key);
+        let mut keys = self.ring.keys().collect::<Vec<&usize>>();
+        keys.sort();
 
-        let result = self.ring.range(hash..);
-
-        for node in result {
-            nodes.push(node.1.clone());
+        let idx = self.find_closest_greater_index(&keys, &hash).unwrap_or(0);
+        let result: Vec<_> = keys[idx..].to_vec();
+        println!("\n\n\nRing: {:?}", self.ring);
+        println!("Result: {:?}\n\n\n", result);
+        for node_idx in result {
+            let node = self.ring.get(node_idx).unwrap();
+            nodes.push(node.clone());
 
             if nodes.len() == self.rf {
                 break;
@@ -86,13 +109,15 @@ impl ConsistentHash<NeighborNode> {
         }
 
         if nodes.len() < self.rf {
-            let result = self.ring.range(0..);
+            let result: Vec<_> = keys.to_vec();
 
-            for node in result {
-                if nodes.contains(node.1) {
+            for node_idx in result {
+                let node = self.ring.get(node_idx).unwrap();
+
+                if nodes.contains(node) {
                     continue;
                 }
-                nodes.push(node.1.clone());
+                nodes.push(node.clone());
 
                 if nodes.len() == self.rf {
                     break;
@@ -207,3 +232,4 @@ mod tests {
         assert_eq!(nodes_result[2].server_ip, third.server_ip);
     }
 }
+

@@ -140,15 +140,4 @@ impl Client {
         }
     }
 
-    /// Devolvemos el stream con el primer nodo conectado que se encuentre.
-    /// En caso de no haber nodos conectados se devuleve un error.
-    pub fn connect_with_node() -> Result<TcpStream> {
-        for number_node in 1..=RING_SIZE {
-            let mut client = Client::initialize(number_node.to_string());
-            if let Ok(stream) = client.connect() {
-                return Ok(stream);
-            }
-        }
-        Err(MyError::TcpStreamError("Error in TcpStream".to_string()).into())
-    }
 }

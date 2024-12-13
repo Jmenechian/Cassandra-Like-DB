@@ -64,24 +64,24 @@ impl Node {
     }
 
     /// Se agrega un nodo en particular a los ya existentes.
-    pub fn add_neighbor(&mut self, neighbor_node: NeighborNode) -> bool {
+    pub fn add_neighbor(&mut self, neighbor_node: NeighborNode) -> u8 {
         if let Some(pos) = self
             .neighbors
             .iter()
             .position(|n| n.number == neighbor_node.number)
         {
-            if self.neighbors[pos].status != neighbor_node.status {
+            if self.neighbors[pos].status != neighbor_node.status { //ya existias
                 self.neighbors[pos] = neighbor_node;
-                true
+                1
             } else if self.neighbors[pos].time < neighbor_node.time {
                 self.neighbors[pos] = neighbor_node;
-                false
+                0
             } else {
-                false
+                0
             }
         } else {
-            self.neighbors.push(neighbor_node);
-            true
+            self.neighbors.push(neighbor_node); //nuevo
+            2
         }
     }
 
@@ -117,7 +117,7 @@ impl Node {
     /// Proceso la query y devuelve la tabla en formato String.
     pub fn process_query(&self, query: &mut Query) -> Result<Vec<String>, MyError> {
         query.parse_query()?;
-
+        println!("\n\n Query: {:?} \n\n", query);
         let path_table: Arc<RwLock<String>>;
 
         if [
