@@ -39,9 +39,6 @@ fn handle_message_query(
     );
     let msg = match node.process_query(&mut query) {
         Ok(s) => {
-            if SHOW_SERVER {
-                println!("RESULTADO, TABLA: {:?}", s);
-            }
             ResultRowsServerMessage {
                 table: query.get_table(),
                 rows_count: s.len() as i32,
@@ -166,9 +163,9 @@ pub fn handle_connection_server(
 ) -> Result<(), MyError> {
     match Packet::from_stream(stream, logger) {
         Ok(packet) => {
-            if SHOW_SERVER {
-                println!("S   El packet recibido es: {:?}", packet);
-            }
+            // if SHOW_SERVER {
+            //     println!("S   El packet recibido es: {:?}", packet);
+            // }
             match packet.body {
                 ServerMessage::Query(query) => handle_message_query(node, query, stream),
                 ServerMessage::ReadRepair(msg) => handle_message_read_repair(node, msg),

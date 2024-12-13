@@ -26,14 +26,12 @@ impl Logger {
 
     /// Escribe un mensaje en el archivo de logs
     pub fn write_log(&mut self, message: &str) -> Result<(), MyError> {
-        println!("En write log de Logger con message: {:?}", message);
         let now = Local::now();
         let date = now.format("%Y-%m-%d %H:%M:%S").to_string();
-        let log = format!("{},{}", date, message);
+        let log = format!("{} {}", date, message);
 
-        println!("{}", log);
+        println!("\n- {}", log);
         append_row(&mut self.file, &[log])?;
-        println!("Despues de write");
         Ok(())
     }
 }

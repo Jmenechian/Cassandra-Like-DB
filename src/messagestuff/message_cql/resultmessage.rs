@@ -3,6 +3,8 @@
 //
 // Estos son los mensajes que se envian como respuesta a una consulta
 
+// use core::fmt;
+use std::fmt;
 use crate::config;
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::*;
@@ -97,6 +99,18 @@ impl IntoEnvelope for ResultMessage {
 
 pub trait IntoResultMessage: std::fmt::Debug {
     fn into_result_message(self) -> ResultMessage;
+}
+
+impl fmt::Display for ResultMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.body {
+            ResultBody::Void(_) => write!(f, "[void]"),
+            ResultBody::Rows(rows_msg) => {
+                write!(f, "{:?}", rows_msg.rows_content)
+            }
+            ResultBody::Empty(_) => write!(f, "[empty]"),
+        }
+    }
 }
 
 #[cfg(test)]

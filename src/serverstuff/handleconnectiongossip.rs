@@ -138,9 +138,9 @@ pub fn handle_connection_gossip(
     let logger_clone = Arc::clone(&logger);
     match Packet::from_stream(stream, logger) {
         Ok(packet) => {
-            if SHOW_GOSSIP {
-                println!("G   El packet recibido es: {:?}", packet);
-            }
+            // if SHOW_GOSSIP {
+            //     println!("G   El packet recibido es: {:?}", packet);
+            // }
             match packet.body {
                 ServerMessage::Gossip(mut gossip) => {
                     handle_message_gossip(node, &mut gossip, logger_clone)?;

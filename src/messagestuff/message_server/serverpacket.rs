@@ -59,7 +59,7 @@ pub struct Packet {
 }
 
 impl Packet {
-    // Para serializar el mensaje
+    /// Para serializar el mensaje
     pub fn to_bytes(&self, logger: Arc<RwLock<Logger>>) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&byte_to_byte(self.opcode as u8));
@@ -80,12 +80,11 @@ impl Packet {
         bytes.extend_from_slice(&int_to_bytes(final_length));
         bytes.extend_from_slice(&final_body);
 
-        let _ = Packet::write_log(logger, self, "SEND".to_string()); //////////// REVISAR
-
+        let _ = Packet::write_log(logger, self, "[SENT]    ".to_string()); //////////// REVISAR
         bytes
     }
 
-    // Para deseriarlizar el mensaje
+    /// Para deseriarlizar el mensaje
     pub fn from_stream(
         stream: &mut TcpStream,
         logger: Arc<RwLock<Logger>>,
@@ -144,8 +143,7 @@ impl Packet {
             body: _body,
         };
 
-        Packet::write_log(logger, &packet, "RECEIVED".to_string())?;
-
+        Packet::write_log(logger, &packet, "[RECEIVED]".to_string())?;
         Ok(packet)
     }
 
@@ -162,18 +160,28 @@ impl Packet {
             }
         };
 
-        match packet.opcode {
-            ServerOpcode::GossipMessage => {
+        match &packet.body {
+            ServerMessage::Gossip(msg) => {
                 if SHOW_GOSSIP {
-                    let message = format!("[{}],[GOSSIP],{:?}", msg_type, packet);
+                    let message = format!("[{}] [SERVER] Gossip protocol. Node at: {} with status: {:?}", msg_type, msg.ip, msg.status);
                     logger_guard.write_log(message.as_str())?;
                 }
             }
-            _ => {
-                if SHOW_SERVER {
-                    let message = format!("[{}],[SERVER],{:?}", msg_type, packet);
-                    logger_guard.write_log(message.as_str())?;
-                }
+            ServerMessage::Query(msg) => {
+                let message = format!("[SERVER] {} Query: {}", msg_type, msg.query.trim());
+                logger_guard.write_log(message.as_str())?;
+            }
+            ServerMessage::Result(msg) => {
+                let message = format!("[SERVER] {} Result: {}", msg_type, msg);
+                logger_guard.write_log(message.as_str())?;
+            }
+            ServerMessage::ErrorServer(msg) => {
+                let message = format!("[SERVER] {} Error: {}", msg_type, msg.error);
+                logger_guard.write_log(message.as_str())?;
+            }
+            ServerMessage::ReadRepair(msg) => {
+                let message = format!("[SERVER] {} Read Repair protocol. Rows to keep: {:?}", msg_type, msg.rows_to_keep);
+                logger_guard.write_log(message.as_str())?;
             }
         };
         Ok(())

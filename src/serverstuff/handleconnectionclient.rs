@@ -1,26 +1,21 @@
-use crate::config::{self, SHOW_CLIENT, TABLE_PATH};
-use crate::config::{RF, TABLE_DESTINATION_NAME, TABLE_ORIGIN_NAME};
+use crate::config::{self, SHOW_CLIENT, TABLE_PATH, RF, TABLE_DESTINATION_NAME, TABLE_ORIGIN_NAME};
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
 use crate::loggerstuff::logger::Logger;
-use crate::messagestuff::message_cql::querymessage::QueryMessage;
-use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
 use crate::messagestuff::{
     message::*,
-    message_cql::{cqlenvelope::*, errormessage::*, resultemptymessage::*, resultrowsmessage::*},
+    message_cql::{cqlenvelope::*, errormessage::*, resultemptymessage::*, resultrowsmessage::*, querymessage::QueryMessage},
     message_server::{
         queryservermessage::QueryServerMessage, resultservermessage::*, serverpacket::Packet,
-        serverpacket::ServerMessage,
+        serverpacket::ServerMessage, readrepairmessage::ReadRepairMessage,
     },
 };
-use crate::serverstuff::node_status::Status;
-use crate::serverstuff::{neighbor_node::NeighborNode, node::Node};
+use crate::serverstuff::{neighbor_node::NeighborNode, node::Node, node_status::Status};
 use crate::ConsistentHash;
 use chrono::NaiveDateTime;
 use std::collections::HashMap;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
-
 use std::fs::OpenOptions;
 use std::io::Write;
 
@@ -87,9 +82,6 @@ pub fn handle_connection_client(
         match Envelope::from_stream(stream, Some(logger_clone)) {
             /////////////////////// REVISAR
             Ok(env) => {
-                // if SHOW_CLIENT {
-                //     println!("\nC   El env recibido es: {:?}", env);
-                // }
                 let logger_clone = Arc::clone(&logger);
                 match env.body {
                     CqlMessage::Query(querymessage) => {
@@ -327,16 +319,20 @@ pub fn send_query_to_nodes(
     };
 
     if SHOW_CLIENT {
-        println!("\n - La key es: {}", key);
-        println!("\n - La query es: {:?}", query);
-        println!(
-            "
-        C   vecinos: {:?}
-        C   Los nodos que tienen la info son: {:?}\n",
-            node_guard.neighbors, nodes_with_result
+        println!("\n------------------------------------------");
+        println!("C   La key es: {}", key);
+        println!("C   La query es: {:?}", query);
+        println!("C   vecinos: {:?}", node_guard.neighbors
+                .iter()
+                .map(|neighbor| neighbor.server_ip.clone())
+                .collect::<Vec<_>>());
+        println!("C   Los nodos que tienen la info son: {:?}\n", nodes_with_result
+                .iter()
+                .map(|neighbor| neighbor.server_ip.clone())
+                .collect::<Vec<_>>(),
         );
     }
-    println!("nodes with result: {:?}", nodes_with_result);
+    // println!("nodes with result: {:?}", nodes_with_result);
 
     let is_select = query.query.contains("SELECT");
 
@@ -398,9 +394,9 @@ pub fn send_query_to_nodes(
 
             match Packet::from_stream(&mut socket, node_guard.logger.clone()) {
                 Ok(packet) => {
-                    if SHOW_CLIENT {
-                        println!("\nC   El packet recibido es: {:?}", packet);
-                    }
+                    // if SHOW_CLIENT {
+                    //     println!("\nC   El packet recibido es: {:?}", packet);
+                    // }
                     match packet.body {
                         ServerMessage::Result(resultmessage) => match resultmessage.body {
                             ResultServerBody::Rows(r) => {
