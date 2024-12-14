@@ -60,6 +60,8 @@ pub mod encryption {
 pub mod partitioning {
     pub mod consistent_hashing;
     pub mod token_map;
+    pub mod queries;
+    pub mod new_node_aggregator;
 }
 
 pub use cql::query::Query;

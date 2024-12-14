@@ -1,5 +1,5 @@
 use super::node_initializer::try_connect;
-use crate::config::{RF, TABLE_PATH};
+use crate::config::TABLE_PATH;
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
 use crate::messagestuff::{
@@ -8,7 +8,7 @@ use crate::messagestuff::{
         queryservermessage::QueryServerMessage, serverpacket::Packet, serverpacket::ServerMessage,
     },
 };
-use crate::partitioning::consistent_hashing::ConsistentHash;
+use crate::partitioning::new_node_aggregator::NewNodeAgregator;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
 use crate::serverstuff::node_status::Status;
@@ -115,9 +115,8 @@ fn handle_message_gossip(
         }
 
         if res == 2 {
-            let mut hashing = ConsistentHash::new(RF);
-            hashing.add_nodes(node_guard.neighbors.to_vec());
-            hashing.new_node_in_ring(&new_neighbor);
+            let mut agg_node = NewNodeAgregator::new(new_neighbor, node_guard.clone());
+            agg_node.new_node_in_ring();
         }
 
         if show {

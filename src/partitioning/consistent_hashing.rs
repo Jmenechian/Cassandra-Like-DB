@@ -1,7 +1,7 @@
-use crate::serverstuff::neighbor_node::NeighborNode;
-use std::collections::HashMap;
-
+use crate::serverstuff::{neighbor_node::NeighborNode, node_status::Status};
 use super::token_map::TokenMap;
+
+use std::{collections::HashMap, vec};
 
 #[derive(Debug, Clone)]
 /// El hashing consistente permite la distribución de datos en un clúster,
@@ -12,9 +12,9 @@ use super::token_map::TokenMap;
 /// Anillo de nodos: Se utiliza un arbol binario que permite encontrar los nodos en el anillo, se guarda:
 /// el hash de la Adress (IP:puerto) del nodo normalizada por la cantidad de nodos, y el nodo.
 pub struct ConsistentHash<NeighborNode> {
-    ring: HashMap<usize, NeighborNode>, // Anillo de nodos con su hash
-    rf: usize,                           // Cantidad de réplicas
-    token_map: TokenMap,
+    pub ring: HashMap<usize, NeighborNode>, // Anillo de nodos con su hash
+    pub rf: usize,                           // Cantidad de réplicas
+    pub token_map: TokenMap,
 }
 
 impl ConsistentHash<NeighborNode> {
@@ -47,7 +47,7 @@ impl ConsistentHash<NeighborNode> {
     }
 
 
-    fn find_closest_greater_index(&self, vec: &Vec<&usize>, target: &usize) -> Option<usize> {
+    pub fn find_closest_greater_index(&self, vec: &Vec<&usize>, target: &usize) -> Option<usize> {
         // Realizamos la búsqueda binaria
         let result = vec.binary_search(&target);
     
@@ -79,54 +79,49 @@ impl ConsistentHash<NeighborNode> {
         let hash = self.token_map.hash(key, None);
         println!("\n\n\nHash: {}", hash);
         println!("Key: {}\n\n\n", key);
-        let mut keys = self.ring.keys().collect::<Vec<&usize>>();
-        keys.sort();
+        let keys = self.get_keys_in_order();
 
         let idx = self.find_closest_greater_index(&keys, &hash).unwrap_or(0);
         let result: Vec<_> = keys[idx..].to_vec();
         println!("\n\n\nRing: {:?}", self.ring);
         println!("Result: {:?}\n\n\n", result);
 
-        for node_idx in result {
-            let node = self.ring.get(node_idx).unwrap();
-            if nodes.contains(&node) {
-                continue;
-            }
+        let mut connected_nodes = 0;
 
-            nodes.push(node.clone());
+        self.get_nodes_in_partition(result, &mut connected_nodes, &mut nodes);
 
-            if nodes.len() == self.rf {
-                break;
-            }
-        }
-
-        if nodes.len() < self.rf {
+        if connected_nodes < self.rf {
             let result: Vec<_> = keys.to_vec();
-
-            for node_idx in result {
-                let node = self.ring.get(node_idx).unwrap();
-
-                if nodes.contains(node) {
-                    continue;
-                }
-                nodes.push(node.clone());
-
-                if nodes.len() == self.rf {
-                    break;
-                }
-            }
+            self.get_nodes_in_partition(result, &mut connected_nodes, &mut nodes)
         }
 
         nodes
     }
 
-    pub fn new_node_in_ring(&mut self, new_node: &NeighborNode) {
-        // Agregar nodo al ring y ver las posiciones de sus vnodes.
+    fn get_nodes_in_partition(&self, result: Vec<&usize>, connected_nodes: &mut usize, nodes: &mut Vec<NeighborNode>) {
+        for node_idx in result {
+            let node = self.ring.get(node_idx).unwrap();
 
-        // Ver vnodes siguientes a estas posiciones.
+            if nodes.contains(node) {
+                continue;
+            }
 
-        // Si soy ese nodo le mando INSERT de las lineas que le correspondes (de las 3 tablas que usamos).
-        // Veo si una linea le corresponde viendo los hash de aeroport,date.
+            nodes.push(node.clone());
+
+            if node.status == Status::Connected {
+                *connected_nodes += 1;
+            }
+
+            if *connected_nodes == self.rf {
+                break;
+            }
+        }
+    }
+
+    pub fn get_keys_in_order(&self) -> Vec<&usize> {
+        let mut keys = self.ring.keys().collect::<Vec<&usize>>();
+        keys.sort();
+        keys
     }
 }
 
