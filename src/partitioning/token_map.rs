@@ -7,11 +7,11 @@ use crate::config::{RING_SIZE, SEED_0, SEED_1, SEED_2};
 #[derive(Debug, Clone)]
 /// Representa un Token Map de Cassandra.
 /// Dado el valor del token (con SEED_0) de un nodo obtenemos todas las posiciones en las que se encuantran sus vnodes.
-/// En Cassandra cada token introducido agrega hasta 2 * (RF - 1) nuevas posiciones de vnodes. Por lo que nosotros decidimos 
+/// En Cassandra cada token introducido agrega hasta 2 * (RF - 1) nuevas posiciones de vnodes. Por lo que nosotros decidimos
 /// agregar RF cantidad de vnodes por cada nodo físico.
 pub struct TokenMap {
-    map: HashMap<usize, Vec<usize>>,    // Anillo de nodos con su hash
-    rf: usize,                          // Cantidad de réplicas
+    map: HashMap<usize, Vec<usize>>, // Anillo de nodos con su hash
+    rf: usize,                       // Cantidad de réplicas
     total_buckets: usize,
 }
 
@@ -20,7 +20,7 @@ impl TokenMap {
     pub fn new(rf: usize) -> Self {
         Self {
             map: HashMap::new(),
-            rf, 
+            rf,
             total_buckets: RING_SIZE,
         }
     }
@@ -33,10 +33,12 @@ impl TokenMap {
     pub fn hash(&self, key: &str, seed: Option<u32>) -> usize {
         let seed_value = match seed {
             Some(seed) => seed,
-            None => SEED_0
+            None => SEED_0,
         };
 
-        let tocken: usize = murmur::hash32_aligned_with_seed(key, seed_value).try_into().unwrap_or(0);
+        let tocken: usize = murmur::hash32_aligned_with_seed(key, seed_value)
+            .try_into()
+            .unwrap_or(0);
         tocken % self.total_buckets
     }
 
@@ -47,7 +49,7 @@ impl TokenMap {
         if let Some(tokens) = self.map.get(&token) {
             return tokens.to_vec();
         }
-        
+
         self.assign_tokens(value)
     }
 
@@ -55,7 +57,6 @@ impl TokenMap {
         let mut num_replicas = 0;
         let mut tokens = vec![];
         while num_replicas < self.rf {
-
             let seed = match num_replicas {
                 0 => SEED_0,
                 1 => SEED_1,

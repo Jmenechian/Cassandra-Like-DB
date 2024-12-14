@@ -113,7 +113,7 @@ pub fn integrate_simulator(
     println!("Query: {:?}", query);
     let _ = connection_server.make_query(query, config::ONE);
     let result = channel.recv().unwrap();
-    
+
     println!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA {:?}", result);
     let flight_in_simulator: Vec<&str> = result[0].split(",").collect();
     if flight_in_simulator.len() == 10 {

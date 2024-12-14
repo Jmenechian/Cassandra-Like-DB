@@ -12,9 +12,9 @@ use crate::messagestuff::{
         serverpacket::ServerMessage,
     },
 };
+use crate::partitioning::consistent_hashing::ConsistentHash;
 use crate::serverstuff::node_status::Status;
 use crate::serverstuff::{neighbor_node::NeighborNode, node::Node};
-use crate::partitioning::consistent_hashing::ConsistentHash;
 use chrono::NaiveDateTime;
 use std::collections::HashMap;
 use std::net::TcpStream;
@@ -345,7 +345,7 @@ pub fn send_query_to_nodes(
                     // all_response.push(result);
                     all_response_dict.insert(neighbor.server_ip.clone(), result);
 
-                    if consistency_level == config::ONE && all_response_dict.len() == 1{
+                    if consistency_level == config::ONE && all_response_dict.len() == 1 {
                         if is_select {
                             return Ok(process_results(
                                 &mut all_response_dict,

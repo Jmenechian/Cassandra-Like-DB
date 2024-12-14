@@ -59,13 +59,13 @@ pub mod encryption {
 
 pub mod partitioning {
     pub mod consistent_hashing;
-    pub mod token_map;
-    pub mod queries;
     pub mod new_node_aggregator;
+    pub mod queries;
+    pub mod token_map;
 }
 
-pub use cql::query::Query;
 pub use clientstuff::client_cql;
+pub use cql::query::Query;
 pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
 
 pub mod gui {

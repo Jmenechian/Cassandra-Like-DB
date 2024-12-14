@@ -70,7 +70,8 @@ impl Node {
             .iter()
             .position(|n| n.number == neighbor_node.number)
         {
-            if self.neighbors[pos].status != neighbor_node.status { //ya existias
+            if self.neighbors[pos].status != neighbor_node.status {
+                //ya existias
                 self.neighbors[pos] = neighbor_node;
                 1
             } else if self.neighbors[pos].time < neighbor_node.time {

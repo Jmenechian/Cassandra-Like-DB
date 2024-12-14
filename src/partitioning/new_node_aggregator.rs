@@ -1,16 +1,31 @@
 use crate::{
-    config::{RF, TABLE_PATH}, 
-    errors::my_errors::MyError, 
-    messagestuff::{message::ServerSendable, message_server::{queryservermessage::QueryServerMessage, serverpacket::Packet}}, 
-    partitioning::{queries::{get_create_query, get_insert_query, get_partition_delete_query}, consistent_hashing::ConsistentHash}, 
-    serverstuff::{neighbor_node::NeighborNode, node::Node}, 
-    utils::{get_file_headers, get_reader}, 
-    Query
+    config::{RF, TABLE_PATH},
+    errors::my_errors::MyError,
+    messagestuff::{
+        message::ServerSendable,
+        message_server::{queryservermessage::QueryServerMessage, serverpacket::Packet},
+    },
+    partitioning::{
+        consistent_hashing::ConsistentHash,
+        queries::{get_create_query, get_insert_query, get_partition_delete_query},
+    },
+    serverstuff::{neighbor_node::NeighborNode, node::Node},
+    utils::{get_file_headers, get_reader},
+    Query,
 };
 
-use std::{collections::HashMap, fs::File, io::{BufRead, BufReader}, net::TcpStream, vec};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{BufRead, BufReader},
+    net::TcpStream,
+    vec,
+};
 
 #[derive(Debug, Clone)]
+/// Estructura encargada de agregar un nuevo nodo conectado a la red.
+/// Se le asigna posiciones a sus vnodes en el ring.
+/// Se le pasa la informacion de las tablas que le corresponde y se borra de los nodos que ya no deberían tenerla.
 pub struct NewNodeAgregator {
     new_node: NeighborNode,
     node: Node,
@@ -19,10 +34,15 @@ pub struct NewNodeAgregator {
 }
 
 impl NewNodeAgregator {
+    /// Se agrega el nodo al ring.
     pub fn new(new_node: NeighborNode, node: Node) -> Self {
         let mut hashing = ConsistentHash::new(RF);
         hashing.add_nodes(node.neighbors.to_vec());
-        let tables = vec!["origin".to_string(), "destination".to_string(), "flights_in_progress".to_string()];
+        let tables = vec![
+            "origin".to_string(),
+            "destination".to_string(),
+            "flights_in_progress".to_string(),
+        ];
         Self {
             new_node,
             node,
@@ -31,6 +51,9 @@ impl NewNodeAgregator {
         }
     }
 
+    /// Se indica al nuevo nodo que cree las tablas que le faltan.
+    /// El nodo que identidicó que se conecto un nuevo nodo, borra de sus tablas las lineas que le corresponden
+    /// al nuevo nodo, y le pasa a este los INSERTs que debe hacer para tener la info que le corresponde.
     pub fn new_node_in_ring(&mut self) {
         let mut lines_to_insert: HashMap<String, Vec<Vec<String>>> = HashMap::new();
 
@@ -41,7 +64,10 @@ impl NewNodeAgregator {
         let keys = self.hashing.get_keys_in_order();
         for position_new_node in tokens {
             let next_pos = position_new_node + 1;
-            let next_node_idx = self.hashing.find_closest_greater_index(&keys, &next_pos).unwrap_or(0);
+            let next_node_idx = self
+                .hashing
+                .find_closest_greater_index(&keys, &next_pos)
+                .unwrap_or(0);
             if let Some(next_node) = self.hashing.ring.get(&next_node_idx) {
                 // Si soy ese nodo le mando INSERT de las lineas que le correspondes (de las 3 tablas que usamos):
                 if next_node.server_ip == self.node.server_ip {
@@ -50,9 +76,10 @@ impl NewNodeAgregator {
                     for table in hashmap_lines.keys() {
                         if let Some(new_lines) = hashmap_lines.get(table) {
                             // Usamos entry() para modificar el valor del HashMap:
-                            lines_to_insert.entry(table.to_string())
-                            .or_insert(vec![]) // Si la clave no existe, se inicializa con un vector vacío
-                            .extend(new_lines.clone()); // Concatenamos el nuevo vector
+                            lines_to_insert
+                                .entry(table.to_string())
+                                .or_default() // Si la clave no existe, se inicializa con un vector vacío
+                                .extend(new_lines.clone()); // Concatenamos el nuevo vector
                         }
                     }
                 }
@@ -60,7 +87,6 @@ impl NewNodeAgregator {
         }
 
         self.send_info(lines_to_insert);
-        
     }
 
     fn get_lines_to_insert(&self) -> HashMap<String, Vec<Vec<String>>> {
@@ -100,7 +126,11 @@ impl NewNodeAgregator {
         Ok(rdr_read)
     }
 
-    fn filter_lines(&self, lines: Vec<Vec<String>>, table: &str) -> Result<Vec<Vec<String>>, MyError> {
+    fn filter_lines(
+        &self,
+        lines: Vec<Vec<String>>,
+        table: &str,
+    ) -> Result<Vec<Vec<String>>, MyError> {
         let mut result: Vec<Vec<String>> = vec![];
         let headers = self.get_headers(table)?;
         let mut node_maintains_info = false;
@@ -111,18 +141,18 @@ impl NewNodeAgregator {
                 if node_part.server_ip == *self.new_node.server_ip {
                     // El nuevo nodo debería tener la info:
                     result.push(line.clone());
-                } 
+                }
                 if node_part.server_ip == self.node.server_ip {
                     node_maintains_info = true;
                 }
-
             }
 
             if !node_maintains_info {
                 // El nodo anterior no debe mantener la info:
                 let partition: Vec<&str> = key.split(",").collect();
                 let query = get_partition_delete_query(table, partition[0], partition[1]);
-                let mut query = Query::new(query, self.node.number.clone(), self.node.client_ip.clone());
+                let mut query =
+                    Query::new(query, self.node.number.clone(), self.node.client_ip.clone());
                 self.node.process_query(&mut query)?;
             }
         }
@@ -137,12 +167,21 @@ impl NewNodeAgregator {
         Ok(headers)
     }
 
-    fn get_key_representing_partition(&self, headers: Vec<String>, line: Vec<String>) -> Result<String, MyError> {
-        if let (Some(idx_1), Some(idx_2)) = (headers.iter().position(|c| *c == "airport"), headers.iter().position(|c| *c == "date")) {
+    fn get_key_representing_partition(
+        &self,
+        headers: Vec<String>,
+        line: Vec<String>,
+    ) -> Result<String, MyError> {
+        if let (Some(idx_1), Some(idx_2)) = (
+            headers.iter().position(|c| *c == "airport"),
+            headers.iter().position(|c| *c == "date"),
+        ) {
             let key = format!("{},{}", line[idx_1], line[idx_2]);
             return Ok(key);
         }
-        Err(MyError::InvalidColumn("No se encontro la key en la tabla.".to_string()))
+        Err(MyError::InvalidColumn(
+            "No se encontro la key en la tabla.".to_string(),
+        ))
     }
 
     fn send_info(&self, lines: HashMap<String, Vec<Vec<String>>>) {
@@ -162,11 +201,11 @@ impl NewNodeAgregator {
                 println!(" ----- query: {}\n", query);
                 if let Ok(mut socket) = TcpStream::connect(&self.new_node.server_ip) {
                     let msg = QueryServerMessage {
-                        query: query,
+                        query,
                         consistency: 0,
                     };
                     let _ = msg.send_server_through(&mut socket);
-        
+
                     let _ = Packet::from_stream(&mut socket);
                 }
             }
@@ -178,7 +217,7 @@ impl NewNodeAgregator {
         println!(" ----- query: {}\n", query);
         if let Ok(mut socket) = TcpStream::connect(self.new_node.server_ip.clone()) {
             let msg = QueryServerMessage {
-                query: query,
+                query,
                 consistency: 0,
             };
             let _ = msg.send_server_through(&mut socket);

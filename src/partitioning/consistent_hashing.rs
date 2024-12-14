@@ -1,5 +1,5 @@
-use crate::serverstuff::{neighbor_node::NeighborNode, node_status::Status};
 use super::token_map::TokenMap;
+use crate::serverstuff::{neighbor_node::NeighborNode, node_status::Status};
 
 use std::{collections::HashMap, vec};
 
@@ -8,21 +8,40 @@ use std::{collections::HashMap, vec};
 /// minimizando la reorganización cuando se añaden o eliminan nodos.
 //
 /// El hashing consistente particiona los datos basándose en la clave de partición.
-/// Estructura que guarda los nodos miembros de un anillo y el factor de replicación.
-/// Anillo de nodos: Se utiliza un arbol binario que permite encontrar los nodos en el anillo, se guarda:
-/// el hash de la Adress (IP:puerto) del nodo normalizada por la cantidad de nodos, y el nodo.
+///
+/// Esta estructura que guarda los nodos miembros de un anillo y el factor de replicación.
+/// Además, cuenta con un Token Map que mapea todas las posiciones que ocupan los vnodes de un nodo físico
+///
+/// Anillo de nodos: Se guardan todos los vnodes de todos los nodos de la red.
+///
+/// Los nodos virtuales nos aseguramos tener carga de consultas iguales entre los nodos físicos.
+/// Cada vnode es una asignacíon de múltiples tokens en el anillo de tokens a cada nodo físico.
+///
+/// Al permitir que un solo nodo físico ocupe múltiples posiciones en el anillo, podemos hacer que
+/// los clústeres pequeños parezcan más grandes y, por lo tanto, incluso con la adición de un solo
+/// nodo físico podemos hacer que parezca que agregamos muchos más nodos, tomando de hecho muchos
+/// fragmentos de datos más pequeños de más vecinos del anillo cuando agregamos incluso un solo nodo.
+///
+/// Cuando se agrega un nuevo nodo, este acepta cantidades aproximadamente iguales de datos de otros
+/// nodos del anillo, lo que da como resultado una distribución equitativa de datos en todo el clúster.
+///
+/// Si un nodo deja de estar disponible, la carga de consultas (especialmente la carga de consultas que
+/// reconoce tokens) se distribuye de manera uniforme entre muchos otros nodos.
+/// Además al desconectarse un nodo, éste mantiene su posición en el ring, de esta forma nos da pie a usar
+/// Hinted Handoff.
 pub struct ConsistentHash<NeighborNode> {
     pub ring: HashMap<usize, NeighborNode>, // Anillo de nodos con su hash
-    pub rf: usize,                           // Cantidad de réplicas
+    pub rf: usize,                          // Cantidad de réplicas
     pub token_map: TokenMap,
 }
 
 impl ConsistentHash<NeighborNode> {
+    /// Se crea el ring vacio.
     pub fn new(rf: usize) -> Self {
         Self {
-            ring: HashMap::new(),           // Todos los vnodes.
-            rf,                             // Replication Factor
-            token_map: TokenMap::new(rf),   // Posiciones de los vnodes.
+            ring: HashMap::new(),         // Todos los vnodes.
+            rf,                           // Replication Factor
+            token_map: TokenMap::new(rf), // Posiciones de los vnodes.
         }
     }
 
@@ -46,11 +65,11 @@ impl ConsistentHash<NeighborNode> {
         }
     }
 
-
-    pub fn find_closest_greater_index(&self, vec: &Vec<&usize>, target: &usize) -> Option<usize> {
+    /// Buscamos el nodo más cercano a una posición del anillo.
+    pub fn find_closest_greater_index(&self, vec: &[&usize], target: &usize) -> Option<usize> {
         // Realizamos la búsqueda binaria
         let result = vec.binary_search(&target);
-    
+
         match result {
             Ok(index) => Some(index), // Si encontramos el valor exacto, devolvemos el índice
             Err(index) => {
@@ -98,7 +117,12 @@ impl ConsistentHash<NeighborNode> {
         nodes
     }
 
-    fn get_nodes_in_partition(&self, result: Vec<&usize>, connected_nodes: &mut usize, nodes: &mut Vec<NeighborNode>) {
+    fn get_nodes_in_partition(
+        &self,
+        result: Vec<&usize>,
+        connected_nodes: &mut usize,
+        nodes: &mut Vec<NeighborNode>,
+    ) {
         for node_idx in result {
             let node = self.ring.get(node_idx).unwrap();
 
@@ -118,6 +142,7 @@ impl ConsistentHash<NeighborNode> {
         }
     }
 
+    /// Obtenemos las posiciones usadas por los vnodes en el ring, de forma ordenada.
     pub fn get_keys_in_order(&self) -> Vec<&usize> {
         let mut keys = self.ring.keys().collect::<Vec<&usize>>();
         keys.sort();
