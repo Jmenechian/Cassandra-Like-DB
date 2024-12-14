@@ -1,5 +1,5 @@
 use crate::{
-    config::{RF, TABLE_PATH},
+    config::*,
     errors::my_errors::MyError,
     messagestuff::{
         message::ServerSendable,
@@ -21,6 +21,8 @@ use std::{
     net::TcpStream,
     vec,
 };
+
+use super::queries::{get_query_select_in_destination, get_query_select_in_origin, get_query_select_in_simulator, make_query};
 
 #[derive(Debug, Clone)]
 /// Estructura encargada de agregar un nuevo nodo conectado a la red.
@@ -56,26 +58,32 @@ impl NewNodeAgregator {
     /// al nuevo nodo, y le pasa a este los INSERTs que debe hacer para tener la info que le corresponde.
     pub fn new_node_in_ring(&mut self) {
         let mut lines_to_insert: HashMap<String, Vec<Vec<String>>> = HashMap::new();
-
+        let mut ya_pase = false;
+        lines_to_insert.insert("origin".to_string(), vec![]);
+        lines_to_insert.insert("destination".to_string(), vec![]);
+        lines_to_insert.insert("flights_in_progress".to_string(), vec![]);
         // Vemos las posiciones de los vnodes del new_node:
         let tokens = self.hashing.token_map.get_tokens(&self.new_node.server_ip);
-
+        // println!("Tokens: {:?}", tokens);
         // Vemos vnodes siguientes a estas posiciones:
         let keys = self.hashing.get_keys_in_order();
+        // println!("keys {:?}", keys);
         for position_new_node in tokens {
             let next_pos = position_new_node + 1;
             let next_node_idx = self
                 .hashing
                 .find_closest_greater_index(&keys, &next_pos)
                 .unwrap_or(0);
-            if let Some(next_node) = self.hashing.ring.get(&next_node_idx) {
+            // println!("\n\n\nNext node idx: {:?}\n\n\n", next_node_idx);
+            if let Some(next_node) = self.hashing.ring.get(&keys[next_node_idx]) {
                 // Si soy ese nodo le mando INSERT de las lineas que le correspondes (de las 3 tablas que usamos):
-                if next_node.server_ip == self.node.server_ip {
+                if next_node.server_ip == self.node.server_ip && !ya_pase{
                     // Veo si una linea le corresponde viendo los hash de aeroport,date:
                     let hashmap_lines = self.get_lines_to_insert();
                     for table in hashmap_lines.keys() {
                         if let Some(new_lines) = hashmap_lines.get(table) {
                             // Usamos entry() para modificar el valor del HashMap:
+                            ya_pase = true;
                             lines_to_insert
                                 .entry(table.to_string())
                                 .or_default() // Si la clave no existe, se inicializa con un vector vacío
@@ -85,7 +93,7 @@ impl NewNodeAgregator {
                 }
             }
         }
-
+        // println!("lines_to_insert: {:?}", lines_to_insert);
         self.send_info(lines_to_insert);
     }
 
@@ -93,7 +101,9 @@ impl NewNodeAgregator {
         let mut lines_to_insert: HashMap<String, Vec<Vec<String>>> = HashMap::new();
         for table in self.tables.clone() {
             if let Ok(lines) = self.get_all_lines(&table) {
+                // println!("lines: {:?}", lines);
                 if let Ok(lines) = self.filter_lines(lines, &table) {
+                    // println!("lines: {:?}", lines);
                     lines_to_insert.insert(table.to_string(), lines);
                 }
             }
@@ -110,6 +120,7 @@ impl NewNodeAgregator {
             let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
 
             let row: Vec<String> = line
+                .replace(" ","-")
                 .split(",")
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
@@ -133,21 +144,17 @@ impl NewNodeAgregator {
     ) -> Result<Vec<Vec<String>>, MyError> {
         let mut result: Vec<Vec<String>> = vec![];
         let headers = self.get_headers(table)?;
-        let mut node_maintains_info = false;
+        
         for line in lines {
             let key = self.get_key_representing_partition(headers.clone(), line.clone())?;
             let nodes_in_partition = self.hashing.get_nodes(&key);
+            let mut ips = vec![];
             for node_part in nodes_in_partition {
-                if node_part.server_ip == *self.new_node.server_ip {
-                    // El nuevo nodo debería tener la info:
-                    result.push(line.clone());
-                }
-                if node_part.server_ip == self.node.server_ip {
-                    node_maintains_info = true;
-                }
+                ips.push(node_part.server_ip);
             }
+            if ips.contains(&self.new_node.server_ip) && !ips.contains(&self.node.server_ip) {
+                result.push(line.clone());
 
-            if !node_maintains_info {
                 // El nodo anterior no debe mantener la info:
                 let partition: Vec<&str> = key.split(",").collect();
                 let query = get_partition_delete_query(table, partition[0], partition[1]);
@@ -184,6 +191,44 @@ impl NewNodeAgregator {
         ))
     }
 
+    fn flight_in_table(&self, table: &str, line: Vec<String>) -> Result<bool, MyError> {
+        let query = if table == "destination" {
+            get_query_select_in_destination(
+                line[2].clone(),
+                line[0].clone(),
+                line[3].clone(),
+
+            )
+        } else if table == "origin" {
+            get_query_select_in_origin(
+                line[2].clone(),
+                line[0].clone(),
+                line[3].clone(),
+            )
+        } else {
+            get_query_select_in_simulator(
+                line[4].clone(),
+                line[1].clone(),
+                line[0].clone(),
+            )
+        };
+        let consistency = match table {
+            "origin" | "destination" => QUORUM,
+            "flights_in_progress" => ONE,
+            _ => QUORUM,
+        };
+        let response = make_query(query, consistency, self.new_node.number.clone())?;
+        for line in response {
+            if line.is_empty() {
+                continue;
+            } else {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
     fn send_info(&self, lines: HashMap<String, Vec<Vec<String>>>) {
         for table in lines.keys() {
             self.create_table(table);
@@ -196,9 +241,19 @@ impl NewNodeAgregator {
                 _ => continue,
             };
             for line in lines {
-                println!("\n ----- line: {:?}", line);
-                let query = get_insert_query(table, headers.clone(), line.clone());
-                println!(" ----- query: {}\n", query);
+                // println!("\n ----- line: {:?}", line);
+                // let flight_in_table = if let Ok(flight_in_table) = self.flight_in_table(table, line.clone()) {
+                //     flight_in_table
+                // } else {
+                //     false
+                // };
+
+                if false {
+                    continue;
+                }
+            
+                let query = get_insert_query(table, &mut headers.clone(), &mut line.clone());
+                // println!(" ----- query: {}\n", query);
                 if let Ok(mut socket) = TcpStream::connect(&self.new_node.server_ip) {
                     let msg = QueryServerMessage {
                         query,
@@ -214,7 +269,7 @@ impl NewNodeAgregator {
 
     fn create_table(&self, table: &str) {
         let query = get_create_query(table);
-        println!(" ----- query: {}\n", query);
+        // println!(" ----- query: {}\n", query);
         if let Ok(mut socket) = TcpStream::connect(self.new_node.server_ip.clone()) {
             let msg = QueryServerMessage {
                 query,

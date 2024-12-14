@@ -6,6 +6,7 @@ use crate::errors::my_errors::*;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node_status::Status;
 
+use chrono::Utc;
 use rand::seq::SliceRandom;
 use std::sync::{Arc, RwLock};
 
@@ -20,6 +21,7 @@ pub struct Node {
     pub path_table_origin: Arc<RwLock<String>>, // path donde se encuntra el archivo que representan la tabla
     pub path_table_destination: Arc<RwLock<String>>,
     pub path_table_simulator: Arc<RwLock<String>>,
+    pub fecha: String,
 }
 
 impl Node {
@@ -34,6 +36,7 @@ impl Node {
             path_table_origin: Self::lock_path_table(number, "origin"),
             path_table_destination: Self::lock_path_table(number, "destination"),
             path_table_simulator: Self::lock_path_table(number, "simulator"),
+            fecha: Utc::now().to_string(),
         }
     }
 
@@ -118,7 +121,7 @@ impl Node {
     /// Proceso la query y devuelve la tabla en formato String.
     pub fn process_query(&self, query: &mut Query) -> Result<Vec<String>, MyError> {
         query.parse_query()?;
-        println!("\n\n Query: {:?} \n\n", query);
+        // println!("\n\n Query: {:?} \n\n", query);
         let path_table: Arc<RwLock<String>>;
 
         if [

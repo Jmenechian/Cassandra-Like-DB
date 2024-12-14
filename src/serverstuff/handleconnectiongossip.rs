@@ -115,6 +115,7 @@ fn handle_message_gossip(
         }
 
         if res == 2 {
+            println!("G   Me llego un nuevo vecino: {:?}", new_neighbor);
             let mut agg_node = NewNodeAgregator::new(new_neighbor, node_guard.clone());
             agg_node.new_node_in_ring();
         }
@@ -193,4 +194,38 @@ pub fn connect_to_random_gossip(
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::partitioning::consistent_hashing::ConsistentHash;
+
+    use super::*;
+
+    #[test]
+    pub fn test() {
+        let key = "MEX,25-12-24".to_string();
+        let rf = 3;
+
+        let node_1 = NeighborNode::new("1");
+        let node_2 = NeighborNode::new("2");
+        let node_3 = NeighborNode::new("3");
+        let node_4 = NeighborNode::new("4");
+        let node_5 = NeighborNode::new("5");
+        let node_6 = NeighborNode::new("6");
+        let node_7 = NeighborNode::new("7");
+        let node_8 = NeighborNode::new("8");
+        let node_9 = NeighborNode::new("9");
+
+        let nodes: Vec<NeighborNode> = vec![
+            node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8, node_9
+        ];
+
+        let mut hashing = ConsistentHash::new(rf);
+        hashing.add_nodes(nodes.clone());
+
+        let nodes_result_before = hashing.get_nodes(&key);
+        println!("{:?}", nodes_result_before);
+
+    }
 }

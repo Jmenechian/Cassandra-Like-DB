@@ -102,7 +102,7 @@ impl ConsistentHash<NeighborNode> {
 
         let idx = self.find_closest_greater_index(&keys, &hash).unwrap_or(0);
         let result: Vec<_> = keys[idx..].to_vec();
-        println!("\n\n\nRing: {:?}", self.ring);
+        // println!("\n\n\nRing: {:?}", self.ring);
         println!("Result: {:?}\n\n\n", result);
 
         let mut connected_nodes = 0;
