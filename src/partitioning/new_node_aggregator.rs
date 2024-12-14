@@ -58,10 +58,20 @@ impl NewNodeAgregator {
     /// al nuevo nodo, y le pasa a este los INSERTs que debe hacer para tener la info que le corresponde.
     pub fn new_node_in_ring(&mut self) {
         let mut lines_to_insert: HashMap<String, Vec<Vec<String>>> = HashMap::new();
-        let mut ya_pase = false;
-        lines_to_insert.insert("origin".to_string(), vec![]);
-        lines_to_insert.insert("destination".to_string(), vec![]);
-        lines_to_insert.insert("flights_in_progress".to_string(), vec![]);
+        for table in self.node.tables_created() {
+            if table.contains("origin") {
+                lines_to_insert.insert("origin".to_string(), vec![]);
+            } else if table.contains("destination") {
+                lines_to_insert.insert("destination".to_string(), vec![]);
+            } else if table.contains("flights_in_progress") {
+                lines_to_insert.insert("flights_in_progress".to_string(), vec![]);
+            }
+        }
+
+        if lines_to_insert.is_empty() {
+            return;
+        }
+        
         // Vemos las posiciones de los vnodes del new_node:
         let tokens = self.hashing.token_map.get_tokens(&self.new_node.server_ip);
         // println!("Tokens: {:?}", tokens);
@@ -77,13 +87,12 @@ impl NewNodeAgregator {
             // println!("\n\n\nNext node idx: {:?}\n\n\n", next_node_idx);
             if let Some(next_node) = self.hashing.ring.get(&keys[next_node_idx]) {
                 // Si soy ese nodo le mando INSERT de las lineas que le correspondes (de las 3 tablas que usamos):
-                if next_node.server_ip == self.node.server_ip && !ya_pase{
+                if next_node.server_ip == self.node.server_ip {
                     // Veo si una linea le corresponde viendo los hash de aeroport,date:
                     let hashmap_lines = self.get_lines_to_insert();
                     for table in hashmap_lines.keys() {
                         if let Some(new_lines) = hashmap_lines.get(table) {
                             // Usamos entry() para modificar el valor del HashMap:
-                            ya_pase = true;
                             lines_to_insert
                                 .entry(table.to_string())
                                 .or_default() // Si la clave no existe, se inicializa con un vector vacío

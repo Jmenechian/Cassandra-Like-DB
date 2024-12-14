@@ -5,10 +5,12 @@ use crate::cql::query::Query;
 use crate::errors::my_errors::*;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node_status::Status;
+use crate::utils::get_rustic_airline_path_tables;
 
 use chrono::Utc;
 use rand::seq::SliceRandom;
 use std::sync::{Arc, RwLock};
+use std::path::Path;
 
 /// Estructura que eepresenta al nodo en el que estamos parados.
 #[derive(Debug, Clone)]
@@ -38,6 +40,17 @@ impl Node {
             path_table_simulator: Self::lock_path_table(number, "simulator"),
             fecha: Utc::now().to_string(),
         }
+    }
+
+    pub fn tables_created(&self) -> Vec<String> {
+        let paths = get_rustic_airline_path_tables(self.number.clone());
+        let mut tables = vec![];
+        for path in paths {
+            if Path::new(&path).exists() {
+                tables.push(path);
+            }
+        }
+        tables
     }
 
     fn lock_path_table(number_node: &str, table: &str) -> Arc<RwLock<String>> {

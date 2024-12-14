@@ -1,5 +1,6 @@
 // Funciones auxiliares para el manejo de archivos y strings
 
+use crate::config::{TABLE_DESTINATION_NAME, TABLE_FLIGHT_SIMULATOR, TABLE_ORIGIN_NAME, TABLE_PATH};
 use crate::encryption::encrypt::*;
 use crate::{config::ENCRIPT_DATA, errors::my_errors::MyError};
 use std::collections::VecDeque;
@@ -250,4 +251,13 @@ pub fn is_file_empty(path: &str) -> bool {
         Ok(metadata) => metadata.len() == 0,
         Err(_) => false,
     }
+}
+
+pub fn get_rustic_airline_path_tables(node_number: String) -> Vec<String> {
+    let mut tables = vec![];
+    tables.push(format!("{}/{}_{}.csv", TABLE_PATH, TABLE_ORIGIN_NAME, node_number));
+    tables.push(format!("{}/{}_{}", TABLE_PATH, TABLE_ORIGIN_NAME, node_number));
+    tables.push(format!("{}/{}_{}", TABLE_PATH, TABLE_DESTINATION_NAME, node_number));
+    tables.push(format!("{}/{}_{}", TABLE_PATH, TABLE_FLIGHT_SIMULATOR, node_number));
+    tables
 }
