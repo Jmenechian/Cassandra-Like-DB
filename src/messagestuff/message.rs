@@ -24,7 +24,7 @@ pub trait Sendable: std::fmt::Debug + IntoEnvelope {
         Self: Sized,
     {
         let env = self.into_envelope();
-        let bytes = env.to_bytes(logger);
+        let bytes = env.to_bytes(stream, logger);
         if stream.write_all(&bytes).is_err() {
             return Err(MyError::TcpStreamError(
                 "Error al escribir en el stream".to_string(),
@@ -67,7 +67,7 @@ pub trait ServerSendable: std::fmt::Debug + IntoPacket {
         Self: Sized,
     {
         let packet = self.into_packet();
-        let bytes = packet.to_bytes(logger);
+        let bytes = packet.to_bytes(stream, logger);
         if stream.write_all(&bytes).is_err() {
             return Err(MyError::TcpStreamError(
                 "Error al escribir en el stream".to_string(),

@@ -53,7 +53,7 @@ pub struct Envelope {
 }
 
 impl Envelope {
-    pub fn to_bytes(&self, logger: Option<Arc<RwLock<Logger>>>) -> Vec<u8> {
+    pub fn to_bytes(&self, stream: &mut TcpStream, logger: Option<Arc<RwLock<Logger>>>) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&byte_to_byte(self.version));
         bytes.extend_from_slice(&byte_to_byte(self.flags));
@@ -75,7 +75,7 @@ impl Envelope {
         bytes.extend_from_slice(&final_body);
 
         if let Some(logger) = logger {
-            let _ = Envelope::write_log(logger, self); // REVISAAAAAAAARRRRR
+            let _ = Envelope::write_log(stream, logger, self);
         }
         bytes
     }
@@ -138,12 +138,13 @@ impl Envelope {
         };
 
         if let Some(logger) = logger {
-            Envelope::write_log(logger, &env)?;
+            Envelope::write_log(stream, logger, &env)?;
         }
         Ok(env)
     }
 
     fn write_log(
+        stream: &mut TcpStream,
         logger: Arc<RwLock<Logger>>,
         env: &Envelope,
     ) -> Result<(), MyError> {
@@ -155,17 +156,22 @@ impl Envelope {
             }
         };
 
+        let ip = match stream.peer_addr() {
+            Ok(addr) => format!("{:?}",addr),
+            Err(_) => "".to_string(),
+        };
+
         match &env.body {
             CqlMessage::Query(msg) => {
-                let message = format!("[CLIENT] [RECEIVED] Query: {}", msg.query.trim());
+                let message = format!("[CLIENT] [RECEIVED] [{}] Query: {}", ip, msg.query.trim());
                 logger_guard.write_log(message.as_str())?;
             }
             CqlMessage::Result(msg) => {
-                let message = format!("[CLIENT] [SENT]     Result from query: {}", msg);
+                let message = format!("[CLIENT] [SENT]     [{}] Result from query: {}", ip, msg);
                 logger_guard.write_log(message.as_str())?;
             }
             CqlMessage::Error(msg) => {
-                let message = format!("[CLIENT] [SENT]     Error from server: {}", msg.error);
+                let message = format!("[CLIENT] [SENT]     [{}] Error from server: {}", ip, msg.error);
                 logger_guard.write_log(message.as_str())?;
             }
         }

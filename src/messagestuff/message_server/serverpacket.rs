@@ -5,7 +5,7 @@
 //   - Para enviar el packet y leerlo por stream estan las funciones to_bytes() y from_stream().
 
 use crate::config;
-use crate::config::{SHOW_GOSSIP, SHOW_SERVER};
+use crate::config::SHOW_GOSSIP;
 use crate::encryption::encrypt::{decrypt_body_aes128, encrypt_body_aes128};
 use crate::errors::my_errors::MyError;
 use crate::loggerstuff::logger::Logger;
@@ -60,7 +60,7 @@ pub struct Packet {
 
 impl Packet {
     /// Para serializar el mensaje
-    pub fn to_bytes(&self, logger: Arc<RwLock<Logger>>) -> Vec<u8> {
+    pub fn to_bytes(&self, stream: &mut TcpStream, logger: Arc<RwLock<Logger>>) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&byte_to_byte(self.opcode as u8));
 
@@ -80,7 +80,7 @@ impl Packet {
         bytes.extend_from_slice(&int_to_bytes(final_length));
         bytes.extend_from_slice(&final_body);
 
-        let _ = Packet::write_log(logger, self, "[SENT]    ".to_string()); //////////// REVISAR
+        let _ = Packet::write_log(stream, logger, self, "[SENT]    ".to_string()); //////////// REVISAR
         bytes
     }
 
@@ -143,11 +143,12 @@ impl Packet {
             body: _body,
         };
 
-        Packet::write_log(logger, &packet, "[RECEIVED]".to_string())?;
+        Packet::write_log(stream, logger, &packet, "[RECEIVED]".to_string())?;
         Ok(packet)
     }
 
     fn write_log(
+        stream: &mut TcpStream,
         logger: Arc<RwLock<Logger>>,
         packet: &Packet,
         msg_type: String,
@@ -160,27 +161,32 @@ impl Packet {
             }
         };
 
+        let ip = match stream.peer_addr() {
+            Ok(addr) => format!("{:?}",addr),
+            Err(_) => "".to_string(),
+        };
+
         match &packet.body {
             ServerMessage::Gossip(msg) => {
                 if SHOW_GOSSIP {
-                    let message = format!("[{}] [SERVER] Gossip protocol. Node at: {} with status: {:?}", msg_type, msg.ip, msg.status);
+                    let message = format!("[SERVER] {} [{}] Gossip protocol. Node at: {} with status: {:?}", msg_type, ip,msg.ip, msg.status);
                     logger_guard.write_log(message.as_str())?;
                 }
             }
             ServerMessage::Query(msg) => {
-                let message = format!("[SERVER] {} Query: {}", msg_type, msg.query.trim());
+                let message = format!("[SERVER] {} [{}] Query: {}", msg_type, ip, msg.query.trim());
                 logger_guard.write_log(message.as_str())?;
             }
             ServerMessage::Result(msg) => {
-                let message = format!("[SERVER] {} Result: {}", msg_type, msg);
+                let message = format!("[SERVER] {} [{}] Result: {}", msg_type, ip, msg);
                 logger_guard.write_log(message.as_str())?;
             }
             ServerMessage::ErrorServer(msg) => {
-                let message = format!("[SERVER] {} Error: {}", msg_type, msg.error);
+                let message = format!("[SERVER] {} [{}] Error: {}", msg_type, ip, msg.error);
                 logger_guard.write_log(message.as_str())?;
             }
             ServerMessage::ReadRepair(msg) => {
-                let message = format!("[SERVER] {} Read Repair protocol. Rows to keep: {:?}", msg_type, msg.rows_to_keep);
+                let message = format!("[SERVER] {} [{}] Read Repair protocol. Rows to keep: {:?}", msg_type, ip, msg.rows_to_keep);
                 logger_guard.write_log(message.as_str())?;
             }
         };

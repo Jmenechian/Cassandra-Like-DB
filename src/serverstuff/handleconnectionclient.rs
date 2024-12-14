@@ -332,7 +332,6 @@ pub fn send_query_to_nodes(
                 .collect::<Vec<_>>(),
         );
     }
-    // println!("nodes with result: {:?}", nodes_with_result);
 
     let is_select = query.query.contains("SELECT");
 
