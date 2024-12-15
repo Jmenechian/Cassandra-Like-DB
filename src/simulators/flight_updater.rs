@@ -85,9 +85,10 @@ impl FlightUpdater {
     }
 
     /// Se ejecutan las queries.
-    pub fn update_flights(path: Arc<Mutex<String>>) -> Result<(), MyError> {
+    pub fn update_flights(path: Arc<Mutex<String>>, number_node: String) -> Result<(), MyError> {
         // Buscamos un nodo conectado:
-        let stream: TcpStream = if let Ok(stream) = Client::connect_with_node() {
+        let mut client = Client::initialize(number_node.to_string());
+        let stream: TcpStream = if let Ok(stream) = client.connect() {
             stream
         } else {
             return Err(MyError::AllNodesDisconnected());

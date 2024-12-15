@@ -215,8 +215,12 @@ impl CreateTable {
             columns
         };
 
-        let mut f = File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
-        writeln!(f, "{}", columns_final).map_err(|e| MyError::FileError(e.to_string()))?;
+        let mut f = File::create_new(table_name).map_err(|e| {
+            MyError::FileError(format!("{} - en CreateTable::create_table - create_new", e))
+        })?;
+        writeln!(f, "{}", columns_final).map_err(|e| {
+            MyError::FileError(format!("{} - en CreateTable::create_table - writeln", e))
+        })?;
         Ok(())
     }
 

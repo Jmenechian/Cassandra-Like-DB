@@ -115,7 +115,7 @@ impl Query {
 
     /// Se delega la ejecición de la query a cada tipo de estructura de query.
     pub fn execute_command(&mut self, table: Arc<RwLock<String>>) -> Result<Vec<String>, MyError> {
-        println!("\n - Query: {:?} \n", self.qtype);
+        // println!("\n - Query: {:?} \n", self.qtype);
         match &mut self.qtype {
             QType::None => Err(MyError::Error("No query to execute".to_string())),
             QType::Select(select) => select.execute_command(table),

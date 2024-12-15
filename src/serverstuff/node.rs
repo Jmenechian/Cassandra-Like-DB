@@ -5,8 +5,11 @@ use crate::cql::query::Query;
 use crate::errors::my_errors::*;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node_status::Status;
+use crate::utils::get_rustic_airline_path_tables;
 
+use chrono::{DateTime, Utc};
 use rand::seq::SliceRandom;
+use std::path::Path;
 use std::sync::{Arc, RwLock};
 
 /// Estructura que eepresenta al nodo en el que estamos parados.
@@ -20,6 +23,7 @@ pub struct Node {
     pub path_table_origin: Arc<RwLock<String>>, // path donde se encuntra el archivo que representan la tabla
     pub path_table_destination: Arc<RwLock<String>>,
     pub path_table_simulator: Arc<RwLock<String>>,
+    pub connection_date: DateTime<Utc>,
 }
 
 impl Node {
@@ -34,7 +38,20 @@ impl Node {
             path_table_origin: Self::lock_path_table(number, "origin"),
             path_table_destination: Self::lock_path_table(number, "destination"),
             path_table_simulator: Self::lock_path_table(number, "simulator"),
+            connection_date: Utc::now(),
         }
+    }
+
+    /// Obtenemos los paths de las tablas que se crearon a traves de la query CREATED.
+    pub fn tables_created(&self) -> Vec<String> {
+        let paths = get_rustic_airline_path_tables(self.number.clone());
+        let mut tables = vec![];
+        for path in paths {
+            if Path::new(&path).exists() {
+                tables.push(path);
+            }
+        }
+        tables
     }
 
     fn lock_path_table(number_node: &str, table: &str) -> Arc<RwLock<String>> {
@@ -64,24 +81,25 @@ impl Node {
     }
 
     /// Se agrega un nodo en particular a los ya existentes.
-    pub fn add_neighbor(&mut self, neighbor_node: NeighborNode) -> bool {
+    pub fn add_neighbor(&mut self, neighbor_node: NeighborNode) -> u8 {
         if let Some(pos) = self
             .neighbors
             .iter()
             .position(|n| n.number == neighbor_node.number)
         {
             if self.neighbors[pos].status != neighbor_node.status {
+                //ya existias
                 self.neighbors[pos] = neighbor_node;
-                true
+                1
             } else if self.neighbors[pos].time < neighbor_node.time {
                 self.neighbors[pos] = neighbor_node;
-                false
+                0
             } else {
-                false
+                0
             }
         } else {
-            self.neighbors.push(neighbor_node);
-            true
+            self.neighbors.push(neighbor_node); //nuevo
+            2
         }
     }
 
@@ -117,7 +135,7 @@ impl Node {
     /// Proceso la query y devuelve la tabla en formato String.
     pub fn process_query(&self, query: &mut Query) -> Result<Vec<String>, MyError> {
         query.parse_query()?;
-
+        // println!("\n\n Query: {:?} \n\n", query);
         let path_table: Arc<RwLock<String>>;
 
         if [
