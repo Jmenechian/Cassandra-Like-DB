@@ -7,10 +7,10 @@ use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node_status::Status;
 use crate::utils::get_rustic_airline_path_tables;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use rand::seq::SliceRandom;
-use std::sync::{Arc, RwLock};
 use std::path::Path;
+use std::sync::{Arc, RwLock};
 
 /// Estructura que eepresenta al nodo en el que estamos parados.
 #[derive(Debug, Clone)]
@@ -23,7 +23,7 @@ pub struct Node {
     pub path_table_origin: Arc<RwLock<String>>, // path donde se encuntra el archivo que representan la tabla
     pub path_table_destination: Arc<RwLock<String>>,
     pub path_table_simulator: Arc<RwLock<String>>,
-    pub fecha: String,
+    pub connection_date: DateTime<Utc>,
 }
 
 impl Node {
@@ -38,10 +38,11 @@ impl Node {
             path_table_origin: Self::lock_path_table(number, "origin"),
             path_table_destination: Self::lock_path_table(number, "destination"),
             path_table_simulator: Self::lock_path_table(number, "simulator"),
-            fecha: Utc::now().to_string(),
+            connection_date: Utc::now(),
         }
     }
 
+    /// Obtenemos los paths de las tablas que se crearon a traves de la query CREATED.
     pub fn tables_created(&self) -> Vec<String> {
         let paths = get_rustic_airline_path_tables(self.number.clone());
         let mut tables = vec![];

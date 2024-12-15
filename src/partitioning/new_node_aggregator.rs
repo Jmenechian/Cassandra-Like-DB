@@ -10,7 +10,7 @@ use crate::{
         queries::{get_create_query, get_insert_query, get_partition_delete_query},
     },
     serverstuff::{neighbor_node::NeighborNode, node::Node},
-    utils::{get_file_headers, get_reader},
+    utils::{get_file_headers, get_reader_path},
     Query,
 };
 
@@ -21,8 +21,6 @@ use std::{
     net::TcpStream,
     vec,
 };
-
-use super::queries::{get_query_select_in_destination, get_query_select_in_origin, get_query_select_in_simulator, make_query};
 
 #[derive(Debug, Clone)]
 /// Estructura encargada de agregar un nuevo nodo conectado a la red.
@@ -40,11 +38,7 @@ impl NewNodeAgregator {
     pub fn new(new_node: NeighborNode, node: Node) -> Self {
         let mut hashing = ConsistentHash::new(RF);
         hashing.add_nodes(node.neighbors.to_vec());
-        let tables = vec![
-            "origin".to_string(),
-            "destination".to_string(),
-            "flights_in_progress".to_string(),
-        ];
+        let tables = node.tables_created();
         Self {
             new_node,
             node,
@@ -58,7 +52,7 @@ impl NewNodeAgregator {
     /// al nuevo nodo, y le pasa a este los INSERTs que debe hacer para tener la info que le corresponde.
     pub fn new_node_in_ring(&mut self) {
         let mut lines_to_insert: HashMap<String, Vec<Vec<String>>> = HashMap::new();
-        for table in self.node.tables_created() {
+        for table in self.tables.clone() {
             if table.contains("origin") {
                 lines_to_insert.insert("origin".to_string(), vec![]);
             } else if table.contains("destination") {
@@ -71,21 +65,18 @@ impl NewNodeAgregator {
         if lines_to_insert.is_empty() {
             return;
         }
-        
+
         // Vemos las posiciones de los vnodes del new_node:
         let tokens = self.hashing.token_map.get_tokens(&self.new_node.server_ip);
-        // println!("Tokens: {:?}", tokens);
         // Vemos vnodes siguientes a estas posiciones:
         let keys = self.hashing.get_keys_in_order();
-        // println!("keys {:?}", keys);
         for position_new_node in tokens {
             let next_pos = position_new_node + 1;
             let next_node_idx = self
                 .hashing
                 .find_closest_greater_index(&keys, &next_pos)
                 .unwrap_or(0);
-            // println!("\n\n\nNext node idx: {:?}\n\n\n", next_node_idx);
-            if let Some(next_node) = self.hashing.ring.get(&keys[next_node_idx]) {
+            if let Some(next_node) = self.hashing.ring.get(keys[next_node_idx]) {
                 // Si soy ese nodo le mando INSERT de las lineas que le correspondes (de las 3 tablas que usamos):
                 if next_node.server_ip == self.node.server_ip {
                     // Veo si una linea le corresponde viendo los hash de aeroport,date:
@@ -102,7 +93,6 @@ impl NewNodeAgregator {
                 }
             }
         }
-        // println!("lines_to_insert: {:?}", lines_to_insert);
         self.send_info(lines_to_insert);
     }
 
@@ -110,9 +100,7 @@ impl NewNodeAgregator {
         let mut lines_to_insert: HashMap<String, Vec<Vec<String>>> = HashMap::new();
         for table in self.tables.clone() {
             if let Ok(lines) = self.get_all_lines(&table) {
-                // println!("lines: {:?}", lines);
                 if let Ok(lines) = self.filter_lines(lines, &table) {
-                    // println!("lines: {:?}", lines);
                     lines_to_insert.insert(table.to_string(), lines);
                 }
             }
@@ -129,7 +117,7 @@ impl NewNodeAgregator {
             let line = line.map_err(|e| MyError::FileError(e.to_string()))?;
 
             let row: Vec<String> = line
-                .replace(" ","-")
+                .replace(" ", "-")
                 .split(",")
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
@@ -140,8 +128,7 @@ impl NewNodeAgregator {
     }
 
     fn get_reader(&self, table: &str) -> Result<BufReader<File>, MyError> {
-        let table = format!("{}_{}", table, self.node.number);
-        let mut rdr_read = get_reader(TABLE_PATH, &table)?;
+        let mut rdr_read = get_reader_path(table)?;
         let _ = get_file_headers(&mut rdr_read)?;
         Ok(rdr_read)
     }
@@ -153,7 +140,7 @@ impl NewNodeAgregator {
     ) -> Result<Vec<Vec<String>>, MyError> {
         let mut result: Vec<Vec<String>> = vec![];
         let headers = self.get_headers(table)?;
-        
+
         for line in lines {
             let key = self.get_key_representing_partition(headers.clone(), line.clone())?;
             let nodes_in_partition = self.hashing.get_nodes(&key);
@@ -177,8 +164,7 @@ impl NewNodeAgregator {
     }
 
     fn get_headers(&self, table: &str) -> Result<Vec<String>, MyError> {
-        let table = format!("{}_{}", table, self.node.number);
-        let mut rdr_read = get_reader(TABLE_PATH, &table)?;
+        let mut rdr_read = get_reader_path(table)?;
         let headers = get_file_headers(&mut rdr_read)?;
         Ok(headers)
     }
@@ -200,69 +186,19 @@ impl NewNodeAgregator {
         ))
     }
 
-    fn flight_in_table(&self, table: &str, line: Vec<String>) -> Result<bool, MyError> {
-        let query = if table == "destination" {
-            get_query_select_in_destination(
-                line[2].clone(),
-                line[0].clone(),
-                line[3].clone(),
-
-            )
-        } else if table == "origin" {
-            get_query_select_in_origin(
-                line[2].clone(),
-                line[0].clone(),
-                line[3].clone(),
-            )
-        } else {
-            get_query_select_in_simulator(
-                line[4].clone(),
-                line[1].clone(),
-                line[0].clone(),
-            )
-        };
-        let consistency = match table {
-            "origin" | "destination" => QUORUM,
-            "flights_in_progress" => ONE,
-            _ => QUORUM,
-        };
-        let response = make_query(query, consistency, self.new_node.number.clone())?;
-        for line in response {
-            if line.is_empty() {
-                continue;
-            } else {
-                return Ok(true);
-            }
-        }
-
-        Ok(false)
-    }
-
     fn send_info(&self, lines: HashMap<String, Vec<Vec<String>>>) {
         for table in lines.keys() {
             self.create_table(table);
-            let lines = match lines.get(table) {
-                Some(lines) => lines,
+            let lines_table = match lines.get(table) {
+                Some(lines_result) => lines_result,
                 None => continue,
             };
             let headers = match self.get_headers(table) {
                 Ok(h) => h,
                 _ => continue,
             };
-            for line in lines {
-                // println!("\n ----- line: {:?}", line);
-                // let flight_in_table = if let Ok(flight_in_table) = self.flight_in_table(table, line.clone()) {
-                //     flight_in_table
-                // } else {
-                //     false
-                // };
-
-                if false {
-                    continue;
-                }
-            
+            for line in lines_table {
                 let query = get_insert_query(table, &mut headers.clone(), &mut line.clone());
-                // println!(" ----- query: {}\n", query);
                 if let Ok(mut socket) = TcpStream::connect(&self.new_node.server_ip) {
                     let msg = QueryServerMessage {
                         query,
@@ -278,7 +214,6 @@ impl NewNodeAgregator {
 
     fn create_table(&self, table: &str) {
         let query = get_create_query(table);
-        // println!(" ----- query: {}\n", query);
         if let Ok(mut socket) = TcpStream::connect(self.new_node.server_ip.clone()) {
             let msg = QueryServerMessage {
                 query,
@@ -288,5 +223,36 @@ impl NewNodeAgregator {
 
             let _ = Packet::from_stream(&mut socket);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn test() {
+        let key = "DEL,25-12-24".to_string();
+        let rf = 3;
+
+        let node_1 = NeighborNode::new("1");
+        let node_2 = NeighborNode::new("2");
+        let node_3 = NeighborNode::new("3");
+        let node_4 = NeighborNode::new("4");
+        let node_5 = NeighborNode::new("5"); //3,1,2 AEP,25-12-24
+        let node_6 = NeighborNode::new("6"); //6,1,2 AEP,25-12-24
+        let node_7 = NeighborNode::new("7");
+        let node_8 = NeighborNode::new("8"); //2,6,3 DEL,25-12-24
+                                             //let node_9 = NeighborNode::new("9"); //2,9,6 DEL,25-12-24
+
+        let nodes: Vec<NeighborNode> = vec![
+            node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8, //, node_9
+        ];
+
+        let mut hashing = ConsistentHash::new(rf);
+        hashing.add_nodes(nodes.clone());
+
+        let nodes_result_before = hashing.get_nodes(&key);
+        println!("{:?}", nodes_result_before);
     }
 }

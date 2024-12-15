@@ -39,12 +39,12 @@ CREATE TABLE destination (airport STR, origin STR, date DATETIME, flight STR, st
 ```
 - Intertar nuevos vuelos:
 ``` sql
-INSERT INTO origin (airport, destination, date, flight, status) VALUES (MEX, AEP, 24-12-24, 123, scheduled)
+INSERT INTO origin (airport, destination, date, flight, status) VALUES (AEP, MEX, 25-12-24, 123, scheduled)
 ``` 
 
 - Ver valores de vuelos:
 ``` sql
-SELECT * FROM origin WHERE date = 24-12-24 AND airport = MEX
+SELECT * FROM origin WHERE date = 25-12-24 AND airport = AEP
 ``` 
 
 - Actualizar vuelos:

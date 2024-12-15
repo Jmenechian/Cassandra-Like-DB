@@ -1,22 +1,20 @@
-use std::net::TcpStream;
-
-use crate::{client_cql::Client, errors::my_errors::MyError};
-
 /// Query para borrar una partición determianda de una una tabla.
 pub fn get_partition_delete_query(table: &str, airport: &str, date: &str) -> String {
+    let table_name = get_table_name_from_path(table);
     format!(
         "DELETE FROM {} WHERE airport = {} AND date = {}",
-        table, airport, date
+        table_name, airport, date
     )
 }
 
 /// Query para insertar nuevos registros.
-pub fn get_insert_query(table: &str, headers: & mut Vec<String>, line: & mut Vec<String>) -> String {    
+pub fn get_insert_query(table: &str, headers: &mut Vec<String>, line: &mut Vec<String>) -> String {
+    let table_name = get_table_name_from_path(table);
     headers.pop();
     line.pop();
     format!(
         "INSERT INTO {} ({}) VALUES ({})",
-        table,
+        table_name,
         headers.join(", "),
         line.join(", ")
     )
@@ -32,38 +30,14 @@ pub fn get_create_query(table: &str) -> String {
     }
 }
 
-pub fn get_query_select_in_origin(date: String, airport: String, flight: String) -> String {
-    format!(
-        "SELECT * FROM origin WHERE date = {} AND airport = {} AND flight = {}",
-        date, airport, flight
-    )
-}
-
-pub fn get_query_select_in_destination(date: String, airport: String, flight: String) -> String {
-    format!(
-        "SELECT * FROM destination WHERE date = {} AND airport = {} AND flight = {}",
-        date, airport, flight
-    )
-}
-
-pub fn get_query_select_in_simulator(date: String, airport: String, flight: String) -> String {
-    format!(
-        "SELECT * FROM flights_in_progress WHERE date = {} AND airport = {} AND flight = {}",
-        date, airport, flight
-    )
-}
-
-pub fn make_query(query: String, consistency: u16, port: String) -> Result<Vec<String>, MyError> {
-    let mut client = Client::initialize(port);
-    let mut stream_server = if let Ok(stream) = client.connect() {
-        stream
+fn get_table_name_from_path(table: &str) -> String {
+    if table.contains("origin") {
+        "origin".to_string()
+    } else if table.contains("destination") {
+        "destination".to_string()
+    } else if table.contains("flights_in_progress") {
+        "flights_in_progress".to_string()
     } else {
-        return Err(MyError::TcpStreamError("Error connecting  c client to server".to_string()));
-    };
-    if Client::send_message(&mut stream_server, query, consistency).is_ok() {
-        if let Ok(response) = Client::read_response(&mut stream_server) {
-            return Ok(response)
-            }
-        }
-    Err(MyError::Error("Error al hacer la query".to_string()))
+        "".to_string()
+    }
 }

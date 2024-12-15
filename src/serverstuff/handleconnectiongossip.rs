@@ -12,7 +12,7 @@ use crate::partitioning::new_node_aggregator::NewNodeAgregator;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
 use crate::serverstuff::node_status::Status;
-use crate::utils::{delete_file, get_reader};
+use crate::utils::{date_is_recent, delete_file, get_reader};
 use rand::seq::SliceRandom;
 use std::io::BufRead;
 use std::net::TcpStream;
@@ -114,7 +114,7 @@ fn handle_message_gossip(
             handle_send_backlog(&node_guard.number, &new_neighbor);
         }
 
-        if res == 2 {
+        if res == 2 && !date_is_recent(node_guard.connection_date) {
             println!("G   Me llego un nuevo vecino: {:?}", new_neighbor);
             let mut agg_node = NewNodeAgregator::new(new_neighbor, node_guard.clone());
             agg_node.new_node_in_ring();
@@ -218,7 +218,7 @@ mod tests {
         let node_9 = NeighborNode::new("9");
 
         let nodes: Vec<NeighborNode> = vec![
-            node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8, node_9
+            node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8, node_9,
         ];
 
         let mut hashing = ConsistentHash::new(rf);
@@ -226,6 +226,5 @@ mod tests {
 
         let nodes_result_before = hashing.get_nodes(&key);
         println!("{:?}", nodes_result_before);
-
     }
 }
