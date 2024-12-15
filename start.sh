@@ -51,23 +51,46 @@ for i in $(seq 2 $((NUM_NODOS + 1))); do
     docker stop "$EXISTING_CONTAINER" >/dev/null 2>&1
     docker rm "$EXISTING_CONTAINER" >/dev/null 2>&1
   fi
+  # Comando para el primer nodo
+  if [ "$i" -eq 2 ]; then
+    COMMAND="bash -c \"apt-get update && apt-get install -y \
+                   iputils-ping libglvnd0 libglvnd-dev libgl1-mesa-glx \
+                   libgl1-mesa-dri libglu1-mesa mesa-utils libx11-dev \
+                   x11-apps libxkbcommon-x11-0 && \
+                   rustup target add x86_64-apple-darwin && \
+                   cargo run --bin server 10.0.0.2\""
+  else
+    # Comando para los demás nodos
+    COMMAND="bash -c \"apt-get update && apt-get install -y \
+                   iputils-ping libglvnd0 libglvnd-dev libgl1-mesa-glx \
+                   libgl1-mesa-dri libglu1-mesa mesa-utils libx11-dev \
+                   x11-apps libxkbcommon-x11-0 && \
+                   rustup target add x86_64-apple-darwin && \
+                   cargo run --bin server ${IP_ADDRESS} 10.0.0.2\"
+                   "
+  fi
 
   # Exportar las variables de entorno
   export NODE_NAME=$NODE_NAME
   export IP_ADDRESS=$IP_ADDRESS
   export NODE_NUMBER=$NODE_NUMBER
+  export COMMAND=$COMMAND
 
   # Usar envsubst para sustituir las variables en la plantilla y agregarlas al archivo
   envsubst < "$TEMPLATE_FILE" >> "$TMP_COMPOSE_FILE"
+
+
 
   # Limpiar las variables de entorno después de usarlas
   unset NODE_NAME
   unset IP_ADDRESS
   unset NODE_NUMBER
+  unset COMMAND
 done
 
 # Añadir el bloque de red al final
 cat <<EOF >> "$TMP_COMPOSE_FILE"
+
 networks:
   network_net:
     external: true
@@ -83,6 +106,7 @@ fi
 
 # Abrir una terminal para cada contenedor solo si está en ejecución
 for i in $(seq 2 $((NUM_NODOS + 1))); do
+  sleep 10
   NODE_NAME="node$i"
   CONTAINER_NAME=$(docker ps --filter "name=$NODE_NAME" --format "{{.Names}}")
 
@@ -98,7 +122,7 @@ for i in $(seq 2 $((NUM_NODOS + 1))); do
               activate
               do script \"arch -x86_64 zsh\"
               delay 1 -- Espera 1 segundo para asegurarte de que el comando anterior se ejecute
-              do script \"docker exec -it $CONTAINER_NAME bash\" in front window
+              do script \"docker logs -f $CONTAINER_NAME\" in front window
               delay 2
           end tell
           "
