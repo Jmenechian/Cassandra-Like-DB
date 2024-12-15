@@ -22,7 +22,7 @@ use std::{
     vec,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 /// Estructura encargada de agregar un nuevo nodo conectado a la red.
 /// Se le asigna posiciones a sus vnodes en el ring.
 /// Se le pasa la informacion de las tablas que le corresponde y se borra de los nodos que ya no deberían tenerla.
@@ -204,9 +204,9 @@ impl NewNodeAgregator {
                         query,
                         consistency: 0,
                     };
-                    let _ = msg.send_server_through(&mut socket);
+                    let _ = msg.send_server_through(&mut socket, self.node.logger.clone());
 
-                    let _ = Packet::from_stream(&mut socket);
+                    let _ = Packet::from_stream(&mut socket, self.node.logger.clone());
                 }
             }
         }
@@ -219,9 +219,9 @@ impl NewNodeAgregator {
                 query,
                 consistency: 0,
             };
-            let _ = msg.send_server_through(&mut socket);
+            let _ = msg.send_server_through(&mut socket, self.node.logger.clone());
 
-            let _ = Packet::from_stream(&mut socket);
+            let _ = Packet::from_stream(&mut socket, self.node.logger.clone());
         }
     }
 }

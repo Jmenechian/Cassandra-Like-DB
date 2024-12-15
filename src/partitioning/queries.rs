@@ -22,11 +22,12 @@ pub fn get_insert_query(table: &str, headers: &mut Vec<String>, line: &mut Vec<S
 
 /// Query para crear la tabla indicada.
 pub fn get_create_query(table: &str) -> String {
-    match table {
+    let table_name = get_table_name_from_path(table);
+    match table_name.as_str() {
         "origin" => "CREATE TABLE origin (airport STR, destination STR, date DATETIME, flight STR, status STR, timestamp TIMESTAMP, PRIMARY KEY (airport, date, flight)) WITH CLUSTERING ORDER BY (timestamp ASC)".to_string(),
         "destination" => "CREATE TABLE destination (airport STR, origin STR, date DATETIME, flight STR, status STR, timestamp TIMESTAMP, PRIMARY KEY (airport, date, flight)) WITH CLUSTERING ORDER BY (timestamp ASC)".to_string(),
         "flights_in_progress" => "CREATE TABLE flights_in_progress (flight STR, airport STR, destination STR, status STR, date DATETIME, speed STR, latitude STR, longitude STR, height STR, timestamp TIMESTAMP, PRIMARY KEY (number, origin, date) WITH CLUSTERING ORDER BY (timestamp ASC)".to_string(),
-        _ => "".to_string()
+        _ => table_name,
     }
 }
 

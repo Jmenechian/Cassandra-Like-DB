@@ -8,10 +8,12 @@
 use crate::config;
 use crate::encryption::encrypt::{decrypt_body_aes128, encrypt_body_aes128};
 use crate::errors::my_errors::MyError;
+use crate::loggerstuff::logger::Logger;
 use crate::messagestuff::{
     message::*, message_cql::errormessage::ErrorMessage, message_cql::querymessage::QueryMessage,
     message_cql::resultmessage::ResultMessage,
 };
+use std::sync::{Arc, RwLock};
 use std::{io::Read, net::TcpStream};
 
 #[derive(Copy, Clone, Debug)]
@@ -51,7 +53,7 @@ pub struct Envelope {
 }
 
 impl Envelope {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self, stream: &mut TcpStream, logger: Option<Arc<RwLock<Logger>>>) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&byte_to_byte(self.version));
         bytes.extend_from_slice(&byte_to_byte(self.flags));
@@ -72,10 +74,16 @@ impl Envelope {
         bytes.extend_from_slice(&int_to_bytes(final_length));
         bytes.extend_from_slice(&final_body);
 
+        if let Some(logger) = logger {
+            let _ = Envelope::write_log(stream, logger, self);
+        }
         bytes
     }
 
-    pub fn from_stream(stream: &mut TcpStream) -> Result<Self, MyError> {
+    pub fn from_stream(
+        stream: &mut TcpStream,
+        logger: Option<Arc<RwLock<Logger>>>,
+    ) -> Result<Self, MyError> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 9];
         if let Err(e) = stream.read_exact(&mut header_buffer) {
@@ -119,14 +127,58 @@ impl Envelope {
                 CqlMessage::Result(result)
             }
         };
-        Ok(Envelope {
+
+        let env = Envelope {
             version: _version,
             flags: _flags,
             stream: _stream_id,
             opcode: _opcode,
             length: body_length,
             body: _body,
-        })
+        };
+
+        if let Some(logger) = logger {
+            Envelope::write_log(stream, logger, &env)?;
+        }
+        Ok(env)
+    }
+
+    fn write_log(
+        stream: &mut TcpStream,
+        logger: Arc<RwLock<Logger>>,
+        env: &Envelope,
+    ) -> Result<(), MyError> {
+        let mut logger_guard = match logger.write() {
+            Ok(l) => l,
+            Err(e) => {
+                let error = format!("Error al leer el logger: {:?}", e);
+                return Err(MyError::LockingError(error));
+            }
+        };
+
+        let ip = match stream.peer_addr() {
+            Ok(addr) => format!("{:?}", addr),
+            Err(_) => "".to_string(),
+        };
+
+        match &env.body {
+            CqlMessage::Query(msg) => {
+                let message = format!("[CLIENT] [RECEIVED] [{}] Query: {}", ip, msg.query.trim());
+                logger_guard.write_log(message.as_str())?;
+            }
+            CqlMessage::Result(msg) => {
+                let message = format!("[CLIENT] [SENT]     [{}] Result from query: {}", ip, msg);
+                logger_guard.write_log(message.as_str())?;
+            }
+            CqlMessage::Error(msg) => {
+                let message = format!(
+                    "[CLIENT] [SENT]     [{}] Error from server: {}",
+                    ip, msg.error
+                );
+                logger_guard.write_log(message.as_str())?;
+            }
+        }
+        Ok(())
     }
 }
 

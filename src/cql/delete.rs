@@ -51,7 +51,6 @@ impl Delete {
         };
 
         self.table = format!("{}_{}", name, self.num_node);
-        println!("DELETE en tabla: {}", self.table);
 
         if let Some(where_index) = parts.iter().position(|&x| x == "WHERE") {
             let (_, right) = parts.split_at(where_index);

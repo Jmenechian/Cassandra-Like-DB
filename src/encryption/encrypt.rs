@@ -54,10 +54,11 @@ pub fn decode(bytes: Vec<u8>) -> Result<Vec<u8>, MyError> {
         if *last == b'\n' {
             bytes_to_decode = bytes[..bytes.len() - 1].to_vec();
         } else {
+            let last_byte = bytes.last().unwrap_or(&0_u8);
             return Err(MyError::DecryptionError(format!(
                 "Datos codificados no validos: {:?}, last: {:?}",
                 bytes.len(),
-                bytes.last().unwrap()
+                last_byte
             )));
         }
     } else {
@@ -100,17 +101,21 @@ pub fn decrypt_body_aes128(encrypted_body: Vec<u8>) -> Result<Vec<u8>, MyError> 
         )));
     }
 
-    let padding = *decrypted.last().unwrap() as usize;
-    if padding == 0 || padding > 16 || padding > decrypted.len() {
-        return Err(MyError::DecryptionError(format!(
-            "Invalid padding 2: padding: {:?}, decrypted: {:?}",
-            padding, decrypted
-        )));
+    if let Some(padding) = decrypted.last() {
+        let _padding = *padding as usize;
+        if _padding == 0 || _padding > 16 || _padding > decrypted.len() {
+            return Err(MyError::DecryptionError(format!(
+                "Invalid padding 2: padding: {:?}, decrypted: {:?}",
+                _padding, decrypted
+            )));
+        }
+        let unpadded = decrypted[..decrypted.len() - _padding].to_vec();
+        return Ok(unpadded);
     }
-
-    let unpadded = decrypted[..decrypted.len() - padding].to_vec();
-
-    Ok(unpadded)
+    Err(MyError::DecryptionError(format!(
+        "Invalid padding 3: decrypted: {:?}",
+        decrypted
+    )))
 }
 
 #[cfg(test)]

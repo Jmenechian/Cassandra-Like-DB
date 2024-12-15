@@ -50,9 +50,9 @@ impl User {
                 return Err(MyError::UserError("Invalid user file".to_string()));
             }
 
-            let role: &str = values.pop().unwrap();
-            let pass: &str = values.pop().unwrap();
-            let user: &str = values.pop().unwrap();
+            let role: &str = values.pop().unwrap_or("user");
+            let pass: &str = values.pop().unwrap_or("pass");
+            let user: &str = values.pop().unwrap_or("user");
 
             if user == username && pass == password {
                 return match role {

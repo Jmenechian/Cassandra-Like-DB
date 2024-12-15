@@ -100,7 +100,7 @@ impl FlightSimulator {
 
         let query = get_query_create_simulator_table();
 
-        connection_server.make_query(query, ONE)?;
+        connection_server.make_query(query, QUORUM)?;
         channel
             .recv()
             .map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;

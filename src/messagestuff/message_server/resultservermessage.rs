@@ -6,6 +6,7 @@ use crate::messagestuff::message_server::{
 };
 
 use super::resultemptymessage::ResultEmptyServerMessage;
+use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]
@@ -88,6 +89,18 @@ impl IntoPacket for ResultServerMessage {
             opcode: ServerOpcode::ResultServerMessage,
             length: _body.len() as i32,
             body: ServerMessage::Result(self),
+        }
+    }
+}
+
+impl fmt::Display for ResultServerMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.body {
+            ResultServerBody::Void(_) => write!(f, "[void]"),
+            ResultServerBody::Rows(rows_msg) => {
+                write!(f, "{:?}", rows_msg.rows_content)
+            }
+            ResultServerBody::Empty(_) => write!(f, "[empty]"),
         }
     }
 }

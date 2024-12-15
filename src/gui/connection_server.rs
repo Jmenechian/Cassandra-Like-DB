@@ -13,6 +13,7 @@ use crate::{client_cql::Client, errors::my_errors::MyError, simulators::airport:
 pub struct ConnectionServer {
     pub stream: Option<TcpStream>,
     pub channels: (Sender<Vec<String>>, Receiver<Vec<String>>),
+    pub client: Client,
 }
 
 impl ConnectionServer {
@@ -27,6 +28,7 @@ impl ConnectionServer {
         Self {
             stream,
             channels: mpsc::channel(), //(tx, rx) -> send, receive
+            client,
         }
     }
 
@@ -65,7 +67,6 @@ impl ConnectionServer {
         };
 
         let tx = self.channels.0.clone();
-
         let _ = thread::spawn({
             move || {
                 if let Ok(origin_flights) =

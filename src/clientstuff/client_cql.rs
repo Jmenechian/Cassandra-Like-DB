@@ -4,9 +4,8 @@ use crate::messagestuff::message::Sendable;
 use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_cql::resultmessage::ResultBody;
-use std::io::{self, BufRead, Result};
+use std::io::{self, BufRead};
 use std::net::TcpStream;
-
 use std::thread;
 
 #[derive(Debug)]
@@ -27,39 +26,41 @@ impl Client {
     }
 
     /// Devuelve Ok si se puede conectar con el server.
-    pub fn handle_input(&mut self) -> Result<()> {
-        let mut _stream = TcpStream::connect(&self.server_ip)?;
+    pub fn handle_input(&mut self) -> Result<(), MyError> {
+        let mut _stream = TcpStream::connect(&self.server_ip)
+            .map_err(|e| MyError::TcpStreamError(e.to_string()))?;
 
         Ok(())
     }
 
     /// Se conecta con el server y devuelve el stream.
-    pub fn connect(&mut self) -> Result<TcpStream> {
+    pub fn connect(&mut self) -> Result<TcpStream, MyError> {
         if let Ok(stream) = TcpStream::connect(&self.server_ip) {
             Ok(stream)
         } else {
-            Err(MyError::TcpStreamError("Error connecting  c client to server".to_string()).into())
+            Err(MyError::TcpStreamError(
+                "Error connecting  c client to server".to_string(),
+            ))
         }
     }
 
     /// Se conecta con el server.
     /// Lee las consultas por stdin y las envía al server.
     /// Recibe la respuesta del server como Envelope y la imprime por pantalla.
-    pub fn handle_connection(&self) -> io::Result<()> {
+    pub fn handle_connection(&self) -> Result<(), MyError> {
         let mut stream = match TcpStream::connect(&self.server_ip) {
             Ok(s) => s,
             Err(e) => {
-                println!("Error al conectarme al TcpStream: {:?}", e);
-                return Err(e);
+                return Err(MyError::TcpStreamError(e.to_string()));
             }
         };
         let mut stream_clone = match stream.try_clone() {
             Ok(clone) => clone,
             Err(e) => {
-                println!("Error al clonar el TcpStream: {:?}", e);
-                return Err(e);
+                return Err(MyError::TcpStreamError(e.to_string()));
             }
         };
+
         thread::spawn(move || {
             let stdin = io::stdin();
             loop {
@@ -71,7 +72,7 @@ impl Client {
         });
 
         loop {
-            match Envelope::from_stream(&mut stream) {
+            match Envelope::from_stream(&mut stream, None) {
                 Ok(env) => match env.body {
                     CqlMessage::Result(r) => match r.body {
                         ResultBody::Rows(r) => {
@@ -102,21 +103,25 @@ impl Client {
 
     /// Envía la consulta por el stream al server.
     /// El mensaje que se envía es de tipo QueryMessage.
-    pub fn send_message(stream: &mut TcpStream, message: String, consistency: u16) -> Result<()> {
+    pub fn send_message(
+        stream: &mut TcpStream,
+        message: String,
+        consistency: u16,
+    ) -> Result<(), MyError> {
         if !message.is_empty() {
             let msg: QueryMessage = QueryMessage {
                 query: message,
                 consistency, //config::QUORUM or ONE
             };
-            let _ = msg.send_through(stream);
+            let _ = msg.send_through(stream, None);
         }
         Ok(())
     }
 
     /// Se lee la respuesta del server por el stream y se devuelve el resultado.
-    pub fn read_response(stream: &mut TcpStream) -> Result<Vec<String>> {
+    pub fn read_response(stream: &mut TcpStream) -> Result<Vec<String>, MyError> {
         loop {
-            match Envelope::from_stream(stream) {
+            match Envelope::from_stream(stream, None) {
                 Ok(env) => match env.body {
                     CqlMessage::Result(result) => match result.body {
                         ResultBody::Void(_) => {
@@ -134,7 +139,7 @@ impl Client {
                     }
                 },
                 Err(e) => {
-                    return Err(MyError::Error(e.to_string()).into());
+                    return Err(MyError::Error(e.to_string()));
                 }
             }
         }

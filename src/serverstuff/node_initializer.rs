@@ -1,5 +1,6 @@
 use crate::config::PORTS_FILE;
 use crate::errors::my_errors::MyError;
+use crate::loggerstuff::logger::Logger;
 use crate::messagestuff::{message::*, message_server::gossipmessage::*};
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
@@ -10,7 +11,6 @@ use crate::serverstuff::{
     handleconnectiongossip::handle_connection_gossip,
     handleconnectionserver::handle_connection_server,
 };
-
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::net::{TcpListener, TcpStream};
@@ -21,11 +21,11 @@ use std::time::Duration;
 
 /// Funcion de inicializacíon, donde se crea el nodo indicado y se escucha y responde por los puertos correspondientes.
 pub fn node_initialize(port: String) -> Result<(), MyError> {
-    let show_g: bool = false;
-    let show_s: bool = false;
-    let show_c: bool = false;
+    // let show_g: bool = false;
+    // let show_s: bool = false;
+    // let show_c: bool = true;
 
-    let mut current_node: Node = Node::new(&port);
+    let mut current_node: Node = Node::new(&port)?;
     println!("Nodo actual: {:?}", current_node);
     //me agrego a mi mismo a vecinos
     current_node.add_neighbor(NeighborNode::new(&current_node.number));
@@ -37,29 +37,43 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
     let server_ip = current_node.server_ip.clone();
     let client_ip = current_node.client_ip.clone();
     let gossip_ip = current_node.gossip_ip.clone();
+    let logger = current_node.logger.clone();
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node));
 
     // Seccion servidor-servidor
-    listen(server_ip, &current_node, handle_connection_server, show_s)?;
+    listen(
+        server_ip,
+        &current_node,
+        logger.clone(),
+        handle_connection_server,
+    )?;
 
     // Seccion Gossip
-    listen(gossip_ip, &current_node, handle_connection_gossip, show_g)?;
+    listen(
+        gossip_ip,
+        &current_node,
+        logger.clone(),
+        handle_connection_gossip,
+    )?;
 
     // Seccion cliente-servidor
-    listen(client_ip, &current_node, handle_connection_client, show_c)?;
+    listen(
+        client_ip,
+        &current_node,
+        logger.clone(),
+        handle_connection_client,
+    )?;
 
     loop {
         thread::sleep(Duration::from_secs(2));
-        match connect_to_random_gossip(ports.clone(), &port, show_g) {
-            Some((mut s, _)) => {
-                let gossip_msg = GossipMessage {
-                    ip: my_ip.clone(),
-                    status: Status::Connected,
-                    ttl: 5_u8,
-                };
-                let _ = gossip_msg.send_server_through(&mut s);
-            }
-            None => {}
+        let logger_clone = Arc::clone(&logger);
+        if let Some((mut s, _)) = connect_to_random_gossip(ports.clone(), &port) {
+            let gossip_msg = GossipMessage {
+                ip: my_ip.clone(),
+                status: Status::Connected,
+                ttl: 5_u8,
+            };
+            let _ = gossip_msg.send_server_through(&mut s, logger_clone);
         };
     }
 }
@@ -100,11 +114,14 @@ pub fn try_connect(ip: String) -> Option<TcpStream> {
 fn listen<F>(
     ip: String,
     node: &Arc<RwLock<Node>>,
+    logger: Arc<RwLock<Logger>>,
     handler: F,
-    show: bool,
 ) -> Result<JoinHandle<Result<(), MyError>>, MyError>
 where
-    F: Fn(Arc<RwLock<Node>>, &mut TcpStream, bool) -> Result<(), MyError> + Send + 'static + Copy,
+    F: Fn(Arc<RwLock<Node>>, &mut TcpStream, Arc<RwLock<Logger>>) -> Result<(), MyError>
+        + Send
+        + 'static
+        + Copy,
 {
     let current_node = Arc::clone(node);
 
@@ -128,9 +145,10 @@ where
             };
 
             let node_thread = Arc::clone(&current_node);
+            let logger = Arc::clone(&logger);
 
             thread::spawn(move || {
-                match handler(node_thread, &mut s, show) {
+                match handler(node_thread, &mut s, logger) {
                     Ok(_) => {}
                     Err(e) => println!("Error: {:?}", e),
                 };

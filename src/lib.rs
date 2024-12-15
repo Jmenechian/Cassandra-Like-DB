@@ -57,6 +57,10 @@ pub mod encryption {
     pub mod encrypt;
 }
 
+pub mod loggerstuff {
+    pub mod logger;
+}
+
 pub mod partitioning {
     pub mod consistent_hashing;
     pub mod new_node_aggregator;
@@ -66,6 +70,7 @@ pub mod partitioning {
 
 pub use clientstuff::client_cql;
 pub use cql::query::Query;
+pub use loggerstuff::logger::Logger;
 pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
 
 pub mod gui {

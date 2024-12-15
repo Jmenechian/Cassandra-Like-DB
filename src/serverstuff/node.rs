@@ -3,6 +3,7 @@ use crate::config::{
 };
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
+use crate::loggerstuff::logger::Logger;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node_status::Status;
 use crate::utils::get_rustic_airline_path_tables;
@@ -23,13 +24,20 @@ pub struct Node {
     pub path_table_origin: Arc<RwLock<String>>, // path donde se encuntra el archivo que representan la tabla
     pub path_table_destination: Arc<RwLock<String>>,
     pub path_table_simulator: Arc<RwLock<String>>,
+    pub logger: Arc<RwLock<Logger>>, // logger para guardar los logs
     pub connection_date: DateTime<Utc>,
 }
 
 impl Node {
     /// Se crea el nodo.
-    pub fn new(number: &str) -> Self {
-        Self {
+    pub fn new(number: &str) -> Result<Self, MyError> {
+        let logger = match Logger::new(number.to_string()) {
+            //////////////////// REVISAR!!!
+            Ok(logger) => Arc::new(RwLock::new(logger)),
+            Err(_) => return Err(MyError::LoggerError("Error al crear logger".to_string())),
+        };
+
+        Ok(Self {
             number: number.to_string(),
             server_ip: format!("127.0.0.1:700{}", number),
             client_ip: format!("127.0.0.1:800{}", number),
@@ -39,7 +47,8 @@ impl Node {
             path_table_destination: Self::lock_path_table(number, "destination"),
             path_table_simulator: Self::lock_path_table(number, "simulator"),
             connection_date: Utc::now(),
-        }
+            logger,
+        })
     }
 
     /// Obtenemos los paths de las tablas que se crearon a traves de la query CREATED.

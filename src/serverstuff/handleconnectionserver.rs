@@ -1,4 +1,4 @@
-use crate::config::TABLE_ORIGIN_NAME;
+use crate::config::{SHOW_SERVER, TABLE_ORIGIN_NAME};
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
@@ -12,6 +12,7 @@ use crate::messagestuff::{
     },
 };
 use crate::serverstuff::node::Node;
+use crate::Logger;
 use std::net::TcpStream;
 use std::sync::{Arc, RwLock};
 
@@ -19,13 +20,12 @@ fn handle_message_query(
     node: Arc<RwLock<Node>>,
     query: QueryServerMessage,
     stream: &mut TcpStream,
-    show: bool,
 ) -> Result<(), MyError> {
     let node = match node.read() {
         Ok(n) => n,
         Err(e) => {
             let _error = format!("Error al tratar de usar el nodo: {:?}", e);
-            if show {
+            if SHOW_SERVER {
                 println!("S   {:?}", _error);
             }
             return Err(MyError::LockingError(_error));
@@ -38,23 +38,18 @@ fn handle_message_query(
         node.server_ip.clone(),
     );
     let msg = match node.process_query(&mut query) {
-        Ok(s) => {
-            if show {
-                println!("RESULTADO, TABLA: {:?}", s);
-            }
-            ResultRowsServerMessage {
-                table: query.get_table(),
-                rows_count: s.len() as i32,
-                rows_content: s,
-            }
-            .into_result_server_message()
+        Ok(s) => ResultRowsServerMessage {
+            table: query.get_table(),
+            rows_count: s.len() as i32,
+            rows_content: s,
         }
+        .into_result_server_message(),
         Err(e) => {
             println!("Error en query: {:?}", e);
             ResultVoidServerMessage.into_result_server_message()
         }
     };
-    let _ = msg.send_server_through(stream);
+    let _ = msg.send_server_through(stream, node.logger.clone());
     Ok(())
 }
 
@@ -162,19 +157,19 @@ fn contains_row(rows: &Vec<String>, row: &str) -> bool {
 pub fn handle_connection_server(
     node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
-    show: bool,
+    logger: Arc<RwLock<Logger>>,
 ) -> Result<(), MyError> {
-    match Packet::from_stream(stream) {
+    match Packet::from_stream(stream, logger) {
         Ok(packet) => {
-            if show {
-                println!("S   El packet recibido es: {:?}", packet);
-            }
+            // if SHOW_SERVER {
+            //     println!("S   El packet recibido es: {:?}", packet);
+            // }
             match packet.body {
-                ServerMessage::Query(query) => handle_message_query(node, query, stream, show),
+                ServerMessage::Query(query) => handle_message_query(node, query, stream),
                 ServerMessage::ReadRepair(msg) => handle_message_read_repair(node, msg),
                 _ => {
                     let _error = "Error entre server y servers".to_string();
-                    if show {
+                    if SHOW_SERVER {
                         println!("S   {:?}", _error);
                     }
                     Err(MyError::ServerMessageError(_error))

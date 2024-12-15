@@ -154,8 +154,8 @@ impl MapApp {
         self.connection_server
             .send_origin_and_return_flights(self.date_selected.clone(), airport.clone())?;
 
-        let origin_flights = rx.recv().unwrap();
-        let return_flights = rx.recv().unwrap();
+        let origin_flights = rx.recv().unwrap_or_default();
+        let return_flights = rx.recv().unwrap_or_default();
 
         let origin_flights =
             airport.parse_origin_flights(&self.airports.clone(), origin_flights)?;
@@ -379,9 +379,9 @@ impl MapApp {
                                     let rx: &Receiver<Vec<String>> = self.connection_server.get_channel_to_receive();
 
                                     let _ = self.connection_server.make_query(query_origin, config::QUORUM);
-                                    let _ = rx.recv().unwrap();
+                                    let _ = rx.recv().unwrap_or_default();
                                     let _ = self.connection_server.make_query(query_destination, config::QUORUM);
-                                    let _ = rx.recv().unwrap();
+                                    let _ = rx.recv().unwrap_or_default();
 
                                     if let Some(airport) = self.airports.clone().get(&self.selected_origin_airport) {
                                         let (screen_x, screen_y) =
@@ -504,11 +504,11 @@ impl MapApp {
                         let _ = self
                             .connection_server
                             .make_query(query_origin, config::QUORUM);
-                        let _ = rx.recv().unwrap();
+                        let _ = rx.recv().unwrap_or_default();
                         let _ = self
                             .connection_server
                             .make_query(query_destination, config::QUORUM);
-                        let _ = rx.recv().unwrap();
+                        let _ = rx.recv().unwrap_or_default();
                         println!("Ok receive response query");
 
                         if let Some(airport) =

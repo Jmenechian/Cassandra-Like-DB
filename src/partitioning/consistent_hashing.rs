@@ -96,14 +96,10 @@ impl ConsistentHash<NeighborNode> {
         }
 
         let hash = self.token_map.hash(key, None);
-        println!("\n\n\nHash: {}", hash);
-        println!("Key: {}\n\n\n", key);
         let keys = self.get_keys_in_order();
 
         let idx = self.find_closest_greater_index(&keys, &hash).unwrap_or(0);
         let result: Vec<_> = keys[idx..].to_vec();
-        // println!("\n\n\nRing: {:?}", self.ring);
-        println!("Result: {:?}\n\n\n", result);
 
         let mut connected_nodes = 0;
 
@@ -124,7 +120,10 @@ impl ConsistentHash<NeighborNode> {
         nodes: &mut Vec<NeighborNode>,
     ) {
         for node_idx in result {
-            let node = self.ring.get(node_idx).unwrap();
+            let node = match self.ring.get(node_idx) {
+                Some(node) => node,
+                None => continue,
+            };
 
             if nodes.contains(node) {
                 continue;

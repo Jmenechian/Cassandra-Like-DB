@@ -61,7 +61,6 @@ impl Insert {
             self.table = parts[2].to_string();
         }
         self.table = format!("{}_{}", self.table, self.num_node);
-        println!("INSERT en tabla: {}", self.table);
 
         let headers: Vec<String> = self.extract_values(&parts, skip_index);
 
