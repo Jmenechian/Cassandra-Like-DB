@@ -14,29 +14,6 @@ if ! [[ "$NUM_NODOS" =~ ^[0-9]+$ ]] || [ "$NUM_NODOS" -le 0 ]; then
   exit 1
 fi
 
-# Limpiar todas las redes de Docker excepto las predeterminadas
-echo "Eliminando todas las redes de Docker excepto las predeterminadas..."
-
-docker network ls --format '{{.Name}}' | grep -vE '^(bridge|host|none)$' | while read -r network; do
-  echo "Eliminando contenedores en la red $network..."
-  
-    # Obtener todos los contenedores conectados a la red y procesarlos individualmente
-    docker network inspect "$network" --format '{{range .Containers}}{{.Name}}{{"\n"}}{{end}}' | while read -r container; do
-    if [ -n "$container" ]; then
-        echo "Deteniendo y eliminando contenedor $container..."
-        docker stop "$container" >/dev/null 2>&1
-        docker rm "$container" >/dev/null 2>&1
-    fi
-    done
-
-
-  # Intentar eliminar la red
-  echo "Eliminando red $network..."
-  docker network rm "$network" >/dev/null 2>&1 || {
-    echo "Error: No se pudo eliminar la red $network. Verifica los permisos o si aún hay contenedores activos."
-  }
-done
-
 TEMPLATE_FILE="docker-compose.template.yml"
 TMP_COMPOSE_FILE="docker-compose.yml"
 
@@ -51,7 +28,7 @@ if ! docker network inspect network_net >/dev/null 2>&1; then
     exit 1
   }
 else
-  echo "La red network_net ya existe. Usándola."
+  echo "La red $NETWORK_NAME ya existe. Usándola."
 fi
 
 # Crear el archivo docker-compose.yml vacío con la cabecera
@@ -62,18 +39,31 @@ echo "services:" >> "$TMP_COMPOSE_FILE"
 for i in $(seq 2 $((NUM_NODOS + 1))); do
   IP_ADDRESS="10.0.0.$((i))"  # La IP empieza desde 10.0.0.2
   NODE_NAME="node$i"
+  NODE_NUMBER=$((8000 + i))
 
   echo "Creando nodo $NODE_NAME con IP $IP_ADDRESS"
+
+  # Verificar si ya existe un contenedor con el mismo nombre
+  EXISTING_CONTAINER=$(docker ps -a --filter "name=$NODE_NAME" --format "{{.Names}}")
+  
+  if [ -n "$EXISTING_CONTAINER" ]; then
+    echo "El contenedor $NODE_NAME ya existe. Eliminando contenedor..."
+    docker stop "$EXISTING_CONTAINER" >/dev/null 2>&1
+    docker rm "$EXISTING_CONTAINER" >/dev/null 2>&1
+  fi
 
   # Exportar las variables de entorno
   export NODE_NAME=$NODE_NAME
   export IP_ADDRESS=$IP_ADDRESS
+  export NODE_NUMBER=$NODE_NUMBER
+
   # Usar envsubst para sustituir las variables en la plantilla y agregarlas al archivo
   envsubst < "$TEMPLATE_FILE" >> "$TMP_COMPOSE_FILE"
 
   # Limpiar las variables de entorno después de usarlas
   unset NODE_NAME
   unset IP_ADDRESS
+  unset NODE_NUMBER
 done
 
 # Añadir el bloque de red al final
@@ -93,35 +83,37 @@ fi
 
 # Abrir una terminal para cada contenedor solo si está en ejecución
 for i in $(seq 2 $((NUM_NODOS + 1))); do
-    NODE_NAME="node$i"
-    CONTAINER_NAME=$(docker ps --filter "name=$NODE_NAME" --format "{{.Names}}")
+  NODE_NAME="node$i"
+  CONTAINER_NAME=$(docker ps --filter "name=$NODE_NAME" --format "{{.Names}}")
 
-    if [ -n "$CONTAINER_NAME" ]; then
-        echo "Abriendo terminal para $CONTAINER_NAME"
-        # Detectar el sistema operativo
-        OS=$(uname)
+  if [ -n "$CONTAINER_NAME" ]; then
+      echo "Abriendo terminal para $CONTAINER_NAME"
+      # Detectar el sistema operativo
+      OS=$(uname)
 
-        if [ "$OS" == "Darwin" ]; then
-            # Para macOS
-            osascript -e "
-            tell application \"Terminal\"
-                do script \"arch -x86_64 zsh\"
-                delay 1 -- Espera 1 segundo para asegurarte de que el comando anterior se ejecute
-                do script \"docker run --platform linux/amd64 -it $CONTAINER_NAME bash\" in front window
-            end tell
-            "
-        elif [ "$OS" == "Linux" ]; then
-            # Para Linux (suponiendo que usas gnome-terminal)
-            gnome-terminal -- bash -c "docker exec -it $CONTAINER_NAME bash -c '/app/ping_check.sh $NUM_NODOS'; exec bash"
-        else
-            echo "Sistema operativo no soportado"
-        fi
-    else
-        echo "El contenedor $NODE_NAME no está en ejecución."
-    fi
+      if [ "$OS" == "Darwin" ]; then
+          # Para macOS
+          osascript -e "
+          tell application \"Terminal\"
+              activate
+              do script \"arch -x86_64 zsh\"
+              delay 1 -- Espera 1 segundo para asegurarte de que el comando anterior se ejecute
+              do script \"docker exec -it $CONTAINER_NAME bash\" in front window
+              delay 2
+          end tell
+          "
+      elif [ "$OS" == "Linux" ]; then
+          # Para Linux (suponiendo que usas gnome-terminal)
+          gnome-terminal -- bash -c "docker exec -it $CONTAINER_NAME bash -c '/app/ping_check.sh $NUM_NODOS'; exec bash"
+      else
+          echo "Sistema operativo no soportado"
+      fi
+  else
+      echo "El contenedor $NODE_NAME no está en ejecución."
+  fi
 done
 
 # Limpiar archivo temporal
-rm -f "$TMP_COMPOSE_FILE"
+#rm -f "$TMP_COMPOSE_FILE"
 #-c '/app/ping_check.sh $NUM_NODOS'
 echo "Todos los nodos han sido creados."

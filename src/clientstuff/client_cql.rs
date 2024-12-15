@@ -5,7 +5,7 @@ use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_cql::resultmessage::ResultBody;
 use std::io::{self, BufRead, Result};
-use std::net::TcpStream;
+use std::net::{TcpStream, IpAddr, SocketAddr};
 
 use std::thread;
 
@@ -13,29 +13,29 @@ use std::thread;
 /// Estructura que representará al cliente conectandose al server.
 /// Podrá realizarse consultas al server y recibir su respuesta.
 pub struct Client {
-    pub server_ip: String,
-    pub ip: String,
+    pub server_socket: SocketAddr,
+    pub ip: IpAddr,
 }
 
 impl Client {
     /// Se inicializan los puertos del cliente.
-    pub fn initialize(port: String) -> Self {
+    pub fn initialize(ip: IpAddr, port: u16) -> Self {
         Self {
-            server_ip: format!("127.0.0.1:800{}", port),
-            ip: "127.0.0.1:45450".to_string(),
+            server_socket: SocketAddr::new(ip, port),
+            ip: ip,
         }
     }
 
     /// Devuelve Ok si se puede conectar con el server.
     pub fn handle_input(&mut self) -> Result<()> {
-        let mut _stream = TcpStream::connect(&self.server_ip)?;
+        let mut _stream = TcpStream::connect(&self.server_socket)?;
 
         Ok(())
     }
 
     /// Se conecta con el server y devuelve el stream.
     pub fn connect(&mut self) -> Result<TcpStream> {
-        if let Ok(stream) = TcpStream::connect(&self.server_ip) {
+        if let Ok(stream) = TcpStream::connect(&self.server_socket) {
             Ok(stream)
         } else {
             Err(MyError::TcpStreamError("Error connecting  c client to server".to_string()).into())
@@ -46,7 +46,7 @@ impl Client {
     /// Lee las consultas por stdin y las envía al server.
     /// Recibe la respuesta del server como Envelope y la imprime por pantalla.
     pub fn handle_connection(&self) -> io::Result<()> {
-        let mut stream = match TcpStream::connect(&self.server_ip) {
+        let mut stream = match TcpStream::connect(&self.server_socket) {
             Ok(s) => s,
             Err(e) => {
                 println!("Error al conectarme al TcpStream: {:?}", e);
@@ -142,13 +142,19 @@ impl Client {
 
     /// Devolvemos el stream con el primer nodo conectado que se encuentre.
     /// En caso de no haber nodos conectados se devuleve un error.
-    pub fn connect_with_node() -> Result<TcpStream> {
+    pub fn connect_with_node(ip: IpAddr, port: u16) -> Result<TcpStream> {
+        let mut client = Client::initialize(ip, port);
+            if let Ok(stream) = client.connect() {
+                return Ok(stream);
+            }
+        /* 
         for number_node in 1..=RING_SIZE {
             let mut client = Client::initialize(number_node.to_string());
             if let Ok(stream) = client.connect() {
                 return Ok(stream);
             }
         }
+        */
         Err(MyError::TcpStreamError("Error in TcpStream".to_string()).into())
     }
 }

@@ -19,7 +19,7 @@ use crate::{
 };
 
 use chrono::Utc;
-use std::{net::TcpStream, thread, time::Duration};
+use std::{net::{IpAddr, TcpStream}, thread, time::Duration};
 use threadpool::ThreadPool;
 
 #[derive(Debug, Clone)]
@@ -71,8 +71,8 @@ impl FlightSimulator {
 
     /// Pone en marcha la creación de vuelos y su simulación de despegue y llegada a destino.
     /// Se utilizan thread pool.
-    pub fn run() -> Result<(), SimulatorErrors> {
-        if FlightSimulator::create_flight_table().is_err() {
+    pub fn run(ip: IpAddr, port: u16) -> Result<(), SimulatorErrors> {
+        if FlightSimulator::create_flight_table(ip, port).is_err() {
             println!("Las tablas ya estaban creadas.\n");
         } else {
             println!("Se creo la tabla flights_in_progress correctamente.\n");
@@ -81,7 +81,7 @@ impl FlightSimulator {
         let pool = ThreadPool::new(N_WORKERS);
 
         loop {
-            let mut stream_server: TcpStream = if let Ok(stream) = Client::connect_with_node() {
+            let mut stream_server: TcpStream = if let Ok(stream) = Client::connect_with_node(ip, port) {
                 stream
             } else {
                 return Err(SimulatorErrors::AllNodesDisconnected());
@@ -103,9 +103,9 @@ impl FlightSimulator {
     }
 
     /// Se crea la tabla flights_in_progress.
-    fn create_flight_table() -> Result<(), MyError> {
+    fn create_flight_table(ip: IpAddr, port: u16) -> Result<(), MyError> {
         // Buscamos un nodo conectado:
-        let mut stream_server: TcpStream = if let Ok(stream) = Client::connect_with_node() {
+        let mut stream_server: TcpStream = if let Ok(stream) = Client::connect_with_node(ip, port) {
             stream
         } else {
             return Err(MyError::TcpStreamError(

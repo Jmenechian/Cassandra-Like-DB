@@ -32,7 +32,7 @@ fn handle_message_query(
         }
     };
 
-    let mut query = Query::new(query.query.clone(), node.number.clone(), node.server_ip.clone());
+    let mut query = Query::new(query.query.clone(), node.ip.to_string()/*, node.server_socket.to_string()*/);
     let msg = match node.process_query(&mut query) {
         Ok(s) => {
             if show {
@@ -85,7 +85,7 @@ fn handle_message_read_repair(
         }
     };
 
-    let mut _query = Query::new(query_str, node.number.clone(),node.server_ip.clone());
+    let mut _query = Query::new(query_str, node.ip.to_string()/*,node.server_socket.to_string()*/);
     let rows_to_update = node.process_query(&mut _query)?;
 
     let (ap, place, date, flight, stat) = (0, 1, 2, 3, 4);
@@ -106,7 +106,7 @@ fn handle_message_read_repair(
                     "UPDATE {} SET status = {} WHERE airport = {} AND {} = {} AND date = {} AND flight = {}",
                     query.table, row_vec[stat], row_vec[ap], column, row_vec[place], row_vec[date], row_vec[flight]);
             println!("\nRR   {}\n", query_str);
-            let mut query = Query::new(query_str, node.number.clone(), node.server_ip.clone());
+            let mut query = Query::new(query_str, node.ip.to_string()/*/, node.server_socket.to_string()*/);
             node.process_query(&mut query)?;
         } else {
             let query_str = format!(
@@ -120,7 +120,7 @@ fn handle_message_read_repair(
                 row_vec[stat]
             );
             println!("\nRR   {}\n", query_str);
-            let mut query = Query::new(query_str, node.number.clone(),node.server_ip.clone());
+            let mut query = Query::new(query_str, node.ip.to_string()/*,node.server_socket.to_string()*/);
             node.process_query(&mut query)?;
         }
     }
@@ -134,7 +134,7 @@ fn handle_message_read_repair(
                 query.table, row_vec[ap], column, row_vec[place], row_vec[date], row_vec[flight]
             );
             println!("\nRR   {}\n", query_str);
-            let mut query = Query::new(query_str, node.number.clone(),node.server_ip.clone());
+            let mut query = Query::new(query_str, node.ip.to_string()/*,node.server_socket.to_string()*/);
             node.process_query(&mut query)?;
         }
     }

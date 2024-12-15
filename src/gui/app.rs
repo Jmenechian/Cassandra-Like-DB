@@ -2,7 +2,7 @@ use eframe::egui;
 use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureHandle, TextureId, Ui};
 
 use image::GenericImageView;
-use std::collections::HashMap;
+use std::{collections::HashMap, net::IpAddr};
 use std::sync::mpsc::Receiver;
 
 use crate::{
@@ -56,11 +56,11 @@ pub struct MapApp {
 
 impl MapApp {
     /// Se inicializan los valores a usar en la interfaz.
-    pub fn new(port: String) -> Self {
+    pub fn new(ip: IpAddr, port: u16) -> Self {
         let airports = get_airport_coordinates();
         let map_texture = None;
         let plane_texture = HashMap::new();
-        let client = Client::initialize(port);
+        let client = Client::initialize(ip, port);
         let connection_server = ConnectionServer::initialize(client);
         let connections = vec![];
 

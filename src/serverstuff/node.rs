@@ -8,14 +8,15 @@ use crate::serverstuff::node_status::Status;
 
 use rand::seq::SliceRandom;
 use std::sync::{Arc, RwLock};
+use std::net::{IpAddr, SocketAddr};
 
 /// Estructura que eepresenta al nodo en el que estamos parados.
 #[derive(Debug, Clone)]
 pub struct Node {
-    pub number: String,
-    pub server_ip: String, // IP donde nodo se pone a escuchar conexiones de servidores
-    pub client_ip: String, // IP donde nodo se pone a escuchar conexiones de cliente
-    pub gossip_ip: String, // IP donde nodo se pone a escuchar mensajes Gossip
+    pub ip: IpAddr,
+    pub server_socket: SocketAddr, // IP donde nodo se pone a escuchar conexiones de servidores
+    pub client_socket: SocketAddr, // IP donde nodo se pone a escuchar conexiones de cliente
+    pub gossip_socket: SocketAddr, // IP donde nodo se pone a escuchar mensajes Gossip
     pub neighbors: Vec<NeighborNode>, // todos los otros nodos
     pub path_table_origin: Arc<RwLock<String>>, // path donde se encuntra el archivo que representan la tabla
     pub path_table_destination: Arc<RwLock<String>>,
@@ -24,36 +25,36 @@ pub struct Node {
 
 impl Node {
     /// Se crea el nodo.
-    pub fn new(number: &str) -> Self {
+    pub fn new(ip: IpAddr) -> Self {
         Self {
-            number: number.to_string(),
-            server_ip: format!("127.0.0.1:700{}", number),
-            client_ip: format!("127.0.0.1:800{}", number),
-            gossip_ip: format!("127.0.0.1:900{}", number),
+            ip: ip,
+            server_socket: SocketAddr::new(ip, 7000 as u16),
+            client_socket: SocketAddr::new(ip, 8000 as u16),
+            gossip_socket: SocketAddr::new(ip, 9000 as u16),
             neighbors: vec![], // todos los nodos que estan en el ring
-            path_table_origin: Self::lock_path_table(number, "origin"),
-            path_table_destination: Self::lock_path_table(number, "destination"),
-            path_table_simulator: Self::lock_path_table(number, "simulator"),
+            path_table_origin: Self::lock_path_table(&ip.to_string(), "origin"),
+            path_table_destination: Self::lock_path_table(&ip.to_string(), "destination"),
+            path_table_simulator: Self::lock_path_table(&ip.to_string(), "simulator"),
         }
     }
 
-    fn lock_path_table(number_node: &str, table: &str) -> Arc<RwLock<String>> {
-        let path = Self::get_table_path(number_node, table);
+    fn lock_path_table(ip: &str, table: &str) -> Arc<RwLock<String>> {
+        let path = Self::get_table_path(ip, table);
         Arc::new(RwLock::new(path))
     }
 
-    fn get_table_path(number_node: &str, table: &str) -> String {
+    fn get_table_path(ip: &str, table: &str) -> String {
         if table == "origin" {
-            format!("{}/{}_{}.csv", TABLE_PATH, TABLE_ORIGIN_NAME, number_node)
+            format!("{}/{}_{}.csv", TABLE_PATH, TABLE_ORIGIN_NAME, ip)
         } else if table == "destination" {
             format!(
                 "{}/{}_{}.csv",
-                TABLE_PATH, TABLE_DESTINATION_NAME, number_node
+                TABLE_PATH, TABLE_DESTINATION_NAME, ip
             )
         } else {
             format!(
                 "{}/{}_{}.csv",
-                TABLE_PATH, TABLE_FLIGHT_SIMULATOR, number_node
+                TABLE_PATH, TABLE_FLIGHT_SIMULATOR, ip
             )
         }
     }
@@ -68,7 +69,7 @@ impl Node {
         if let Some(pos) = self
             .neighbors
             .iter()
-            .position(|n| n.number == neighbor_node.number)
+            .position(|n| n.ip == neighbor_node.ip)
         {
             if self.neighbors[pos].status != neighbor_node.status {
                 self.neighbors[pos] = neighbor_node;
@@ -91,27 +92,25 @@ impl Node {
         let filtered: Vec<&NeighborNode> = self
             .neighbors
             .iter()
-            .filter(|n| n.number != self.number && n.status == Status::Connected)
+            .filter(|n| n.ip != self.ip && n.status == Status::Connected)
             .collect();
         filtered.choose(&mut rng).copied()
     }
 
-    pub fn disconnect_neighbor(&mut self, ip: String) {
-        if let Some(c) = ip.chars().last() {
-            let port = c.to_string();
-            if let Some(n) = self.neighbors.iter_mut().find(|n| n.number == port) {
-                n.disconnect_node();
-            }
+    pub fn disconnect_neighbor(&mut self, ip: IpAddr) {
+        
+        if let Some(n) = self.neighbors.iter_mut().find(|n| n.ip == ip) {
+            n.disconnect_node();
         }
+        
     }
 
-    pub fn connect_neighbor(&mut self, ip: String) {
-        if let Some(c) = ip.chars().last() {
-            let port = c.to_string();
-            if let Some(n) = self.neighbors.iter_mut().find(|n| n.number == port) {
-                n.connect_node();
-            }
+    pub fn connect_neighbor(&mut self, ip: IpAddr) {
+        
+        if let Some(n) = self.neighbors.iter_mut().find(|n| n.ip == ip) {
+            n.connect_node();
         }
+        
     }
 
     /// Proceso la query y devuelve la tabla en formato String.
@@ -122,21 +121,21 @@ impl Node {
 
         if [
             TABLE_ORIGIN_NAME.to_string(),
-            format!("{}_{}", TABLE_ORIGIN_NAME, self.number),
+            format!("{}_{}", TABLE_ORIGIN_NAME, self.ip.to_string()),
         ]
         .contains(&query.get_table())
         {
             path_table = self.path_table_origin.clone();
         } else if [
             TABLE_DESTINATION_NAME.to_string(),
-            format!("{}_{}", TABLE_DESTINATION_NAME, self.number),
+            format!("{}_{}", TABLE_DESTINATION_NAME, self.ip.to_string()),
         ]
         .contains(&query.get_table())
         {
             path_table = self.path_table_destination.clone();
         } else if [
             TABLE_FLIGHT_SIMULATOR.to_string(),
-            format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.number),
+            format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.ip.to_string()),
         ]
         .contains(&query.get_table())
         {

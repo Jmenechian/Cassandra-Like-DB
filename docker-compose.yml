@@ -1,47 +1,293 @@
 version: '3.8'
 services:
 
-  "node2":
+  node2:
+    container_name: node2
     image: rust:latest
-    platform: linux/amd64
+    #platform: linux/amd64
     networks:
       network_net:
-        ipv4_address: "10.0.0.2"
+        ipv4_address: 10.0.0.2
+    ports:
+      - "8002:8000"
     stdin_open: true
     tty: true
     volumes:
       - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro 
+    environment:
+      DISPLAY: host.docker.internal:0
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      XAUTHORITY: /tmp/.Xauthority
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y iputils-ping && rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
+    command: bash -c "apt-get update && apt-get install -y \
+                      iputils-ping  \
+                      libglvnd0 \
+                      libglvnd-dev \
+                      libgl1-mesa-glx \
+                      libgl1-mesa-dri \
+                      libglu1-mesa \
+                      mesa-utils \
+                      libx11-dev \
+                      x11-apps \
+                      libxkbcommon-x11-0 && \
+                      rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
 
-
-  "node3":
+  node3:
+    container_name: node3
     image: rust:latest
-    platform: linux/amd64
+    #platform: linux/amd64
     networks:
       network_net:
-        ipv4_address: "10.0.0.3"
+        ipv4_address: 10.0.0.3
+    ports:
+      - "8003:8000"
     stdin_open: true
     tty: true
     volumes:
       - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro 
+    environment:
+      DISPLAY: host.docker.internal:0
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      XAUTHORITY: /tmp/.Xauthority
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y iputils-ping && rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
+    command: bash -c "apt-get update && apt-get install -y \
+                      iputils-ping  \
+                      libglvnd0 \
+                      libglvnd-dev \
+                      libgl1-mesa-glx \
+                      libgl1-mesa-dri \
+                      libglu1-mesa \
+                      mesa-utils \
+                      libx11-dev \
+                      x11-apps \
+                      libxkbcommon-x11-0 && \
+                      rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
 
-
-  "node4":
+  node4:
+    container_name: node4
     image: rust:latest
-    platform: linux/amd64
+    #platform: linux/amd64
     networks:
       network_net:
-        ipv4_address: "10.0.0.4"
+        ipv4_address: 10.0.0.4
+    ports:
+      - "8004:8000"
     stdin_open: true
     tty: true
     volumes:
       - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro 
+    environment:
+      DISPLAY: host.docker.internal:0
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      XAUTHORITY: /tmp/.Xauthority
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y iputils-ping && rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
+    command: bash -c "apt-get update && apt-get install -y \
+                      iputils-ping  \
+                      libglvnd0 \
+                      libglvnd-dev \
+                      libgl1-mesa-glx \
+                      libgl1-mesa-dri \
+                      libglu1-mesa \
+                      mesa-utils \
+                      libx11-dev \
+                      x11-apps \
+                      libxkbcommon-x11-0 && \
+                      rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
 
+  node5:
+    container_name: node5
+    image: rust:latest
+    #platform: linux/amd64
+    networks:
+      network_net:
+        ipv4_address: 10.0.0.5
+    ports:
+      - "8005:8000"
+    stdin_open: true
+    tty: true
+    volumes:
+      - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro 
+    environment:
+      DISPLAY: host.docker.internal:0
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      XAUTHORITY: /tmp/.Xauthority
+    working_dir: /app
+    command: bash -c "apt-get update && apt-get install -y \
+                      iputils-ping  \
+                      libglvnd0 \
+                      libglvnd-dev \
+                      libgl1-mesa-glx \
+                      libgl1-mesa-dri \
+                      libglu1-mesa \
+                      mesa-utils \
+                      libx11-dev \
+                      x11-apps \
+                      libxkbcommon-x11-0 && \
+                      rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
+
+  node6:
+    container_name: node6
+    image: rust:latest
+    #platform: linux/amd64
+    networks:
+      network_net:
+        ipv4_address: 10.0.0.6
+    ports:
+      - "8006:8000"
+    stdin_open: true
+    tty: true
+    volumes:
+      - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro 
+    environment:
+      DISPLAY: host.docker.internal:0
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      XAUTHORITY: /tmp/.Xauthority
+    working_dir: /app
+    command: bash -c "apt-get update && apt-get install -y \
+                      iputils-ping  \
+                      libglvnd0 \
+                      libglvnd-dev \
+                      libgl1-mesa-glx \
+                      libgl1-mesa-dri \
+                      libglu1-mesa \
+                      mesa-utils \
+                      libx11-dev \
+                      x11-apps \
+                      libxkbcommon-x11-0 && \
+                      rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
+
+  node7:
+    container_name: node7
+    image: rust:latest
+    #platform: linux/amd64
+    networks:
+      network_net:
+        ipv4_address: 10.0.0.7
+    ports:
+      - "8007:8000"
+    stdin_open: true
+    tty: true
+    volumes:
+      - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro 
+    environment:
+      DISPLAY: host.docker.internal:0
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      XAUTHORITY: /tmp/.Xauthority
+    working_dir: /app
+    command: bash -c "apt-get update && apt-get install -y \
+                      iputils-ping  \
+                      libglvnd0 \
+                      libglvnd-dev \
+                      libgl1-mesa-glx \
+                      libgl1-mesa-dri \
+                      libglu1-mesa \
+                      mesa-utils \
+                      libx11-dev \
+                      x11-apps \
+                      libxkbcommon-x11-0 && \
+                      rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
+
+  node8:
+    container_name: node8
+    image: rust:latest
+    #platform: linux/amd64
+    networks:
+      network_net:
+        ipv4_address: 10.0.0.8
+    ports:
+      - "8008:8000"
+    stdin_open: true
+    tty: true
+    volumes:
+      - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro 
+    environment:
+      DISPLAY: host.docker.internal:0
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      XAUTHORITY: /tmp/.Xauthority
+    working_dir: /app
+    command: bash -c "apt-get update && apt-get install -y \
+                      iputils-ping  \
+                      libglvnd0 \
+                      libglvnd-dev \
+                      libgl1-mesa-glx \
+                      libgl1-mesa-dri \
+                      libglu1-mesa \
+                      mesa-utils \
+                      libx11-dev \
+                      x11-apps \
+                      libxkbcommon-x11-0 && \
+                      rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
+
+  node9:
+    container_name: node9
+    image: rust:latest
+    #platform: linux/amd64
+    networks:
+      network_net:
+        ipv4_address: 10.0.0.9
+    ports:
+      - "8009:8000"
+    stdin_open: true
+    tty: true
+    volumes:
+      - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro 
+    environment:
+      DISPLAY: host.docker.internal:0
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      XAUTHORITY: /tmp/.Xauthority
+    working_dir: /app
+    command: bash -c "apt-get update && apt-get install -y \
+                      iputils-ping  \
+                      libglvnd0 \
+                      libglvnd-dev \
+                      libgl1-mesa-glx \
+                      libgl1-mesa-dri \
+                      libglu1-mesa \
+                      mesa-utils \
+                      libx11-dev \
+                      x11-apps \
+                      libxkbcommon-x11-0 && \
+                      rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
+
+  node10:
+    container_name: node10
+    image: rust:latest
+    #platform: linux/amd64
+    networks:
+      network_net:
+        ipv4_address: 10.0.0.10
+    ports:
+      - "8010:8000"
+    stdin_open: true
+    tty: true
+    volumes:
+      - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro 
+    environment:
+      DISPLAY: host.docker.internal:0
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      XAUTHORITY: /tmp/.Xauthority
+    working_dir: /app
+    command: bash -c "apt-get update && apt-get install -y \
+                      iputils-ping  \
+                      libglvnd0 \
+                      libglvnd-dev \
+                      libgl1-mesa-glx \
+                      libgl1-mesa-dri \
+                      libglu1-mesa \
+                      mesa-utils \
+                      libx11-dev \
+                      x11-apps \
+                      libxkbcommon-x11-0 && \
+                      rustup target add x86_64-apple-darwin && tail -f /dev/null"  # Instalar ping y mantener el contenedor activo
 networks:
   network_net:
     external: true

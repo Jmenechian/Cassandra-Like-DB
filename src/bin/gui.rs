@@ -1,15 +1,27 @@
 use aerolineas_rusticas::gui::app::MapApp;
 use std::env;
 use std::process::exit;
+use std::net::{IpAddr, Ipv4Addr};
 
 /// Binario que permite la ejecución de la Interfaz gráfica de usuario.
 fn main() -> Result<(), eframe::Error> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        eprintln!("Last digit parameter of the port is missing.");
+        eprintln!("Ip missing.");
         exit(1);
     }
-    let port = args[1].to_string();
+
+    let ip_server = args[1].to_string();
+    let ip_server_addr: IpAddr = match ip_server.parse() {
+        Ok(ip) => ip,
+        Err(_) => IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+    };
+
+    let port = args[2].to_string();
+    let _port: u16 = match port.parse() {
+        Ok(ip) => ip,
+        Err(_) => 8000,
+    };
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -25,6 +37,6 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "Mapa de Aeropuertos",
         options,
-        Box::new(|_cc| Ok(Box::new(MapApp::new(port)))),
+        Box::new(|_cc| Ok(Box::new(MapApp::new(ip_server_addr, _port)))),
     )
 }
