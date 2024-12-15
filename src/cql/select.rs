@@ -95,7 +95,6 @@ impl Select {
             self.table = parts[index].to_string();
         }
         self.table = format!("{}_{}", self.table, self.num_node);
-        println!("SELECT en tabla: {}", self.table);
     }
 
     /// Setea condicion WHERE.

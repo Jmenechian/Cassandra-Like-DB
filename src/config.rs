@@ -2,21 +2,23 @@ pub static PORTS_FILE: &str = "puertos.txt";
 
 pub static KEY_FILE: &str = "src/encryption/config_aes/aes_key.bin";
 
-pub static SERVER_PORT: &str = "7000";
-pub static CLIENT_PORT: &str = "9042";
-
-pub static RF: usize = 3; // Valor del Replication Factor usado en Consistent Hashing.
-
-pub static RING_SIZE: usize = 8; // Cantidad total de nodos servidor
-
 pub const SHOW_GOSSIP: bool = false; // Para hacer registro de mensajes de gossip
 pub const SHOW_SERVER: bool = false; // Para hacer registro de mensajes de servidor
 pub const SHOW_CLIENT: bool = false; // Para hacer registro de mensajes de cliente
+pub const SHOW_GOSSIP_LOGGER: bool = false;
 
 pub static TABLE_PATH: &str = "src/tables";
 pub static TABLE_ORIGIN_NAME: &str = "origin";
 pub static TABLE_DESTINATION_NAME: &str = "destination";
 pub static TABLE_FLIGHT_SIMULATOR: &str = "flights_in_progress";
+
+// Consistent Hashing:
+pub static RF: usize = 3; // Valor del Replication Factor.
+pub static RING_SIZE: usize = 8000; // Cantidad total de nodos servidor
+pub static SEED_0: u32 = 0;
+pub static SEED_1: u32 = 0x1F351F35; // Barker code * 2 -> 523.575.093
+pub static SEED_2: u32 = 0xbc9f1d34; // 3.164.544.308
+pub static DIFFERENCE_DATE_IS_RECENT: i64 = 30;
 
 // SIMULADOR DE VUELOS:
 pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool.

@@ -4,7 +4,6 @@
 // Estos son los mensajes que se envian como respuesta a una consulta
 
 // use core::fmt;
-use std::fmt;
 use crate::config;
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::message::*;
@@ -12,6 +11,7 @@ use crate::messagestuff::message_cql::{
     cqlenvelope::*, resultemptymessage::ResultEmptyMessage, resultrowsmessage::ResultRowsMessage,
     resultvoidmessage::ResultVoidMessage,
 };
+use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(i32)]

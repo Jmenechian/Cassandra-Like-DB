@@ -67,16 +67,13 @@ pub fn node_initialize(port: String) -> Result<(), MyError> {
     loop {
         thread::sleep(Duration::from_secs(2));
         let logger_clone = Arc::clone(&logger);
-        match connect_to_random_gossip(ports.clone(), &port) {
-            Some((mut s, _)) => {
-                let gossip_msg = GossipMessage {
-                    ip: my_ip.clone(),
-                    status: Status::Connected,
-                    ttl: 5_u8,
-                };
-                let _ = gossip_msg.send_server_through(&mut s, logger_clone);
-            }
-            None => {}
+        if let Some((mut s, _)) = connect_to_random_gossip(ports.clone(), &port) {
+            let gossip_msg = GossipMessage {
+                ip: my_ip.clone(),
+                status: Status::Connected,
+                ttl: 5_u8,
+            };
+            let _ = gossip_msg.send_server_through(&mut s, logger_clone);
         };
     }
 }

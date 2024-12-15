@@ -2,7 +2,7 @@
 // El nodo actual (tipo Nodo) tiene una lista de estos nodos vecinos (tipo NeighborNode)
 
 use crate::serverstuff::node_status::Status;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, Utc};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NeighborNode {
@@ -11,6 +11,7 @@ pub struct NeighborNode {
     pub number: String,
     pub status: Status,
     pub time: DateTime<Local>,
+    pub fecha: String,
 }
 
 impl NeighborNode {
@@ -21,6 +22,7 @@ impl NeighborNode {
             number: port.to_string(),
             status: Status::Connected, // Deberia empezar desconectado?
             time: Local::now(),
+            fecha: Utc::now().to_string(),
         }
     }
 

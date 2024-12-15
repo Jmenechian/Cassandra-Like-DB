@@ -9,10 +9,11 @@ use crate::messagestuff::{
         queryservermessage::QueryServerMessage, serverpacket::Packet, serverpacket::ServerMessage,
     },
 };
+use crate::partitioning::new_node_aggregator::NewNodeAgregator;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
 use crate::serverstuff::node_status::Status;
-use crate::utils::{delete_file, get_reader};
+use crate::utils::{date_is_recent, delete_file, get_reader};
 use rand::seq::SliceRandom;
 use std::io::BufRead;
 use std::net::TcpStream;
@@ -109,10 +110,16 @@ fn handle_message_gossip(
             new_neighbor.disconnect_node();
         }
     }
-    if node_guard.add_neighbor(new_neighbor.clone()) {
-        println!("{:?}", new_neighbor);
-        if new_neighbor.status == Status::Connected {
+    let res = node_guard.add_neighbor(new_neighbor.clone());
+    if res > 0 {
+        if res == 1 && new_neighbor.status == Status::Connected {
             handle_send_backlog(&node_guard.number, &new_neighbor, logger);
+        }
+
+        if res == 2 && !date_is_recent(node_guard.connection_date) {
+            println!("G   Me llego un nuevo vecino: {:?}", new_neighbor);
+            let mut agg_node = NewNodeAgregator::new(new_neighbor, node_guard.clone());
+            agg_node.new_node_in_ring();
         }
 
         if SHOW_GOSSIP {
@@ -186,4 +193,37 @@ pub fn connect_to_random_gossip(ports: Vec<u16>, my_port: &String) -> Option<(Tc
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::partitioning::consistent_hashing::ConsistentHash;
+
+    use super::*;
+
+    #[test]
+    pub fn test() {
+        let key = "MEX,25-12-24".to_string();
+        let rf = 3;
+
+        let node_1 = NeighborNode::new("1");
+        let node_2 = NeighborNode::new("2");
+        let node_3 = NeighborNode::new("3");
+        let node_4 = NeighborNode::new("4");
+        let node_5 = NeighborNode::new("5");
+        let node_6 = NeighborNode::new("6");
+        let node_7 = NeighborNode::new("7");
+        let node_8 = NeighborNode::new("8");
+        let node_9 = NeighborNode::new("9");
+
+        let nodes: Vec<NeighborNode> = vec![
+            node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8, node_9,
+        ];
+
+        let mut hashing = ConsistentHash::new(rf);
+        hashing.add_nodes(nodes.clone());
+
+        let nodes_result_before = hashing.get_nodes(&key);
+        println!("{:?}", nodes_result_before);
+    }
 }

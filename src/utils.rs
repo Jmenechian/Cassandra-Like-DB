@@ -1,5 +1,11 @@
 // Funciones auxiliares para el manejo de archivos y strings
 
+use chrono::{DateTime, Duration, Utc};
+
+use crate::config::{
+    DIFFERENCE_DATE_IS_RECENT, TABLE_DESTINATION_NAME, TABLE_FLIGHT_SIMULATOR, TABLE_ORIGIN_NAME,
+    TABLE_PATH,
+};
 use crate::encryption::encrypt::*;
 use crate::{config::ENCRIPT_DATA, errors::my_errors::MyError};
 use std::collections::VecDeque;
@@ -54,6 +60,13 @@ pub fn get_file_path(path: &str, file_name: &str) -> String {
 /// Open file in given path, returns an iterable reader
 pub fn get_reader(path: &str, table_name: &str) -> Result<BufReader<File>, MyError> {
     let file_path = get_file_path(path, table_name);
+    let file = File::open(file_path).map_err(|e| MyError::FileError(e.to_string()))?;
+    let rdr = BufReader::new(file);
+    Ok(rdr)
+}
+
+/// Open file in given path, returns an iterable reader
+pub fn get_reader_path(file_path: &str) -> Result<BufReader<File>, MyError> {
     let file = File::open(file_path).map_err(|e| MyError::FileError(e.to_string()))?;
     let rdr = BufReader::new(file);
     Ok(rdr)
@@ -163,6 +176,7 @@ pub fn create_temporary_file(path: &str, original_table: &str) -> Result<(File, 
     Ok((temp_file, temp_file_name))
 }
 
+/// Se elimina el archivo.
 pub fn delete_file(file_name: &str, path: &str) -> Result<(), MyError> {
     let file_path = get_file_path(path, file_name);
     std::fs::remove_file(file_path).map_err(|e| MyError::FileError(e.to_string()))?;
@@ -205,6 +219,7 @@ fn empty_table(table: &File) -> Result<(), MyError> {
     Ok(())
 }
 
+/// Se devuelve la primer linea de un archivo y la eliminamos de este.
 pub fn get_and_remove_first_line(path: String) -> Result<Vec<String>, MyError> {
     let file = open_file(path.clone())?;
     let rdr = BufReader::new(file);
@@ -245,9 +260,39 @@ fn split_with_last_comma(line: String) -> Vec<String> {
     vec![first.to_string(), last.to_string()]
 }
 
+/// Indica si un archivo esta vacio.
 pub fn is_file_empty(path: &str) -> bool {
     match metadata(path) {
         Ok(metadata) => metadata.len() == 0,
         Err(_) => false,
     }
+}
+
+/// Se devuelve los paths de las tablas que se usan en el proyecto Rustic Airline.
+pub fn get_rustic_airline_path_tables(node_number: String) -> Vec<String> {
+    let mut tables = vec![];
+    tables.push(format!(
+        "{}/{}_{}.csv",
+        TABLE_PATH, TABLE_ORIGIN_NAME, node_number
+    ));
+    tables.push(format!(
+        "{}/{}_{}",
+        TABLE_PATH, TABLE_ORIGIN_NAME, node_number
+    ));
+    tables.push(format!(
+        "{}/{}_{}",
+        TABLE_PATH, TABLE_DESTINATION_NAME, node_number
+    ));
+    tables.push(format!(
+        "{}/{}_{}",
+        TABLE_PATH, TABLE_FLIGHT_SIMULATOR, node_number
+    ));
+    tables
+}
+
+/// Indica si una fecha fue reciente.
+pub fn date_is_recent(date: DateTime<Utc>) -> bool {
+    let now = Utc::now();
+    let difference = now.signed_duration_since(date);
+    difference < Duration::seconds(DIFFERENCE_DATE_IS_RECENT) // Si la diferencia es menor a 5 minutos, es reciente
 }

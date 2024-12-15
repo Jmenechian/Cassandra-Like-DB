@@ -110,8 +110,12 @@ pub fn integrate_simulator(
         flight.number.clone(),
     );
     let channel: &Receiver<Vec<String>> = connection_server.get_channel_to_receive();
+    println!("Query: {:?}", query);
     let _ = connection_server.make_query(query, config::ONE);
-    let result = channel.recv().unwrap();
+    let result = channel
+        .recv()
+        .unwrap_or(vec![mid_x.to_string(), mid_y.to_string()]);
+
     let flight_in_simulator: Vec<&str> = result[0].split(",").collect();
     if flight_in_simulator.len() == 10 {
         // [flight , airport , destination , status , date , speed , latitude , longitude , height, timestamp]

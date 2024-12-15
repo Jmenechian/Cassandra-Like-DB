@@ -38,14 +38,12 @@ fn handle_message_query(
         node.server_ip.clone(),
     );
     let msg = match node.process_query(&mut query) {
-        Ok(s) => {
-            ResultRowsServerMessage {
-                table: query.get_table(),
-                rows_count: s.len() as i32,
-                rows_content: s,
-            }
-            .into_result_server_message()
+        Ok(s) => ResultRowsServerMessage {
+            table: query.get_table(),
+            rows_count: s.len() as i32,
+            rows_content: s,
         }
+        .into_result_server_message(),
         Err(e) => {
             println!("Error en query: {:?}", e);
             ResultVoidServerMessage.into_result_server_message()

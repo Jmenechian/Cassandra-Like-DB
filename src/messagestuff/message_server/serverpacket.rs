@@ -5,7 +5,7 @@
 //   - Para enviar el packet y leerlo por stream estan las funciones to_bytes() y from_stream().
 
 use crate::config;
-use crate::config::SHOW_GOSSIP;
+use crate::config::SHOW_GOSSIP_LOGGER;
 use crate::encryption::encrypt::{decrypt_body_aes128, encrypt_body_aes128};
 use crate::errors::my_errors::MyError;
 use crate::loggerstuff::logger::Logger;
@@ -162,14 +162,17 @@ impl Packet {
         };
 
         let ip = match stream.peer_addr() {
-            Ok(addr) => format!("{:?}",addr),
+            Ok(addr) => format!("{:?}", addr),
             Err(_) => "".to_string(),
         };
 
         match &packet.body {
             ServerMessage::Gossip(msg) => {
-                if SHOW_GOSSIP {
-                    let message = format!("[SERVER] {} [{}] Gossip protocol. Node at: {} with status: {:?}", msg_type, ip,msg.ip, msg.status);
+                if SHOW_GOSSIP_LOGGER {
+                    let message = format!(
+                        "[SERVER] {} [{}] Gossip protocol. Node at: {} with status: {:?}",
+                        msg_type, ip, msg.ip, msg.status
+                    );
                     logger_guard.write_log(message.as_str())?;
                 }
             }
@@ -186,7 +189,10 @@ impl Packet {
                 logger_guard.write_log(message.as_str())?;
             }
             ServerMessage::ReadRepair(msg) => {
-                let message = format!("[SERVER] {} [{}] Read Repair protocol. Rows to keep: {:?}", msg_type, ip, msg.rows_to_keep);
+                let message = format!(
+                    "[SERVER] {} [{}] Read Repair protocol. Rows to keep: {:?}",
+                    msg_type, ip, msg.rows_to_keep
+                );
                 logger_guard.write_log(message.as_str())?;
             }
         };

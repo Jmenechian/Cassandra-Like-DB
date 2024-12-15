@@ -134,7 +134,6 @@ impl CreateTable {
             let mut in_partition = true;
 
             for part in parts {
-                println!("part: {}", part);
                 if in_partition {
                     let key = part
                         .trim()
@@ -197,7 +196,11 @@ impl CreateTable {
     fn get_display_columns(&self) -> String {
         let mut format = String::new();
         for col in &self.columns {
-            format.push_str(&format!("{} {},", col, self.column_type.get(col).unwrap()));
+            let _col = match self.column_type.get(col) {
+                Some(c) => c,
+                None => "",
+            };
+            format.push_str(&format!("{} {},", col, _col));
         }
         format
     }
@@ -215,8 +218,12 @@ impl CreateTable {
             columns
         };
 
-        let mut f = File::create_new(table_name).map_err(|e| MyError::FileError(e.to_string()))?;
-        writeln!(f, "{}", columns_final).map_err(|e| MyError::FileError(e.to_string()))?;
+        let mut f = File::create_new(table_name).map_err(|e| {
+            MyError::FileError(format!("{} - en CreateTable::create_table - create_new", e))
+        })?;
+        writeln!(f, "{}", columns_final).map_err(|e| {
+            MyError::FileError(format!("{} - en CreateTable::create_table - writeln", e))
+        })?;
         Ok(())
     }
 
@@ -254,7 +261,10 @@ impl CreateTable {
     pub fn execute_command(&mut self) -> Result<Vec<String>, MyError> {
         self.create_table()?;
 
-        let path_metadata = format!("{}/{}_{}.csv", TABLE_PATH, self.table_name, "metadata");
+        let path_metadata = format!(
+            "{}/{}_{}_{}.csv",
+            TABLE_PATH, self.table_name, "metadata", self.num_node
+        );
         let path = Path::new(path_metadata.as_str());
         if !path.exists() {
             self.create_metadata_table(path_metadata)?;

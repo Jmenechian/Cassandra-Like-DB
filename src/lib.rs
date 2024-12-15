@@ -1,5 +1,4 @@
 pub mod config;
-pub mod consistent_hashing;
 pub mod utils;
 
 pub mod cql {
@@ -62,6 +61,18 @@ pub mod loggerstuff {
     pub mod logger;
 }
 
+pub mod partitioning {
+    pub mod consistent_hashing;
+    pub mod new_node_aggregator;
+    pub mod queries;
+    pub mod token_map;
+}
+
+pub use clientstuff::client_cql;
+pub use cql::query::Query;
+pub use loggerstuff::logger::Logger;
+pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
+
 pub mod gui {
     pub mod app;
     pub mod buttons_and_reactions;
@@ -90,10 +101,3 @@ pub mod errors {
     pub mod my_errors;
     pub mod simulator_errors;
 }
-
-pub use clientstuff::client_cql;
-pub use cql::query::Query;
-pub use messagestuff::message_cql::cqlenvelope::CqlMessage;
-
-pub use consistent_hashing::ConsistentHash;
-pub use loggerstuff::logger::Logger;

@@ -157,7 +157,7 @@ impl Envelope {
         };
 
         let ip = match stream.peer_addr() {
-            Ok(addr) => format!("{:?}",addr),
+            Ok(addr) => format!("{:?}", addr),
             Err(_) => "".to_string(),
         };
 
@@ -171,7 +171,10 @@ impl Envelope {
                 logger_guard.write_log(message.as_str())?;
             }
             CqlMessage::Error(msg) => {
-                let message = format!("[CLIENT] [SENT]     [{}] Error from server: {}", ip, msg.error);
+                let message = format!(
+                    "[CLIENT] [SENT]     [{}] Error from server: {}",
+                    ip, msg.error
+                );
                 logger_guard.write_log(message.as_str())?;
             }
         }
