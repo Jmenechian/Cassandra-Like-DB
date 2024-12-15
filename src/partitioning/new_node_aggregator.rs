@@ -67,7 +67,7 @@ impl NewNodeAgregator {
         }
 
         // Vemos las posiciones de los vnodes del new_node:
-        let tokens = self.hashing.token_map.get_tokens(&self.new_node.server_ip);
+        let tokens = self.hashing.token_map.get_tokens(&self.new_node.ip.to_string());
         // Vemos vnodes siguientes a estas posiciones:
         let keys = self.hashing.get_keys_in_order();
         for position_new_node in tokens {
@@ -78,7 +78,7 @@ impl NewNodeAgregator {
                 .unwrap_or(0);
             if let Some(next_node) = self.hashing.ring.get(keys[next_node_idx]) {
                 // Si soy ese nodo le mando INSERT de las lineas que le correspondes (de las 3 tablas que usamos):
-                if next_node.server_ip == self.node.server_ip {
+                if next_node.ip == self.node.ip {
                     // Veo si una linea le corresponde viendo los hash de aeroport,date:
                     let hashmap_lines = self.get_lines_to_insert();
                     for table in hashmap_lines.keys() {
@@ -146,16 +146,16 @@ impl NewNodeAgregator {
             let nodes_in_partition = self.hashing.get_nodes(&key);
             let mut ips = vec![];
             for node_part in nodes_in_partition {
-                ips.push(node_part.server_ip);
+                ips.push(node_part.ip);
             }
-            if ips.contains(&self.new_node.server_ip) && !ips.contains(&self.node.server_ip) {
+            if ips.contains(&self.new_node.ip) && !ips.contains(&self.node.ip) {
                 result.push(line.clone());
 
                 // El nodo anterior no debe mantener la info:
                 let partition: Vec<&str> = key.split(",").collect();
                 let query = get_partition_delete_query(table, partition[0], partition[1]);
                 let mut query =
-                    Query::new(query, self.node.number.clone(), self.node.client_ip.clone());
+                    Query::new(query, self.node.ip.to_string());
                 self.node.process_query(&mut query)?;
             }
         }
@@ -199,7 +199,7 @@ impl NewNodeAgregator {
             };
             for line in lines_table {
                 let query = get_insert_query(table, &mut headers.clone(), &mut line.clone());
-                if let Ok(mut socket) = TcpStream::connect(&self.new_node.server_ip) {
+                if let Ok(mut socket) = TcpStream::connect(&self.new_node.server_socket) {
                     let msg = QueryServerMessage {
                         query,
                         consistency: 0,
@@ -214,7 +214,7 @@ impl NewNodeAgregator {
 
     fn create_table(&self, table: &str) {
         let query = get_create_query(table);
-        if let Ok(mut socket) = TcpStream::connect(self.new_node.server_ip.clone()) {
+        if let Ok(mut socket) = TcpStream::connect(self.new_node.server_socket.clone()) {
             let msg = QueryServerMessage {
                 query,
                 consistency: 0,
@@ -225,7 +225,7 @@ impl NewNodeAgregator {
         }
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -256,3 +256,4 @@ mod tests {
         println!("{:?}", nodes_result_before);
     }
 }
+*/

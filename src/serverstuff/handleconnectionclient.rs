@@ -17,10 +17,10 @@ use crate::partitioning::consistent_hashing::ConsistentHash;
 use crate::serverstuff::{neighbor_node::NeighborNode, node::Node, node_status::Status};
 use chrono::NaiveDateTime;
 use std::collections::HashMap;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
+use std::sync::{Arc, RwLock};
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::net::TcpStream;
-use std::sync::{Arc, RwLock};
 
 fn handle_message_query(
     node: &Arc<RwLock<Node>>,
@@ -114,7 +114,7 @@ pub fn handle_connection_client(
 /// Hace el read-repair para las tabla de origen y destino de vuelos.
 /// El simulador no tiene read-repair.
 fn process_results(
-    results: &mut HashMap<String, Vec<String>>,
+    results: &mut HashMap<IpAddr, Vec<String>>,
     nodes_with_result: &Vec<NeighborNode>,
     table: &str,
     logger: Arc<RwLock<Logger>>,
@@ -124,7 +124,7 @@ fn process_results(
     table_name.pop();
     table_name.pop();
     if table_name != TABLE_ORIGIN_NAME && table_name != TABLE_DESTINATION_NAME {
-        if let Some(node) = results.keys().collect::<Vec<&String>>().first() {
+        if let Some(node) = results.keys().collect::<Vec<&IpAddr>>().first() {
             if let Some(result) = results.get(*node) {
                 return result.to_vec();
             }
@@ -164,9 +164,9 @@ fn process_results(
     }
 }
 
-fn look_newer(results: &HashMap<String, Vec<String>>) -> String {
+fn look_newer(results: &HashMap<IpAddr, Vec<String>>) -> IpAddr {
     let mut newer = NaiveDateTime::MIN;
-    let mut newest_node = "".to_string();
+    let mut newest_node: IpAddr = IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0));
 
     for (node, result) in results.iter() {
         for row in result {
@@ -192,7 +192,7 @@ fn look_newer(results: &HashMap<String, Vec<String>>) -> String {
 
 /// Chequea si es necesario hacer read repair
 /// Solo se llama cuando hay por lo menos dos resultados
-fn read_repair_needed(results: HashMap<String, Vec<String>>) -> bool {
+fn read_repair_needed(results: HashMap<IpAddr, Vec<String>>) -> bool {
     let mut results_vec = results.values().collect::<Vec<&Vec<String>>>();
     if results_vec.len() < 2 {
         return false;
@@ -241,7 +241,7 @@ fn same_results(rows1: &[String], rows2: &[String]) -> bool {
 fn read_repair(
     result: &[String],
     nodes_with_result: &Vec<NeighborNode>,
-    node: &String,
+    node: &IpAddr,
     table: &str,
     logger: Arc<RwLock<Logger>>,
 ) {
@@ -249,13 +249,13 @@ fn read_repair(
 
     for node_neighbor in nodes_with_result {
         let logger_clone = Arc::clone(&logger);
-        if node_neighbor.number == *node {
+        if node_neighbor.ip == *node {
             continue;
         }
         if node_neighbor.status == Status::Disconnected {
             continue;
         }
-        if let Ok(mut socket) = TcpStream::connect(&node_neighbor.server_ip) {
+        if let Ok(mut socket) = TcpStream::connect(&node_neighbor.server_socket) {
             let msg = ReadRepairMessage {
                 table: table.to_string(),
                 rows_to_keep: result.to_vec(),
@@ -306,16 +306,12 @@ pub fn send_query_to_nodes(
         }
     };
     let mut all_response: Vec<Vec<String>> = vec![];
-    let mut all_response_dict: HashMap<String, Vec<String>> = HashMap::new();
+    let mut all_response_dict: HashMap<IpAddr, Vec<String>> = HashMap::new();
     let mut hash = ConsistentHash::new(RF);
-    let mut query: Query = Query::new(
-        _query.clone(),
-        node_guard.number.clone(),
-        node_guard.client_ip.clone(),
-    );
+    let mut query: Query = Query::new(_query.clone(), node_guard.ip.to_string()/*, node.client_socket.to_string()*/);
 
     hash.add_nodes(node_guard.neighbors.to_vec());
-    let key = query.get_key_representing_partition(&node_guard.server_ip);
+    let key = query.get_key_representing_partition(&node_guard.ip.to_string());
     let nodes_with_result: Vec<NeighborNode> = if key == *"" {
         // Create table
         node_guard.neighbors.clone()
@@ -328,17 +324,17 @@ pub fn send_query_to_nodes(
 
     for neighbor in &nodes_with_result {
         // El nodo original porque puede tener el resultado de la query:
-        if neighbor.server_ip == node_guard.server_ip {
+        if neighbor.server_socket == node_guard.server_socket {
             if SHOW_CLIENT {
                 println!(
                     "C   - Buscando el resultado en el nodo original: {}",
-                    neighbor.server_ip
+                    neighbor.server_socket
                 );
             }
             match node_guard.process_query(&mut query) {
                 Ok(result) => {
                     // all_response.push(result);
-                    all_response_dict.insert(neighbor.server_ip.clone(), result);
+                    all_response_dict.insert(neighbor.ip, result);
 
                     if consistency_level == config::ONE && all_response_dict.len() == 1 {
                         if is_select {
@@ -360,7 +356,7 @@ pub fn send_query_to_nodes(
                 Err(error) => {
                     // all_response.push(vec![format!("Invalid Query: {}", error)]);
                     all_response_dict.insert(
-                        neighbor.server_ip.clone(),
+                        neighbor.ip,
                         vec![format!("Invalid Query: {}", error)],
                     );
                 }
@@ -368,13 +364,13 @@ pub fn send_query_to_nodes(
             continue;
         } else if neighbor.status == Status::Disconnected {
             if !query.query.contains("SELECT") {
-                hinted_handoff(&node_guard.number, &neighbor.number, &query)?;
+                hinted_handoff(&node_guard.ip.to_string(), &neighbor.ip.to_string(), &query)?;
             }
             if SHOW_CLIENT {
-                println!("C   - Nodo desconectado: {}", neighbor.server_ip);
+                println!("C   - Nodo desconectado: {}", neighbor.server_socket);
             }
             continue;
-        } else if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
+        } else if let Ok(mut socket) = TcpStream::connect(&neighbor.server_socket) {
             // Mando mensaje y el IP del nodo que se conecto con el cliente y en ese mismo stream leo la respuesta que me envia como resultado de la consulta.
 
             let msg = QueryServerMessage {
@@ -390,12 +386,12 @@ pub fn send_query_to_nodes(
                             ResultServerBody::Rows(r) => {
                                 // all_response.push(r.rows_content.clone());
                                 all_response_dict
-                                    .insert(neighbor.server_ip.clone(), r.rows_content.clone());
+                                    .insert(neighbor.ip, r.rows_content.clone());
                             }
                             ResultServerBody::Void(_) => {
                                 all_response.push(vec!["Invalid Query".to_string()]);
                                 all_response_dict.insert(
-                                    neighbor.server_ip.clone(),
+                                    neighbor.ip,
                                     vec!["Invalid Query".to_string()],
                                 );
                             }

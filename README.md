@@ -56,6 +56,7 @@ UPDATE origin SET status = boarding WHERE flight = 101 AND airport = MEX AND dat
 ``` sql
 DELETE FROM origin WHERE flight = 101 AND airport = MEX AND date = 24-12-24
 ```
+<<<<<<< HEAD
 
 
 keys [417, 983, 1440, 1977, 2042, 2807, 2842, 2872, 3383, 4230, 4264, 4405, 4627, 4631, 4659, 4852, 5077, 5218, 5321, 5368, 5420, 5858, 6008, 6024, 7319, 7468, 7577]
@@ -73,3 +74,6 @@ Tokens: [4405, 6024, 7468] => 7
 Tokens: [4230, 5420, 5368] => 8
 
 Tokens: [5858, 1440, 983] => 9
+=======
+UPDATE origin SET status = delayed WHERE flight = 123 AND airport = MEX AND date = 24-12-24 
+>>>>>>> docker-raro

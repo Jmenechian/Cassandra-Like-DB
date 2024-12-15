@@ -21,7 +21,8 @@ use crate::{
     },
 };
 
-use std::{sync::mpsc::Sender, thread, time::Duration};
+use std::sync::mpsc::Sender;
+use std::{net::IpAddr, thread, time::Duration};
 
 #[derive(Debug)]
 /// Estructura que creará y simulará vuelos desde su programación, pasando por su despegue hasta su llegada a destino.
@@ -31,8 +32,8 @@ pub struct FlightSimulator {
 }
 
 impl FlightSimulator {
-    fn new(channel_updater_sender: Sender<(String, u16)>, port: String) -> Result<Self, MyError> {
-        let connection_server = ConnectionServer::initialize_with_any_node(port.clone())?;
+    fn new(channel_updater_sender: Sender<(String, u16)>, ip: IpAddr, port: u16) -> Result<Self, MyError> {
+        let connection_server = ConnectionServer::initialize_with_any_node(ip, port)?;
 
         Ok(Self {
             channel_updater_sender,
@@ -41,8 +42,9 @@ impl FlightSimulator {
     }
 
     /// Pone en marcha la creación de vuelos y su simulación desde despegue hasta la llegada a destino.
-    pub fn run(port: String) -> Result<(), MyError> {
-        if FlightSimulator::create_flight_table(port.clone()).is_err() {
+    pub fn run(ip: IpAddr, port: u16) -> Result<(), MyError> {
+        if FlightSimulator::create_flight_table(ip, port).is_err() {
+
             println!("Las tablas ya estaban creadas.\n");
         } else {
             println!("Se creo la tabla flights_in_progress correctamente.\n");
@@ -64,9 +66,8 @@ impl FlightSimulator {
         });
 
         // Thread que ejecuta las queries, usando Threadpools:
-        let puerto = port.clone();
         thread::spawn({
-            move || match FlightUpdater::update_flights(path_queries, puerto) {
+            move || match FlightUpdater::update_flights(path_queries, ip, port) {
                 Ok(_) => {}
                 Err(e) => {
                     println!("{}", e);
@@ -79,7 +80,7 @@ impl FlightSimulator {
         let mut i = 1;
         loop {
             println!("\n - Simulacion {}", i);
-            let flight_simulator = FlightSimulator::new(channel_sender.clone(), port.clone())?;
+            let flight_simulator = FlightSimulator::new(channel_sender.clone(), ip, port)?;
             let input_flight = InputFlight::new().map_err(|e| MyError::Error(e.to_string()))?;
             thread::spawn({
                 move || match flight_simulator.obtain_flight_and_simulate_it(&input_flight) {
@@ -94,8 +95,8 @@ impl FlightSimulator {
     }
 
     /// Se crea la tabla flights_in_progress.
-    fn create_flight_table(port: String) -> Result<(), MyError> {
-        let connection_server = ConnectionServer::initialize_with_any_node(port)?;
+    fn create_flight_table(ip: IpAddr, port: u16) -> Result<(), MyError> {
+        let connection_server = ConnectionServer::initialize_with_any_node(ip, port)?;
         let channel = connection_server.get_channel_to_receive();
 
         let query = get_query_create_simulator_table();

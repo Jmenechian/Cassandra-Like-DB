@@ -39,7 +39,7 @@ impl Select {
             Some(c) => c,
             None => return Err(MyError::Error("No pude obtener el puerto".to_string())),
         };
-        self.num_node = port.to_string();
+        self.num_node = address_node.to_string();
 
         let mut parts: Vec<&str> = query.split_whitespace().collect();
         if parts.len() < 4 || parts[0] != "SELECT" || parts[1] == "FROM" {

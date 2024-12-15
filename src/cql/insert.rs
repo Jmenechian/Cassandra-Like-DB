@@ -14,7 +14,7 @@ pub struct Insert {
     pub table: String,
     pub columns: Vec<String>,
     pub values: Vec<String>,
-    pub num_node: String,
+    pub ip: String,
 }
 
 impl Default for Insert {
@@ -29,17 +29,14 @@ impl Insert {
             table: "".to_string(),
             columns: Vec::new(),
             values: Vec::new(),
-            num_node: "0".to_string(),
+            ip: "0".to_string(),
         }
     }
 
     /// Parsea la consulta para ejecutar mas tarde.
-    pub fn parse_insert(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
-        let port = match address_node.chars().last() {
-            Some(c) => c,
-            None => return Err(MyError::Error("No pude obtener el puerto".to_string())),
-        };
-        self.num_node = port.to_string();
+    pub fn parse_insert(&mut self, query: &str, ip: &str) -> Result<(), MyError> {
+        
+        self.ip = ip.to_string();
 
         let parts: Vec<&str> = query.split_whitespace().collect();
 
@@ -60,7 +57,9 @@ impl Insert {
         } else {
             self.table = parts[2].to_string();
         }
-        self.table = format!("{}_{}", self.table, self.num_node);
+
+        self.table = format!("{}_{}", self.table, self.ip);
+        println!("INSERT en tabla: {}", self.table);
 
         let headers: Vec<String> = self.extract_values(&parts, skip_index);
 

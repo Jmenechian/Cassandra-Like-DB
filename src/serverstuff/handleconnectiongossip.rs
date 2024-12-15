@@ -16,7 +16,7 @@ use crate::serverstuff::node_status::Status;
 use crate::utils::{date_is_recent, delete_file, get_reader};
 use rand::seq::SliceRandom;
 use std::io::BufRead;
-use std::net::TcpStream;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
 use std::sync::{Arc, RwLock};
 
 fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: GossipMessage) {
@@ -27,7 +27,7 @@ fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: Gos
                 n, gossip
             );
         }
-        if let Some(mut stream) = try_connect(n.gossip_ip.clone()) {
+        if let Some(mut stream) = try_connect(n.gossip_socket.clone()) {
             if let Err(e) = gossip
                 .clone()
                 .send_server_through(&mut stream, node.logger.clone())
@@ -40,11 +40,11 @@ fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: Gos
             if SHOW_GOSSIP {
                 println!(
                     "G   No me pude conectar con: {:?}, tiene que estar desconectado",
-                    n.server_ip
+                    n.server_socket
                 );
             }
             let gossip_msg = GossipMessage {
-                ip: n.server_ip.clone(),
+                ip: n.ip.to_string(),
                 status: Status::Disconnected,
                 ttl: 5_u8,
             };
@@ -55,8 +55,9 @@ fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: Gos
 }
 
 fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, logger: Arc<RwLock<Logger>>) {
+
     //4 ...
-    let file = format!("logs/logs_{}_{}", node_number, neighbor.number);
+    let file = format!("logs/logs_{}_{}", node_number, neighbor.ip);
     let rdr = match get_reader(TABLE_PATH, &file) {
         Ok(r) => r,
         Err(_) => {
@@ -67,7 +68,7 @@ fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, logger: Ar
         println!("line: {:?}", line);
         let logger_clone = Arc::clone(&logger);
         let logger_clone_sender = Arc::clone(&logger);
-        if let Ok(mut socket) = TcpStream::connect(&neighbor.server_ip) {
+        if let Ok(mut socket) = TcpStream::connect(&neighbor.server_socket) {
             let msg = QueryServerMessage {
                 query: line.clone(),
                 consistency: 0,
@@ -97,11 +98,11 @@ fn handle_message_gossip(
     };
     let ip: String = gossip.ip.clone();
 
-    let port = match ip.chars().last() {
-        Some(c) => c,
-        None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
+    let ip_addr: IpAddr = match ip.parse() {
+        Ok(ip) => ip,
+        Err(_) => return Err(MyError::Error(format!("No pude obtener el ip: {:?}", ip))),
     };
-    let mut new_neighbor = NeighborNode::new(&port.to_string());
+    let mut new_neighbor = NeighborNode::new(ip_addr.clone());
     match gossip.status {
         Status::Connected => {
             new_neighbor.connect_node();
@@ -113,7 +114,7 @@ fn handle_message_gossip(
     let res = node_guard.add_neighbor(new_neighbor.clone());
     if res > 0 {
         if res == 1 && new_neighbor.status == Status::Connected {
-            handle_send_backlog(&node_guard.number, &new_neighbor, logger);
+            handle_send_backlog(&node_guard.ip.to_string(), &new_neighbor, logger);
         }
 
         if res == 2 && !date_is_recent(node_guard.connection_date) {
@@ -171,30 +172,22 @@ pub fn handle_connection_gossip(
 }
 
 /// Nos conectamos con un nodo al azar y devolvemos el stream.
-pub fn connect_to_random_gossip(ports: Vec<u16>, my_port: &String) -> Option<(TcpStream, String)> {
-    let mut shuffeld_ports = ports.clone();
-    shuffeld_ports.shuffle(&mut rand::thread_rng());
-    if SHOW_GOSSIP {
-        println!(
-            "MEZCLO y me queda: {:?}, siendo y el: {:?}",
-            shuffeld_ports, my_port
-        );
-    }
-    for &port in &shuffeld_ports {
-        if &port.to_string() == my_port {
-            continue;
-        };
-        let addr = format!("127.0.0.1:900{}", port);
-        if let Some(stream) = try_connect(addr.clone()) {
+pub fn connect_to_random_gossip(
+    ips: Vec<IpAddr>,
+) -> Option<TcpStream> {
+    ips.clone().shuffle(&mut rand::thread_rng());
+    
+    for &ip in &ips {
+        if let Some(stream) = try_connect(SocketAddr::new(ip , 9000 as u16)) {
             if SHOW_GOSSIP {
-                println!("El primero que encontre fue el: {:?}", addr);
+                println!("El primero que encontre fue el: {:?}", ip);
             }
-            return Some((stream, addr));
+            return Some(stream);
         }
     }
     None
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use crate::partitioning::consistent_hashing::ConsistentHash;
@@ -227,3 +220,4 @@ mod tests {
         println!("{:?}", nodes_result_before);
     }
 }
+*/
