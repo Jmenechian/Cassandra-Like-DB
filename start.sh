@@ -54,18 +54,12 @@ for i in $(seq 2 $((NUM_NODOS + 1))); do
   # Comando para el primer nodo
   if [ "$i" -eq 2 ]; then
     COMMAND="bash -c \"apt-get update && apt-get install -y \
-                   iputils-ping libglvnd0 libglvnd-dev libgl1-mesa-glx \
-                   libgl1-mesa-dri libglu1-mesa mesa-utils libx11-dev \
-                   x11-apps libxkbcommon-x11-0 && \
-                   rustup target add x86_64-apple-darwin && \
+                   iputils-ping &&\
                    cargo run --bin server 10.0.0.2\""
   else
     # Comando para los demás nodos
     COMMAND="bash -c \"apt-get update && apt-get install -y \
-                   iputils-ping libglvnd0 libglvnd-dev libgl1-mesa-glx \
-                   libgl1-mesa-dri libglu1-mesa mesa-utils libx11-dev \
-                   x11-apps libxkbcommon-x11-0 && \
-                   rustup target add x86_64-apple-darwin && \
+                   iputils-ping && \
                    cargo run --bin server ${IP_ADDRESS} 10.0.0.2\"
                    "
   fi
@@ -103,39 +97,6 @@ else
   echo "Hubo un error al levantar los contenedores."
   exit 1
 fi
-
-# Abrir una terminal para cada contenedor solo si está en ejecución
-for i in $(seq 2 $((NUM_NODOS + 1))); do
-  sleep 10
-  NODE_NAME="node$i"
-  CONTAINER_NAME=$(docker ps --filter "name=$NODE_NAME" --format "{{.Names}}")
-
-  if [ -n "$CONTAINER_NAME" ]; then
-      echo "Abriendo terminal para $CONTAINER_NAME"
-      # Detectar el sistema operativo
-      OS=$(uname)
-
-      if [ "$OS" == "Darwin" ]; then
-          # Para macOS
-          osascript -e "
-          tell application \"Terminal\"
-              activate
-              do script \"arch -x86_64 zsh\"
-              delay 1 -- Espera 1 segundo para asegurarte de que el comando anterior se ejecute
-              do script \"docker logs -f $CONTAINER_NAME\" in front window
-              delay 2
-          end tell
-          "
-      elif [ "$OS" == "Linux" ]; then
-          # Para Linux (suponiendo que usas gnome-terminal)
-          gnome-terminal -- bash -c "docker exec -it $CONTAINER_NAME bash -c '/app/ping_check.sh $NUM_NODOS'; exec bash"
-      else
-          echo "Sistema operativo no soportado"
-      fi
-  else
-      echo "El contenedor $NODE_NAME no está en ejecución."
-  fi
-done
 
 # Limpiar archivo temporal
 #rm -f "$TMP_COMPOSE_FILE"

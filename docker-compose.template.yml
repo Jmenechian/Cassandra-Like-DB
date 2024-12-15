@@ -2,7 +2,7 @@
   ${NODE_NAME}:
     container_name: ${NODE_NAME}
     image: rust:latest
-    #platform: linux/amd64
+    platform: linux/amd64
     networks:
       network_net:
         ipv4_address: ${IP_ADDRESS}
@@ -11,11 +11,6 @@
     stdin_open: true
     tty: true
     volumes:
-      - /Users/agustinbenito/Desktop/Taller-tpGrupal/24C2-Ferris:/app  # Directorio compartido 
-      - /tmp/.X11-unix:/tmp/.X11-unix:ro 
-    environment:
-      DISPLAY: host.docker.internal:0
-      LIBGL_ALWAYS_SOFTWARE: "1"
-      XAUTHORITY: /tmp/.Xauthority
+      - .:/app  # Directorio compartido 
     working_dir: /app
     command: ${COMMAND}
