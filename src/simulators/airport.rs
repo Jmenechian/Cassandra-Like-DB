@@ -36,7 +36,6 @@ impl Airport {
             "SELECT * FROM origin WHERE date = {} AND airport = {}",
             date, self.name
         );
-        println!("query: {:?}", query);
         if let Some(stream) = stream {
             Client::send_message(stream, query, config::QUORUM)
                 .map_err(|_| MyError::SendingMessageError("Error sending query".to_string()))?;

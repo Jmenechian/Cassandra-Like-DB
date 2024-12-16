@@ -131,8 +131,8 @@ mod tests {
         let result = delete.parse_delete(query, "node_1");
 
         assert!(result.is_ok());
-        assert_eq!(delete.table, "users_1".to_string());
-        assert_eq!(delete.num_node, "1".to_string());
+        assert_eq!(delete.table, "users_node_1".to_string());
+        assert_eq!(delete.num_node, "node_1".to_string());
     }
 
     #[test]

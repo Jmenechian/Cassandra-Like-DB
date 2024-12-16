@@ -91,7 +91,7 @@ networks:
 EOF
 
 # Levantar solo el contenedor node2
-if docker-compose -f "$TMP_COMPOSE_FILE" up -d node2; then
+if docker compose -f "$TMP_COMPOSE_FILE" up -d node2; then
   echo "El contenedor node2 se levantó correctamente."
 else
   echo "Hubo un error al levantar el contenedor node2."
@@ -102,7 +102,7 @@ sleep 15
 echo "El contenedor node2 está en ejecución."
 
 # Levantar los demás contenedores
-if docker-compose -f "$TMP_COMPOSE_FILE" up -d; then
+if docker compose -f "$TMP_COMPOSE_FILE" up -d; then
   echo "Todos los demás contenedores se levantaron correctamente."
 else
   echo "Hubo un error al levantar los demás contenedores."

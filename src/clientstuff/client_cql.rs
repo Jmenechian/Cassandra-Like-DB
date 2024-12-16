@@ -5,8 +5,7 @@ use crate::messagestuff::message_cql::cqlenvelope::*;
 use crate::messagestuff::message_cql::querymessage::QueryMessage;
 use crate::messagestuff::message_cql::resultmessage::ResultBody;
 use std::io::{self, BufRead};
-use std::net::{TcpStream, IpAddr, SocketAddr};
-
+use std::net::{IpAddr, SocketAddr, TcpStream};
 
 use std::thread;
 
@@ -23,13 +22,13 @@ impl Client {
     pub fn initialize(ip: IpAddr, port: u16) -> Self {
         Self {
             server_socket: SocketAddr::new(ip, port),
-            ip: ip,
+            ip,
         }
     }
 
     /// Devuelve Ok si se puede conectar con el server.
     pub fn handle_input(&mut self) -> Result<(), MyError> {
-        if let Ok(_) = TcpStream::connect(&self.server_socket) {
+        if TcpStream::connect(self.server_socket).is_ok() {
             Ok(())
         } else {
             Err(MyError::TcpStreamError(
@@ -40,7 +39,7 @@ impl Client {
 
     /// Se conecta con el server y devuelve el stream.
     pub fn connect(&mut self) -> Result<TcpStream, MyError> {
-        if let Ok(stream) = TcpStream::connect(&self.server_socket) {
+        if let Ok(stream) = TcpStream::connect(self.server_socket) {
             Ok(stream)
         } else {
             Err(MyError::TcpStreamError(
@@ -53,7 +52,7 @@ impl Client {
     /// Lee las consultas por stdin y las envía al server.
     /// Recibe la respuesta del server como Envelope y la imprime por pantalla.
     pub fn handle_connection(&self) -> Result<(), MyError> {
-        let mut stream = match TcpStream::connect(&self.server_socket) {
+        let mut stream = match TcpStream::connect(self.server_socket) {
             Ok(s) => s,
             Err(e) => {
                 return Err(MyError::TcpStreamError(e.to_string()));
@@ -150,15 +149,13 @@ impl Client {
         }
     }
 
-
     /// Devolvemos el stream con el primer nodo conectado que se encuentre.
     /// En caso de no haber nodos conectados se devuleve un error.
     pub fn connect_with_node(ip: IpAddr, port: u16) -> Result<TcpStream, MyError> {
         let mut client = Client::initialize(ip, port);
-            if let Ok(stream) = client.connect() {
-                return Ok(stream);
-            }
-        Err(MyError::TcpStreamError("Error in TcpStream".to_string()).into())
+        if let Ok(stream) = client.connect() {
+            return Ok(stream);
+        }
+        Err(MyError::TcpStreamError("Error in TcpStream".to_string()))
     }
-
 }

@@ -129,11 +129,10 @@ impl ConsistentHash<NeighborNode> {
                 continue;
             }
 
-            nodes.push(node.clone());
-
             if node.status != Status::Disengaged {
                 //Ignoramos al nodo desvinculado
                 *connected_nodes += 1;
+                nodes.push(node.clone());
             }
 
             if *connected_nodes == self.rf {
@@ -149,9 +148,11 @@ impl ConsistentHash<NeighborNode> {
         keys
     }
 }
-/*
+
 #[cfg(test)]
 mod tests {
+    use std::net::{IpAddr, Ipv4Addr};
+
     use super::*;
 
     #[test]
@@ -160,14 +161,14 @@ mod tests {
 
         let rf = 3;
 
-        let node_1 = NeighborNode::new("1");
-        let node_2 = NeighborNode::new("2");
-        let node_3 = NeighborNode::new("3");
-        let node_4 = NeighborNode::new("4");
-        let node_5 = NeighborNode::new("5");
-        let node_6 = NeighborNode::new("6");
-        let node_7 = NeighborNode::new("7");
-        let node_8 = NeighborNode::new("8");
+        let node_1 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)));
+        let node_2 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)));
+        let node_3 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 3)));
+        let node_4 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 4)));
+        let node_5 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 5)));
+        let node_6 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 6)));
+        let node_7 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 7)));
+        let node_8 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 8)));
 
         let nodes: Vec<NeighborNode> = vec![
             node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8,
@@ -178,80 +179,12 @@ mod tests {
 
         let nodes_result = hashing.get_nodes(&key);
 
-        let first = NeighborNode::new("4");
-        let second = NeighborNode::new("8");
-        let third = NeighborNode::new("6");
+        let node_4 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 4)));
+        let node_2 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 2)));
+        let node_7 = NeighborNode::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 7)));
 
-        assert_eq!(nodes_result[0].server_ip, first.server_ip);
-        assert_eq!(nodes_result[1].server_ip, second.server_ip);
-        assert_eq!(nodes_result[2].server_ip, third.server_ip);
-    }
-
-    #[test]
-    pub fn test_return_nodes_from_key_with_consistent_hash_2() {
-        let key = "MDZ,12-12-24".to_string();
-
-        let rf = 3;
-
-        let node_1 = NeighborNode::new("1");
-        let node_2 = NeighborNode::new("2");
-        let node_3 = NeighborNode::new("3");
-        let node_4 = NeighborNode::new("4");
-        let node_5 = NeighborNode::new("5");
-        let node_6 = NeighborNode::new("6");
-        let node_7 = NeighborNode::new("7");
-        let node_8 = NeighborNode::new("8");
-
-        let nodes: Vec<NeighborNode> = vec![
-            node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8,
-        ];
-
-        let mut hashing = ConsistentHash::new(rf);
-        hashing.add_nodes(nodes);
-
-        let nodes_result = hashing.get_nodes(&key);
-
-        let first = NeighborNode::new("2");
-        let second = NeighborNode::new("4");
-        let third = NeighborNode::new("5");
-
-        assert_eq!(nodes_result[0].server_ip, first.server_ip);
-        assert_eq!(nodes_result[1].server_ip, second.server_ip);
-        assert_eq!(nodes_result[2].server_ip, third.server_ip);
-    }
-
-    #[test]
-    pub fn test_return_nodes_from_key_with_consistent_hash_3() {
-        let key = "ZRH,12-12-24".to_string();
-
-        let rf = 3;
-
-        let node_1 = NeighborNode::new("1");
-        let node_2 = NeighborNode::new("2");
-        let node_3 = NeighborNode::new("3");
-        let node_4 = NeighborNode::new("4");
-        let node_5 = NeighborNode::new("5");
-        let node_6 = NeighborNode::new("6");
-        let node_7 = NeighborNode::new("7");
-        let node_8 = NeighborNode::new("8");
-
-        let nodes: Vec<NeighborNode> = vec![
-            node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8,
-        ];
-
-        let mut hashing = ConsistentHash::new(rf);
-        hashing.add_nodes(nodes);
-
-        let nodes_result = hashing.get_nodes(&key);
-        println!("{:?}", nodes_result);
-
-        let first = NeighborNode::new("2");
-        let second = NeighborNode::new("6");
-        let third = NeighborNode::new("3");
-
-        assert_eq!(nodes_result[0].server_ip, first.server_ip);
-        assert_eq!(nodes_result[1].server_ip, second.server_ip);
-        assert_eq!(nodes_result[2].server_ip, third.server_ip);
+        assert_eq!(nodes_result[0].ip, node_4.ip);
+        assert_eq!(nodes_result[1].ip, node_2.ip);
+        assert_eq!(nodes_result[2].ip, node_7.ip);
     }
 }
-*/

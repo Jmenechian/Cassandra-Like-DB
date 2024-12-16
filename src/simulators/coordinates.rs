@@ -110,7 +110,6 @@ pub fn integrate_simulator(
         flight.number.clone(),
     );
     let channel: &Receiver<Vec<String>> = connection_server.get_channel_to_receive();
-    println!("Query: {:?}", query);
     let _ = connection_server.make_query(query, config::ONE);
     let result = channel
         .recv()

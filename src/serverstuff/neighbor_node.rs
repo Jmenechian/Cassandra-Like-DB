@@ -18,12 +18,12 @@ pub struct NeighborNode {
 impl NeighborNode {
     pub fn new(ip: IpAddr) -> Self {
         Self {
-            server_socket: SocketAddr::new(ip, 7000 as u16),
-            gossip_socket: SocketAddr::new(ip, 9000 as u16),
-            ip: ip,
+            server_socket: SocketAddr::new(ip, 7000_u16),
+            gossip_socket: SocketAddr::new(ip, 9000_u16),
+            ip,
             status: Status::Connected,
             time: Local::now(),
-            last_connected: Utc::now()
+            last_connected: Utc::now(),
         }
     }
 

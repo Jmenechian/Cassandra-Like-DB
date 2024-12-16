@@ -32,11 +32,9 @@ _Siento el `<n>` el numero de nodo._
 -  Crear tablas de "Estado de los vuelos"
 ``` sql
 CREATE TABLE origin  (airport STR, destination STR, date DATETIME, flight STR, status STR, timestamp TIMESTAMP, PRIMARY KEY (airport, date, flight)) WITH CLUSTERING ORDER BY (timestamp ASC)
-```
-
-``` sql
 CREATE TABLE destination (airport STR, origin STR, date DATETIME, flight STR, status STR, timestamp TIMESTAMP, PRIMARY KEY (airport, date, flight)) WITH CLUSTERING ORDER BY (timestamp ASC)
 ```
+
 - Intertar nuevos vuelos:
 ``` sql
 INSERT INTO origin (airport, destination, date, flight, status) VALUES (AEP, MEX, 25-12-24, 123, scheduled)
@@ -44,7 +42,7 @@ INSERT INTO origin (airport, destination, date, flight, status) VALUES (AEP, MEX
 
 - Ver valores de vuelos:
 ``` sql
-SELECT * FROM origin WHERE date = 25-12-24 AND airport = AEP
+SELECT * FROM origin WHERE date = 25-12-24 AND airport = SVO
 ``` 
 
 - Actualizar vuelos:
@@ -58,16 +56,30 @@ DELETE FROM origin WHERE flight = 101 AND airport = MEX AND date = 24-12-24
 ```
 
 ### Docker
-(solo se usa para server)
+(Se usa sólo para server).
 
+#### Iniciar n nodos:
+``` bash
 ./start.sh n
+```
+Siendo n la cantidad de nodos que se desean levantar.
 
-con n igual a la contidad de nodos que se desean levantar
-
+#### Cliente:
+``` bash
 cargo run --bin client 127.0.0.1 800n
+```
 
+#### GUI:
+``` bash
 cargo run --bin gui 127.0.0.1 800n
+```
 
-Para agregar un nuevo serveidor
+#### Simulador:
+``` bash
+cargo run --bin simulator 127.0.0.1 800n
+```
 
-docker run -d --name noden --platform linux/amd64 --network network_net --ip 10.0.0.n -p 800n:8000 -v $(pwd):/app -w /app rust:latest bash -c 'apt-get update && apt-get install -y iputils-ping && cargo run --bin server 10.0.0.n 10.0.0.2'
+#### Agregar un nuevo servidor:
+``` bash
+docker run -d --name node7 --network network_net --ip 10.0.0.7 -p 8007:8000 -v $(pwd):/app -w /app rust:latest bash -c 'apt-get update && apt-get install -y iputils-ping && cargo run --bin server 10.0.0.7 10.0.0.5'
+```

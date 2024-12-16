@@ -19,7 +19,7 @@ pub static SEED_0: u32 = 0;
 pub static SEED_1: u32 = 0x1F351F35; // Barker code * 2 -> 523.575.093
 pub static SEED_2: u32 = 0xbc9f1d34; // 3.164.544.308
 pub static DIFFERENCE_DATE_IS_RECENT: i64 = 30;
-pub static DIFFERENCE_DATE_IS_NOT_RECENT: i64 = 2;
+pub static DIFFERENCE_DATE_IS_NOT_RECENT: i64 = 1;
 
 // SIMULADOR DE VUELOS:
 pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool.

@@ -105,7 +105,6 @@ impl ConnectionServer {
                 }
             }
         });
-        println!("Ok send result query");
         Ok(())
     }
 }

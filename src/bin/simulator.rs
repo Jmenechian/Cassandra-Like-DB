@@ -1,7 +1,7 @@
 use aerolineas_rusticas::errors::my_errors::MyError;
 use aerolineas_rusticas::simulators::flight_simulator::FlightSimulator;
-use std::net::IpAddr;
 use std::env;
+use std::net::IpAddr;
 use std::process::exit;
 
 /// Ejecución del simulador de vuelos.

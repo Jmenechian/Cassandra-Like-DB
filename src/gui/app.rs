@@ -2,8 +2,8 @@ use eframe::egui;
 use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureHandle, TextureId, Ui};
 
 use image::GenericImageView;
-use std::{collections::HashMap, net::IpAddr};
 use std::sync::mpsc::Receiver;
+use std::{collections::HashMap, net::IpAddr};
 
 use crate::{
     clientstuff::client_cql::Client,
@@ -509,7 +509,6 @@ impl MapApp {
                             .connection_server
                             .make_query(query_destination, config::QUORUM);
                         let _ = rx.recv().unwrap_or_default();
-                        println!("Ok receive response query");
 
                         if let Some(airport) =
                             self.airports.clone().get(&self.selected_origin_airport)
@@ -589,19 +588,12 @@ impl MapApp {
     }
 
     fn get_user(&mut self) {
-        println!(
-            "Attempting to login with username: {} and password: {}",
-            self.username, self.password
-        );
-
         match User::new(self.username.clone(), self.password.clone()) {
             Ok(user) => {
-                println!("Login successful: {:?}", user);
                 self.login_status = format!("Welcome {}!", user.username);
                 self.user = Some(user);
             }
-            Err(err) => {
-                println!("Login failed: {:?}", err);
+            Err(_) => {
                 self.login_status = "Username or password incorrect".to_string();
                 self.user = None;
             }
@@ -657,7 +649,6 @@ impl eframe::App for MapApp {
                             .interact(button_rect, Id::new(&airport.name), egui::Sense::click())
                             .clicked()
                         {
-                            println!("¡Aeropuerto {} presionado!", airport.name);
                             self.selected_origin_airport = airport.name.clone();
                             self.selected_destination_airport = "".to_string();
                             self.flight_selected = "".to_string();

@@ -32,7 +32,11 @@ pub struct FlightSimulator {
 }
 
 impl FlightSimulator {
-    fn new(channel_updater_sender: Sender<(String, u16)>, ip: IpAddr, port: u16) -> Result<Self, MyError> {
+    fn new(
+        channel_updater_sender: Sender<(String, u16)>,
+        ip: IpAddr,
+        port: u16,
+    ) -> Result<Self, MyError> {
         let connection_server = ConnectionServer::initialize_with_any_node(ip, port)?;
 
         Ok(Self {
@@ -43,12 +47,7 @@ impl FlightSimulator {
 
     /// Pone en marcha la creación de vuelos y su simulación desde despegue hasta la llegada a destino.
     pub fn run(ip: IpAddr, port: u16) -> Result<(), MyError> {
-        if FlightSimulator::create_flight_table(ip, port).is_err() {
-
-            println!("Las tablas ya estaban creadas.\n");
-        } else {
-            println!("Se creo la tabla flights_in_progress correctamente.\n");
-        }
+        let _ = FlightSimulator::create_flight_table(ip, port);
 
         // Se crea el modulo encargado de escuchar las queries y ejecutarlas:
         let mut flight_updater = FlightUpdater::new().map_err(|e| MyError::Error(e.to_string()))?;
@@ -56,41 +55,26 @@ impl FlightSimulator {
         let path_queries = flight_updater.get_mutex_path();
 
         // Thread que escucha y guarda las queries:
-        thread::spawn({
-            move || match flight_updater.listen_queries() {
-                Ok(_) => {}
-                Err(e) => {
-                    println!("{}", e);
-                }
-            }
-        });
+        thread::spawn(move || if flight_updater.listen_queries().is_ok() {});
 
         // Thread que ejecuta las queries, usando Threadpools:
         thread::spawn({
-            move || match FlightUpdater::update_flights(path_queries, ip, port) {
-                Ok(_) => {}
-                Err(e) => {
-                    println!("{}", e);
-                }
-            }
+            move || if FlightUpdater::update_flights(path_queries, ip, port).is_ok() {}
         });
 
         // Loop encargado de simular los vuelos y enviar al modulo anterior las queries de update del estado y seguimiento del vuelo.
         // Se lanza un thread por cada vuelo que se simula:
-        let mut i = 1;
         loop {
-            println!("\n - Simulacion {}", i);
             let flight_simulator = FlightSimulator::new(channel_sender.clone(), ip, port)?;
             let input_flight = InputFlight::new().map_err(|e| MyError::Error(e.to_string()))?;
             thread::spawn({
-                move || match flight_simulator.obtain_flight_and_simulate_it(&input_flight) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        println!("{}", e);
-                    }
+                move || {
+                    if flight_simulator
+                        .obtain_flight_and_simulate_it(&input_flight)
+                        .is_ok()
+                    {}
                 }
             });
-            i += 1;
         }
     }
 
@@ -235,7 +219,6 @@ impl FlightSimulator {
     fn simulate_flight(&self, mut flight: Flight) -> Result<(), MyError> {
         // Escribimos el vuelo en la tabla flights_in_progress.csv -> hacemos INSERT como Client
         self.insert_flight(&flight)?;
-        println!("\nInicio de vuelo simulado:\n{:?}\n", flight);
 
         while flight.status != FlightStatus::Landed {
             thread::sleep(Duration::from_secs(2));

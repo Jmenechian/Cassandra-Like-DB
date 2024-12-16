@@ -31,7 +31,7 @@ pub fn get_create_query(table: &str) -> String {
     }
 }
 
-fn get_table_name_from_path(table: &str) -> String {
+pub fn get_table_name_from_path(table: &str) -> String {
     if table.contains("origin") {
         "origin".to_string()
     } else if table.contains("destination") {
