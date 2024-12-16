@@ -38,11 +38,7 @@ impl Update {
 
     /// Se parsea la query.
     pub fn parse_update(&mut self, query: &str, address_node: &str) -> Result<(), MyError> {
-        let port = match address_node.chars().last() {
-            Some(c) => c,
-            None => return Err(MyError::Error("No puse obtener el puerto".to_string())),
-        };
-        self.num_node = port.to_string();
+        self.num_node = address_node.to_string();
 
         let parts: Vec<&str> = query.split_whitespace().collect();
 

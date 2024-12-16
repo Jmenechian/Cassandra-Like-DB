@@ -1,5 +1,5 @@
 use std::{
-    net::TcpStream,
+    net::{IpAddr, TcpStream},
     sync::mpsc::{self, Receiver, Sender},
     thread,
 };
@@ -30,9 +30,9 @@ impl ConnectionServer {
         }
     }
 
-    pub fn initialize_with_any_node(port: String) -> Result<Self, MyError> {
+    pub fn initialize_with_any_node(ip: IpAddr, port: u16) -> Result<Self, MyError> {
         // Buscamos un nodo conectado:
-        let mut client = Client::initialize(port.to_string());
+        let mut client = Client::initialize(ip, port);
         let stream: Option<TcpStream> = match client.connect() {
             Ok(stream) => Some(stream),
             Err(e) => {
