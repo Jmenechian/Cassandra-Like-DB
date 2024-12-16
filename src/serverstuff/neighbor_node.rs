@@ -18,12 +18,12 @@ pub struct NeighborNode {
 impl NeighborNode {
     pub fn new(ip: IpAddr) -> Self {
         Self {
-            server_socket: SocketAddr::new(ip, 7000 as u16),
-            gossip_socket: SocketAddr::new(ip, 9000 as u16),
-            ip: ip,
+            server_socket: SocketAddr::new(ip, 7000_u16),
+            gossip_socket: SocketAddr::new(ip, 9000_u16),
+            ip,
             status: Status::Connected,
             time: Local::now(),
-            last_connected: Utc::now()
+            last_connected: Utc::now(),
         }
     }
 
@@ -33,7 +33,6 @@ impl NeighborNode {
     }
 
     pub fn disconnect_node(&mut self) {
-        
         self.status = Status::Disconnected;
         if !date_is_not_recent(self.last_connected) {
             self.disengaged_node();
@@ -41,7 +40,6 @@ impl NeighborNode {
     }
 
     pub fn disengaged_node(&mut self) {
-       
         self.status = Status::Disengaged;
-    } 
+    }
 }

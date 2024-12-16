@@ -35,7 +35,6 @@ impl Insert {
 
     /// Parsea la consulta para ejecutar mas tarde.
     pub fn parse_insert(&mut self, query: &str, ip: &str) -> Result<(), MyError> {
-        
         self.ip = ip.to_string();
 
         let parts: Vec<&str> = query.split_whitespace().collect();
@@ -232,7 +231,7 @@ mod tests {
         let result = insert.parse_insert(query, "node_1");
 
         assert!(result.is_ok());
-        assert_eq!(insert.table, "users_1");
+        assert_eq!(insert.table, "users_node_1");
         assert_eq!(
             insert.columns,
             vec!["id".to_string(), "name".to_string(), "age".to_string()]

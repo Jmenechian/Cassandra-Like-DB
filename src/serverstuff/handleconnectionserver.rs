@@ -1,4 +1,4 @@
-use crate::config::{SHOW_SERVER, TABLE_ORIGIN_NAME};
+use crate::config::TABLE_ORIGIN_NAME;
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::readrepairmessage::ReadRepairMessage;
@@ -29,7 +29,7 @@ fn handle_message_query(
         }
     };
 
-    let mut query = Query::new(query.query.clone(), node.ip.to_string()/*, node.server_socket.to_string()*/);
+    let mut query = Query::new(query.query.clone(), node.ip.to_string());
     let msg = match node.process_query(&mut query) {
         Ok(s) => ResultRowsServerMessage {
             table: query.get_table(),
@@ -37,9 +37,7 @@ fn handle_message_query(
             rows_content: s,
         }
         .into_result_server_message(),
-        Err(_) => {
-            ResultVoidServerMessage.into_result_server_message()
-        }
+        Err(_) => ResultVoidServerMessage.into_result_server_message(),
     };
     let _ = msg.send_server_through(stream, node.logger.clone());
     Ok(())
@@ -76,7 +74,7 @@ fn handle_message_read_repair(
         }
     };
 
-    let mut _query = Query::new(query_str, node.ip.to_string()/*,node.server_socket.to_string()*/);
+    let mut _query = Query::new(query_str, node.ip.to_string());
     let rows_to_update = node.process_query(&mut _query)?;
 
     let (ap, place, date, flight, stat) = (0, 1, 2, 3, 4);
@@ -94,7 +92,7 @@ fn handle_message_read_repair(
             let query_str = format!(
                     "UPDATE {} SET status = {} WHERE airport = {} AND {} = {} AND date = {} AND flight = {}",
                     query.table, row_vec[stat], row_vec[ap], column, row_vec[place], row_vec[date], row_vec[flight]);
-            let mut query = Query::new(query_str, node.ip.to_string()/*/, node.server_socket.to_string()*/);
+            let mut query = Query::new(query_str, node.ip.to_string());
             node.process_query(&mut query)?;
         } else {
             let query_str = format!(
@@ -107,7 +105,7 @@ fn handle_message_read_repair(
                 row_vec[flight],
                 row_vec[stat]
             );
-            let mut query = Query::new(query_str, node.ip.to_string()/*,node.server_socket.to_string()*/);
+            let mut query = Query::new(query_str, node.ip.to_string());
             node.process_query(&mut query)?;
         }
     }
@@ -120,7 +118,7 @@ fn handle_message_read_repair(
                 "DELETE FROM {} WHERE airport = {} AND {} = {} AND date = {} AND flight = {}",
                 query.table, row_vec[ap], column, row_vec[place], row_vec[date], row_vec[flight]
             );
-            let mut query = Query::new(query_str, node.ip.to_string()/*,node.server_socket.to_string()*/);
+            let mut query = Query::new(query_str, node.ip.to_string());
             node.process_query(&mut query)?;
         }
     }
@@ -147,16 +145,14 @@ pub fn handle_connection_server(
     logger: Arc<RwLock<Logger>>,
 ) -> Result<(), MyError> {
     match Packet::from_stream(stream, logger) {
-        Ok(packet) => {
-            match packet.body {
-                ServerMessage::Query(query) => handle_message_query(node, query, stream),
-                ServerMessage::ReadRepair(msg) => handle_message_read_repair(node, msg),
-                _ => {
-                    let _error = "Error entre server y servers".to_string();
-                    Err(MyError::ServerMessageError(_error))
-                }
+        Ok(packet) => match packet.body {
+            ServerMessage::Query(query) => handle_message_query(node, query, stream),
+            ServerMessage::ReadRepair(msg) => handle_message_read_repair(node, msg),
+            _ => {
+                let _error = "Error entre server y servers".to_string();
+                Err(MyError::ServerMessageError(_error))
             }
-        }
+        },
         Err(_e) => Err(_e),
     }
 }

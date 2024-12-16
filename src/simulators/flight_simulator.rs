@@ -32,7 +32,11 @@ pub struct FlightSimulator {
 }
 
 impl FlightSimulator {
-    fn new(channel_updater_sender: Sender<(String, u16)>, ip: IpAddr, port: u16) -> Result<Self, MyError> {
+    fn new(
+        channel_updater_sender: Sender<(String, u16)>,
+        ip: IpAddr,
+        port: u16,
+    ) -> Result<Self, MyError> {
         let connection_server = ConnectionServer::initialize_with_any_node(ip, port)?;
 
         Ok(Self {
@@ -51,34 +55,26 @@ impl FlightSimulator {
         let path_queries = flight_updater.get_mutex_path();
 
         // Thread que escucha y guarda las queries:
-        thread::spawn({
-            move || match flight_updater.listen_queries() {
-                Ok(_) => {}
-                Err(_) => {}
-            }
-        });
+        thread::spawn(move || if flight_updater.listen_queries().is_ok() {});
 
         // Thread que ejecuta las queries, usando Threadpools:
         thread::spawn({
-            move || match FlightUpdater::update_flights(path_queries, ip, port) {
-                Ok(_) => {}
-                Err(_) => {}
-            }
+            move || if FlightUpdater::update_flights(path_queries, ip, port).is_ok() {}
         });
 
         // Loop encargado de simular los vuelos y enviar al modulo anterior las queries de update del estado y seguimiento del vuelo.
         // Se lanza un thread por cada vuelo que se simula:
-        let mut i = 1;
         loop {
             let flight_simulator = FlightSimulator::new(channel_sender.clone(), ip, port)?;
             let input_flight = InputFlight::new().map_err(|e| MyError::Error(e.to_string()))?;
             thread::spawn({
-                move || match flight_simulator.obtain_flight_and_simulate_it(&input_flight) {
-                    Ok(_) => {}
-                    Err(_) => {}
+                move || {
+                    if flight_simulator
+                        .obtain_flight_and_simulate_it(&input_flight)
+                        .is_ok()
+                    {}
                 }
             });
-            i += 1;
         }
     }
 

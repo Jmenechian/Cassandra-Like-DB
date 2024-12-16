@@ -22,16 +22,14 @@ pub enum QType {
 /// Estructura que representa una consulta CQL.
 pub struct Query {
     pub query: String, //SELECT * FROM table WHERE id = 1
-    //pub sender_node: String,
     pub sender_node_ip: String,
     pub qtype: QType,
 }
 
 impl Query {
-    pub fn new(query: String, /*sender_node: String,*/ sender_node_ip: String) -> Query {
+    pub fn new(query: String, sender_node_ip: String) -> Query {
         Query {
             query,
-            //sender_node,
             sender_node_ip,
             qtype: QType::None,
         }
@@ -107,7 +105,9 @@ impl Query {
             QType::Update(update) => update.parse_update(&self.query, &self.sender_node_ip),
             QType::Insert(insert) => insert.parse_insert(&self.query, &self.sender_node_ip),
             QType::Delete(delete) => delete.parse_delete(&self.query, &self.sender_node_ip),
-            QType::CreateTable(create_table) => create_table.parse_create_table(&self.query, &self.sender_node_ip),
+            QType::CreateTable(create_table) => {
+                create_table.parse_create_table(&self.query, &self.sender_node_ip)
+            }
         }
     }
 

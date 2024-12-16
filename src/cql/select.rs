@@ -168,8 +168,8 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(select.columns, vec!["id".to_string(), "name".to_string()]);
-        assert_eq!(select.table, "users_1".to_string());
-        assert_eq!(select.num_node, "1".to_string());
+        assert_eq!(select.table, "users_node_1".to_string());
+        assert_eq!(select.num_node, "node_1".to_string());
     }
 
     #[test]

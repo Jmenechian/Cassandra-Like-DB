@@ -1,4 +1,3 @@
-use crate::config::PORTS_FILE;
 use crate::errors::my_errors::MyError;
 use crate::loggerstuff::logger::Logger;
 use crate::messagestuff::{message::*, message_server::gossipmessage::*};
@@ -11,9 +10,7 @@ use crate::serverstuff::{
     handleconnectiongossip::handle_connection_gossip,
     handleconnectionserver::handle_connection_server,
 };
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::net::{IpAddr, TcpListener, TcpStream, SocketAddr};
+use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
@@ -23,30 +20,45 @@ use std::time::Duration;
 pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyError> {
     let mut current_node: Node = Node::new(ip)?;
     //me agrego a mi mismo a vecinos
-    current_node.add_neighbor(NeighborNode::new(current_node.ip.clone()));
-    let my_ip = current_node.ip.clone();    
-    
-    let server_socket = current_node.server_socket.clone();
-    let client_socket = current_node.client_socket.clone();
-    let gossip_socket = current_node.gossip_socket.clone();
+    current_node.add_neighbor(NeighborNode::new(current_node.ip));
+    let my_ip = current_node.ip;
+
+    let server_socket = current_node.server_socket;
+    let client_socket = current_node.client_socket;
+    let gossip_socket = current_node.gossip_socket;
 
     let logger = current_node.logger.clone();
 
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node));
 
     // Seccion servidor-servidor
-    listen(server_socket, &current_node, logger.clone(),handle_connection_server)?;
+    listen(
+        server_socket,
+        &current_node,
+        logger.clone(),
+        handle_connection_server,
+    )?;
 
     // Seccion Gossip
-    listen(gossip_socket, &current_node, logger.clone(),handle_connection_gossip)?;
+    listen(
+        gossip_socket,
+        &current_node,
+        logger.clone(),
+        handle_connection_gossip,
+    )?;
 
     // Seccion cliente-servidor
-    listen(client_socket, &current_node, logger.clone(),handle_connection_client)?;
-    
+    listen(
+        client_socket,
+        &current_node,
+        logger.clone(),
+        handle_connection_client,
+    )?;
+
     //empiezo gossip
     if let Some(neighbor_ip) = neighbor {
         let logger_clone = Arc::clone(&logger);
-        let neighbor_gossip_socket = SocketAddr::new(neighbor_ip, 9000 as u16);
+        let neighbor_gossip_socket = SocketAddr::new(neighbor_ip, 9000_u16);
         if let Ok(mut s) = TcpStream::connect(neighbor_gossip_socket) {
             let gossip_msg = GossipMessage {
                 ip: my_ip.to_string(),
@@ -55,10 +67,12 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
             };
             let _ = gossip_msg.send_server_through(&mut s, logger_clone);
         } else {
-            return Err(MyError::TcpStreamError("No se pudo conectar al vecino inicial".to_string()));
+            return Err(MyError::TcpStreamError(
+                "No se pudo conectar al vecino inicial".to_string(),
+            ));
         }
     }
-    
+
     loop {
         thread::sleep(Duration::from_secs(1));
         let logger_clone = Arc::clone(&logger);
@@ -70,17 +84,14 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
                 .map(|n| n.ip)
                 .collect()
         };
-        
-        match connect_to_random_gossip(ips) {
-            Some(mut s) => {
-                let gossip_msg = GossipMessage {
-                    ip: my_ip.to_string(),
-                    status: Status::Connected,
-                    ttl: 5_u8,
-                };
-                let _ = gossip_msg.send_server_through(&mut s, logger_clone);
-            }
-            None => {}
+
+        if let Some(mut s) = connect_to_random_gossip(ips) {
+            let gossip_msg = GossipMessage {
+                ip: my_ip.to_string(),
+                status: Status::Connected,
+                ttl: 5_u8,
+            };
+            let _ = gossip_msg.send_server_through(&mut s, logger_clone);
         };
     }
 }

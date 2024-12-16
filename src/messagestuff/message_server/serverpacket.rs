@@ -80,7 +80,7 @@ impl Packet {
         bytes.extend_from_slice(&int_to_bytes(final_length));
         bytes.extend_from_slice(&final_body);
 
-        let _ = Packet::write_log(stream, logger, self, "[SENT]    ".to_string()); //////////// REVISAR
+        let _ = Packet::write_log(stream, logger, self, "[SENT]    ".to_string());
         bytes
     }
 

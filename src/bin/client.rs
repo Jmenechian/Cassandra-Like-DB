@@ -1,8 +1,8 @@
 use aerolineas_rusticas::clientstuff::client_cql::Client;
 use aerolineas_rusticas::errors::my_errors::MyError;
 use std::env;
-use std::process::exit;
 use std::net::IpAddr;
+use std::process::exit;
 
 /// Binario que va a correr el cliente que se conectará al servidor.
 /// Posibilita realizar consultas CQL a las Tablas de Estado y las Tablas de Seguimiento de vuelos en curso.

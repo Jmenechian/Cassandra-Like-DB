@@ -2,8 +2,8 @@ use eframe::egui;
 use egui::{Color32, Context, FontId, Id, Painter, Rect, Stroke, TextureHandle, TextureId, Ui};
 
 use image::GenericImageView;
-use std::{collections::HashMap, net::IpAddr};
 use std::sync::mpsc::Receiver;
+use std::{collections::HashMap, net::IpAddr};
 
 use crate::{
     clientstuff::client_cql::Client,
@@ -588,7 +588,6 @@ impl MapApp {
     }
 
     fn get_user(&mut self) {
-
         match User::new(self.username.clone(), self.password.clone()) {
             Ok(user) => {
                 self.login_status = format!("Welcome {}!", user.username);

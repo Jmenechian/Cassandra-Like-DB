@@ -1,7 +1,7 @@
 use aerolineas_rusticas::gui::app::MapApp;
 use std::env;
-use std::process::exit;
 use std::net::{IpAddr, Ipv4Addr};
+use std::process::exit;
 
 /// Binario que permite la ejecución de la Interfaz gráfica de usuario.
 fn main() -> Result<(), eframe::Error> {
@@ -18,10 +18,7 @@ fn main() -> Result<(), eframe::Error> {
     };
 
     let port = args[2].to_string();
-    let _port: u16 = match port.parse() {
-        Ok(ip) => ip,
-        Err(_) => 8000,
-    };
+    let _port: u16 = port.parse().unwrap_or(8000);
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

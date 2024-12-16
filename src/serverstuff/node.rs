@@ -10,9 +10,9 @@ use crate::utils::get_rustic_airline_path_tables;
 
 use chrono::{DateTime, Utc};
 use rand::seq::SliceRandom;
+use std::net::{IpAddr, SocketAddr};
 use std::path::Path;
 use std::sync::{Arc, RwLock};
-use std::net::{IpAddr, SocketAddr, Ipv4Addr};
 
 /// Estructura que eepresenta al nodo en el que estamos parados.
 #[derive(Debug, Clone)]
@@ -30,8 +30,6 @@ pub struct Node {
 }
 
 impl Node {
-    
-
     /// Obtenemos los paths de las tablas que se crearon a traves de la query CREATED.
     pub fn tables_created(&self) -> Vec<String> {
         let paths = get_rustic_airline_path_tables(self.ip.to_string());
@@ -44,16 +42,16 @@ impl Node {
         tables
     }
     /// Se crea el nodo.
-    pub fn new(ip: IpAddr) -> Result<Self, MyError>  {
+    pub fn new(ip: IpAddr) -> Result<Self, MyError> {
         let logger = match Logger::new(ip.to_string()) {
             Ok(logger) => Arc::new(RwLock::new(logger)),
             Err(_) => return Err(MyError::LoggerError("Error al crear logger".to_string())),
         };
         Ok(Self {
-            ip: ip,
-            server_socket: SocketAddr::new(ip, 7000 as u16),
-            client_socket: SocketAddr::new(ip, 8000 as u16),
-            gossip_socket: SocketAddr::new(ip, 9000 as u16),
+            ip,
+            server_socket: SocketAddr::new(ip, 7000_u16),
+            client_socket: SocketAddr::new(ip, 8000_u16),
+            gossip_socket: SocketAddr::new(ip, 9000_u16),
             neighbors: vec![], // todos los nodos que estan en el ring
             path_table_origin: Self::lock_path_table(&ip.to_string(), "origin"),
             path_table_destination: Self::lock_path_table(&ip.to_string(), "destination"),
@@ -72,15 +70,9 @@ impl Node {
         if table == "origin" {
             format!("{}/{}_{}.csv", TABLE_PATH, TABLE_ORIGIN_NAME, ip)
         } else if table == "destination" {
-            format!(
-                "{}/{}_{}.csv",
-                TABLE_PATH, TABLE_DESTINATION_NAME, ip
-            )
+            format!("{}/{}_{}.csv", TABLE_PATH, TABLE_DESTINATION_NAME, ip)
         } else {
-            format!(
-                "{}/{}_{}.csv",
-                TABLE_PATH, TABLE_FLIGHT_SIMULATOR, ip
-            )
+            format!("{}/{}_{}.csv", TABLE_PATH, TABLE_FLIGHT_SIMULATOR, ip)
         }
     }
 
@@ -98,18 +90,22 @@ impl Node {
         {
             if self.neighbors[pos].status != new_neighbor_node.status {
                 //ya existias
-                if self.neighbors[pos].status != Status::Disengaged || new_neighbor_node.status != Status::Disconnected{
+                if self.neighbors[pos].status != Status::Disengaged
+                    || new_neighbor_node.status != Status::Disconnected
+                {
                     self.neighbors[pos] = new_neighbor_node.clone();
-                    if self.neighbors[pos].status == Status::Disengaged && new_neighbor_node.status == Status::Connected {
+                    if self.neighbors[pos].status == Status::Disengaged
+                        && new_neighbor_node.status == Status::Connected
+                    {
                         self.neighbors[pos] = new_neighbor_node;
                         2
                     } else {
-                       1 
+                        1
                     }
-                } else  {
+                } else {
                     0
                 }
-            } else if new_neighbor_node.status == Status::Disconnected{
+            } else if new_neighbor_node.status == Status::Disconnected {
                 self.neighbors[pos].disconnect_node();
                 0
             } else {
@@ -119,7 +115,6 @@ impl Node {
             self.neighbors.push(new_neighbor_node); //nuevo
             2
         }
-       
     }
 
     pub fn get_random_neighbor(&self) -> Option<&NeighborNode> {
@@ -134,19 +129,15 @@ impl Node {
     }
 
     pub fn disconnect_neighbor(&mut self, ip: IpAddr) {
-        
         if let Some(n) = self.neighbors.iter_mut().find(|n| n.ip == ip) {
             n.disconnect_node();
         }
-        
     }
 
     pub fn connect_neighbor(&mut self, ip: IpAddr) {
-        
         if let Some(n) = self.neighbors.iter_mut().find(|n| n.ip == ip) {
             n.connect_node();
         }
-        
     }
 
     /// Proceso la query y devuelve la tabla en formato String.
@@ -156,21 +147,21 @@ impl Node {
 
         if [
             TABLE_ORIGIN_NAME.to_string(),
-            format!("{}_{}", TABLE_ORIGIN_NAME, self.ip.to_string()),
+            format!("{}_{}", TABLE_ORIGIN_NAME, self.ip),
         ]
         .contains(&query.get_table())
         {
             path_table = self.path_table_origin.clone();
         } else if [
             TABLE_DESTINATION_NAME.to_string(),
-            format!("{}_{}", TABLE_DESTINATION_NAME, self.ip.to_string()),
+            format!("{}_{}", TABLE_DESTINATION_NAME, self.ip),
         ]
         .contains(&query.get_table())
         {
             path_table = self.path_table_destination.clone();
         } else if [
             TABLE_FLIGHT_SIMULATOR.to_string(),
-            format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.ip.to_string()),
+            format!("{}_{}", TABLE_FLIGHT_SIMULATOR, self.ip),
         ]
         .contains(&query.get_table())
         {

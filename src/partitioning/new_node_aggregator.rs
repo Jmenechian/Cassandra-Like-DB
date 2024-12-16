@@ -66,7 +66,10 @@ impl NewNodeAgregator {
         }
 
         // Vemos las posiciones de los vnodes del new_node:
-        let tokens = self.hashing.token_map.get_tokens(&self.new_node.ip.to_string());
+        let tokens = self
+            .hashing
+            .token_map
+            .get_tokens(&self.new_node.ip.to_string());
         // Vemos vnodes siguientes a estas posiciones:
         let keys = self.hashing.get_keys_in_order();
         for position_new_node in tokens {
@@ -152,8 +155,7 @@ impl NewNodeAgregator {
                 // El nodo anterior no debe mantener la info:
                 let partition: Vec<&str> = key.split(",").collect();
                 let query = get_partition_delete_query(table, partition[0], partition[1]);
-                let mut query =
-                    Query::new(query, self.node.ip.to_string());
+                let mut query = Query::new(query, self.node.ip.to_string());
                 self.node.process_query(&mut query)?;
             }
         }
@@ -197,7 +199,7 @@ impl NewNodeAgregator {
             };
             for line in lines_table {
                 let query = get_insert_query(table, &mut headers.clone(), &mut line.clone());
-                if let Ok(mut socket) = TcpStream::connect(&self.new_node.server_socket) {
+                if let Ok(mut socket) = TcpStream::connect(self.new_node.server_socket) {
                     let msg = QueryServerMessage {
                         query,
                         consistency: 0,
@@ -212,7 +214,7 @@ impl NewNodeAgregator {
 
     fn create_table(&self, table: &str) {
         let query = get_create_query(table);
-        if let Ok(mut socket) = TcpStream::connect(self.new_node.server_socket.clone()) {
+        if let Ok(mut socket) = TcpStream::connect(self.new_node.server_socket) {
             let msg = QueryServerMessage {
                 query,
                 consistency: 0,
@@ -223,35 +225,3 @@ impl NewNodeAgregator {
         }
     }
 }
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    pub fn test() {
-        let key = "DEL,25-12-24".to_string();
-        let rf = 3;
-
-        let node_1 = NeighborNode::new("1");
-        let node_2 = NeighborNode::new("2");
-        let node_3 = NeighborNode::new("3");
-        let node_4 = NeighborNode::new("4");
-        let node_5 = NeighborNode::new("5"); //3,1,2 AEP,25-12-24
-        let node_6 = NeighborNode::new("6"); //6,1,2 AEP,25-12-24
-        let node_7 = NeighborNode::new("7");
-        let node_8 = NeighborNode::new("8"); //2,6,3 DEL,25-12-24
-                                             //let node_9 = NeighborNode::new("9"); //2,9,6 DEL,25-12-24
-
-        let nodes: Vec<NeighborNode> = vec![
-            node_1, node_2, node_3, node_4, node_5, node_6, node_7, node_8, //, node_9
-        ];
-
-        let mut hashing = ConsistentHash::new(rf);
-        hashing.add_nodes(nodes.clone());
-
-        let nodes_result_before = hashing.get_nodes(&key);
-        println!("{:?}", nodes_result_before);
-    }
-}
-*/
