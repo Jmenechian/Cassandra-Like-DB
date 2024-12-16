@@ -300,5 +300,5 @@ pub fn date_is_recent(date: DateTime<Utc>) -> bool {
 pub fn date_is_not_recent(date: DateTime<Utc>) -> bool {
     let now = Utc::now();
     let difference = now.signed_duration_since(date);
-    difference < Duration::seconds(DIFFERENCE_DATE_IS_NOT_RECENT) // Si la diferencia es menor a 5 minutos, es reciente
+    difference < Duration::minutes(DIFFERENCE_DATE_IS_NOT_RECENT) // Si la diferencia es menor a 5 minutos, es reciente
 }
