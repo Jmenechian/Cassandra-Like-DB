@@ -3,8 +3,7 @@
 use chrono::{DateTime, Duration, Utc};
 
 use crate::config::{
-    DIFFERENCE_DATE_IS_RECENT, TABLE_DESTINATION_NAME, TABLE_FLIGHT_SIMULATOR, TABLE_ORIGIN_NAME,
-    TABLE_PATH,
+    DIFFERENCE_DATE_IS_NOT_RECENT, DIFFERENCE_DATE_IS_RECENT, TABLE_DESTINATION_NAME, TABLE_FLIGHT_SIMULATOR, TABLE_ORIGIN_NAME, TABLE_PATH
 };
 use crate::encryption::encrypt::*;
 use crate::{config::ENCRIPT_DATA, errors::my_errors::MyError};
@@ -291,4 +290,11 @@ pub fn date_is_recent(date: DateTime<Utc>) -> bool {
     let now = Utc::now();
     let difference = now.signed_duration_since(date);
     difference < Duration::seconds(DIFFERENCE_DATE_IS_RECENT) // Si la diferencia es menor a 5 minutos, es reciente
+}
+
+/// Indica si una fecha no fue reciente.
+pub fn date_is_not_recent(date: DateTime<Utc>) -> bool {
+    let now = Utc::now();
+    let difference = now.signed_duration_since(date);
+    difference < Duration::minutes(DIFFERENCE_DATE_IS_NOT_RECENT) // Si la diferencia es menor a 5 minutos, es reciente
 }
