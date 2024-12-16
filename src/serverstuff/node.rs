@@ -12,7 +12,7 @@ use chrono::{DateTime, Utc};
 use rand::seq::SliceRandom;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
-use std::net::{IpAddr, SocketAddr};
+use std::net::{IpAddr, SocketAddr, Ipv4Addr};
 
 /// Estructura que eepresenta al nodo en el que estamos parados.
 #[derive(Debug, Clone)]
@@ -90,26 +90,36 @@ impl Node {
     }
 
     /// Se agrega un nodo en particular a los ya existentes.
-    pub fn add_neighbor(&mut self, neighbor_node: NeighborNode) -> u8 {
+    pub fn add_neighbor(&mut self, new_neighbor_node: NeighborNode) -> u8 {
         if let Some(pos) = self
             .neighbors
             .iter()
-            .position(|n| n.ip == neighbor_node.ip)
+            .position(|n| n.ip == new_neighbor_node.ip)
         {
-            if self.neighbors[pos].status != neighbor_node.status {
+            if self.neighbors[pos].status != new_neighbor_node.status {
                 //ya existias
-                self.neighbors[pos] = neighbor_node;
-                1
-            } else if self.neighbors[pos].time < neighbor_node.time {
-                self.neighbors[pos] = neighbor_node;
+                if self.neighbors[pos].status != Status::Disengaged || new_neighbor_node.status != Status::Disconnected{
+                    self.neighbors[pos] = new_neighbor_node.clone();
+                    if self.neighbors[pos].status == Status::Disengaged && new_neighbor_node.status == Status::Connected {
+                        self.neighbors[pos] = new_neighbor_node;
+                        2
+                    } else {
+                       1 
+                    }
+                } else  {
+                    0
+                }
+            } else if new_neighbor_node.status == Status::Disconnected{
+                self.neighbors[pos].disconnect_node();
                 0
             } else {
                 0
             }
         } else {
-            self.neighbors.push(neighbor_node); //nuevo
+            self.neighbors.push(new_neighbor_node); //nuevo
             2
         }
+       
     }
 
     pub fn get_random_neighbor(&self) -> Option<&NeighborNode> {
@@ -118,7 +128,7 @@ impl Node {
         let filtered: Vec<&NeighborNode> = self
             .neighbors
             .iter()
-            .filter(|n| n.ip != self.ip && n.status == Status::Connected)
+            .filter(|n| n.ip != self.ip && n.status != Status::Disengaged)
             .collect();
         filtered.choose(&mut rng).copied()
     }
@@ -142,7 +152,6 @@ impl Node {
     /// Proceso la query y devuelve la tabla en formato String.
     pub fn process_query(&self, query: &mut Query) -> Result<Vec<String>, MyError> {
         query.parse_query()?;
-        println!("\n\n Query: {:?} \n\n", query);
         let path_table: Arc<RwLock<String>>;
 
         if [

@@ -61,7 +61,6 @@ impl NewNodeAgregator {
                 lines_to_insert.insert("flights_in_progress".to_string(), vec![]);
             }
         }
-        println!("self.tables: {:?}. lines_to_insert: {:?}", self.tables, lines_to_insert);
         if lines_to_insert.is_empty() {
             return;
         }
@@ -70,16 +69,13 @@ impl NewNodeAgregator {
         let tokens = self.hashing.token_map.get_tokens(&self.new_node.ip.to_string());
         // Vemos vnodes siguientes a estas posiciones:
         let keys = self.hashing.get_keys_in_order();
-        println!("tokens: {:?}. keys: {:?}", tokens, keys);
         for position_new_node in tokens {
             let next_pos = position_new_node + 1;
             let next_node_idx = self
                 .hashing
                 .find_closest_greater_index(&keys, &next_pos)
                 .unwrap_or(0);
-            println!("next_node_idx: {:?}", next_node_idx);
             if let Some(next_node) = self.hashing.ring.get(keys[next_node_idx]) {
-                println!("next_node: {:?}", next_node);
                 // Si soy ese nodo le mando INSERT de las lineas que le correspondes (de las 3 tablas que usamos):
                 if next_node.ip == self.node.ip {
                     // Veo si una linea le corresponde viendo los hash de aeroport,date:
@@ -101,17 +97,13 @@ impl NewNodeAgregator {
 
     fn get_lines_to_insert(&self) -> HashMap<String, Vec<Vec<String>>> {
         let mut lines_to_insert: HashMap<String, Vec<Vec<String>>> = HashMap::new();
-        println!("HOLAAAAAA, las tablas son: {:?}", self.tables);
         for table in self.tables.clone() {
             if let Ok(lines) = self.get_all_lines(&table) {
-                println!("lines: {:?}", lines);
                 if let Ok(lines) = self.filter_lines(lines, &table) {
-                    println!("line: {:?}", lines);
                     lines_to_insert.insert(table.to_string(), lines);
                 }
             }
         }
-        println!("lines_to_insert: {:?}", lines_to_insert);
         lines_to_insert
     }
 
@@ -203,7 +195,6 @@ impl NewNodeAgregator {
                 Ok(h) => h,
                 _ => continue,
             };
-            println!("lines_table: {:?}", lines_table);
             for line in lines_table {
                 let query = get_insert_query(table, &mut headers.clone(), &mut line.clone());
                 if let Ok(mut socket) = TcpStream::connect(&self.new_node.server_socket) {

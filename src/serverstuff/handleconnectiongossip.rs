@@ -16,33 +16,16 @@ use crate::serverstuff::node_status::Status;
 use crate::utils::{date_is_recent, delete_file, get_reader};
 use rand::seq::SliceRandom;
 use std::io::BufRead;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
+use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::sync::{Arc, RwLock};
 
 fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: GossipMessage) {
     if let Some(n) = node.get_random_neighbor() {
-        if SHOW_GOSSIP {
-            println!(
-                "G    El vecino aleatorio es: \n{:?}\nG    Le mando el mensaje: \n{:?}",
-                n, gossip
-            );
-        }
         if let Some(mut stream) = try_connect(n.gossip_socket.clone()) {
-            if let Err(e) = gossip
+            let _ = gossip
                 .clone()
-                .send_server_through(&mut stream, node.logger.clone())
-            {
-                if SHOW_GOSSIP {
-                    println!("G   Error al eviarle mensaje gossip: {:?}", e);
-                }
-            }
+                .send_server_through(&mut stream, node.logger.clone());  
         } else {
-            if SHOW_GOSSIP {
-                println!(
-                    "G   No me pude conectar con: {:?}, tiene que estar desconectado",
-                    n.server_socket
-                );
-            }
             let gossip_msg = GossipMessage {
                 ip: n.ip.to_string(),
                 status: Status::Disconnected,
@@ -65,7 +48,6 @@ fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, logger: Ar
         }
     };
     for line in rdr.lines().map_while(Result::ok) {
-        println!("line: {:?}", line);
         let logger_clone = Arc::clone(&logger);
         let logger_clone_sender = Arc::clone(&logger);
         if let Ok(mut socket) = TcpStream::connect(&neighbor.server_socket) {
@@ -78,7 +60,6 @@ fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, logger: Ar
             let _ = Packet::from_stream(&mut socket, logger_clone);
         }
     }
-    println!("borrando archivo");
     let _ = delete_file(&file, TABLE_PATH);
 }
 
@@ -90,9 +71,6 @@ fn handle_message_gossip(
     let mut node_guard: std::sync::RwLockWriteGuard<'_, Node> = match node.write() {
         Ok(n) => n,
         Err(e) => {
-            if SHOW_GOSSIP {
-                println!("G   Error al tratar de usar el nodo: {:?}", e);
-            }
             return Err(MyError::LockingError("No puedo usar el nodo".to_string()));
         }
     };
@@ -121,16 +99,8 @@ fn handle_message_gossip(
         }
 
         if res == 2 &&  !date_is_recent(node_guard.connection_date) {
-            println!("G   Me llego un nuevo vecino: {:?}", new_neighbor);
             let mut agg_node = NewNodeAgregator::new(new_neighbor, node_guard.clone());
             agg_node.new_node_in_ring();
-        }
-
-        if SHOW_GOSSIP {
-            println!("G   Mis vecinos son:");
-            for neighbor in &node_guard.neighbors {
-                println!("{:?}", neighbor);
-            }
         }
     } else if let Some(false) = gossip.decrease_ttl() {
         return Ok(());
@@ -149,25 +119,15 @@ pub fn handle_connection_gossip(
     let logger_clone = Arc::clone(&logger);
     match Packet::from_stream(stream, logger) {
         Ok(packet) => {
-            // if SHOW_GOSSIP {
-            //     println!("G   El packet recibido es: {:?}", packet);
-            // }
             match packet.body {
                 ServerMessage::Gossip(mut gossip) => {
                     handle_message_gossip(node, &mut gossip, logger_clone)?;
                 }
-                _ => {
-                    if SHOW_GOSSIP {
-                        println!("G   Error entre gossip y gossip");
-                    }
-                }
+                _ => {}
             }
         }
         Err(e) => {
             let error = format!("G   Error al leer el packet: {:?}", e);
-            if SHOW_GOSSIP {
-                println!("{}", error);
-            }
             return Err(MyError::Error(error));
         }
     }
@@ -182,9 +142,6 @@ pub fn connect_to_random_gossip(
     
     for &ip in &ips {
         if let Some(stream) = try_connect(SocketAddr::new(ip , 9000 as u16)) {
-            if SHOW_GOSSIP {
-                println!("El primero que encontre fue el: {:?}", ip);
-            }
             return Some(stream);
         }
     }

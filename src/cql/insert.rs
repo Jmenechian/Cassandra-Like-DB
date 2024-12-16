@@ -59,7 +59,6 @@ impl Insert {
         }
 
         self.table = format!("{}_{}", self.table, self.ip);
-        println!("INSERT en tabla: {}", self.table);
 
         let headers: Vec<String> = self.extract_values(&parts, skip_index);
 

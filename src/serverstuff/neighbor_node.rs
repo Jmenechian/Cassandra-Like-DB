@@ -33,6 +33,7 @@ impl NeighborNode {
     }
 
     pub fn disconnect_node(&mut self) {
+        
         self.status = Status::Disconnected;
         if !date_is_not_recent(self.last_connected) {
             self.disengaged_node();
@@ -40,6 +41,7 @@ impl NeighborNode {
     }
 
     pub fn disengaged_node(&mut self) {
+       
         self.status = Status::Disengaged;
-    }
+    } 
 }

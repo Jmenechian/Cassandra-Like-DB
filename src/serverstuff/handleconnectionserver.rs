@@ -25,9 +25,6 @@ fn handle_message_query(
         Ok(n) => n,
         Err(e) => {
             let _error = format!("Error al tratar de usar el nodo: {:?}", e);
-            if SHOW_SERVER {
-                println!("S   {:?}", _error);
-            }
             return Err(MyError::LockingError(_error));
         }
     };
@@ -40,8 +37,7 @@ fn handle_message_query(
             rows_content: s,
         }
         .into_result_server_message(),
-        Err(e) => {
-            println!("Error en query: {:?}", e);
+        Err(_) => {
             ResultVoidServerMessage.into_result_server_message()
         }
     };
@@ -94,13 +90,10 @@ fn handle_message_read_repair(
     for row in &query.rows_to_keep {
         let row_vec = row.split(",").collect::<Vec<&str>>();
 
-        println!("rows_to_update: {:?}", rows_to_update);
-
         if contains_row(&rows_to_update, row) {
             let query_str = format!(
                     "UPDATE {} SET status = {} WHERE airport = {} AND {} = {} AND date = {} AND flight = {}",
                     query.table, row_vec[stat], row_vec[ap], column, row_vec[place], row_vec[date], row_vec[flight]);
-            println!("\nRR   {}\n", query_str);
             let mut query = Query::new(query_str, node.ip.to_string()/*/, node.server_socket.to_string()*/);
             node.process_query(&mut query)?;
         } else {
@@ -114,7 +107,6 @@ fn handle_message_read_repair(
                 row_vec[flight],
                 row_vec[stat]
             );
-            println!("\nRR   {}\n", query_str);
             let mut query = Query::new(query_str, node.ip.to_string()/*,node.server_socket.to_string()*/);
             node.process_query(&mut query)?;
         }
@@ -128,7 +120,6 @@ fn handle_message_read_repair(
                 "DELETE FROM {} WHERE airport = {} AND {} = {} AND date = {} AND flight = {}",
                 query.table, row_vec[ap], column, row_vec[place], row_vec[date], row_vec[flight]
             );
-            println!("\nRR   {}\n", query_str);
             let mut query = Query::new(query_str, node.ip.to_string()/*,node.server_socket.to_string()*/);
             node.process_query(&mut query)?;
         }
@@ -157,17 +148,11 @@ pub fn handle_connection_server(
 ) -> Result<(), MyError> {
     match Packet::from_stream(stream, logger) {
         Ok(packet) => {
-            // if SHOW_SERVER {
-            //     println!("S   El packet recibido es: {:?}", packet);
-            // }
             match packet.body {
                 ServerMessage::Query(query) => handle_message_query(node, query, stream),
                 ServerMessage::ReadRepair(msg) => handle_message_read_repair(node, msg),
                 _ => {
                     let _error = "Error entre server y servers".to_string();
-                    if SHOW_SERVER {
-                        println!("S   {:?}", _error);
-                    }
                     Err(MyError::ServerMessageError(_error))
                 }
             }

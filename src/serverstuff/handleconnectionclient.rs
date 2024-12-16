@@ -13,6 +13,7 @@ use crate::messagestuff::{
         resultservermessage::*, serverpacket::Packet, serverpacket::ServerMessage,
     },
 };
+use crate::partitioning::queries::get_table_name_from_path;
 use crate::partitioning::consistent_hashing::ConsistentHash;
 use crate::serverstuff::{neighbor_node::NeighborNode, node::Node, node_status::Status};
 use chrono::NaiveDateTime;
@@ -41,22 +42,14 @@ fn handle_message_query(
     };
     if table.is_empty() {
         let void_msg = ResultEmptyMessage;
-        if let Err(e) = void_msg.send_through(stream, Some(logger)) {
-            if SHOW_CLIENT {
-                println!("C   Error: {:?}", e);
-            }
-        }
+        let _ = void_msg.send_through(stream, Some(logger));
     } else {
         let content: Vec<String> = table.clone();
         let rows_msg = ResultRowsMessage {
             rows_count: content.len() as i32,
             rows_content: content,
         };
-        if let Err(e) = rows_msg.send_through(stream, Some(logger)) {
-            if SHOW_CLIENT {
-                println!("C   Error: {:?}", e);
-            }
-        }
+        let _ = rows_msg.send_through(stream, Some(logger));
     }
     Ok(())
 }
@@ -66,11 +59,7 @@ fn handle_message_error(stream: &mut TcpStream, _error: String, logger: Arc<RwLo
         error: _error,
         code: 0_i32,
     };
-    if let Err(e) = msg.send_through(stream, Some(logger)) {
-        if SHOW_CLIENT {
-            println!("C   Error al enviarle un ErrorMessage al cliente: {:?}", e);
-        }
-    }
+    let _ = msg.send_through(stream, Some(logger));
 }
 
 /// Handler que se encarga de manejar la conexion del servidor con el cliente.
@@ -83,7 +72,6 @@ pub fn handle_connection_client(
     loop {
         let logger_clone = Arc::clone(&logger);
         match Envelope::from_stream(stream, Some(logger_clone)) {
-            /////////////////////// REVISAR
             Ok(env) => {
                 let logger_clone = Arc::clone(&logger);
                 match env.body {
@@ -100,9 +88,6 @@ pub fn handle_connection_client(
                 }
             }
             Err(e) => {
-                if SHOW_CLIENT {
-                    println!("C    Error al leer el env: {:?}", e);
-                }
                 break;
             }
         }
@@ -119,11 +104,8 @@ fn process_results(
     table: &str,
     logger: Arc<RwLock<Logger>>,
 ) -> Vec<String> {
-    println!("\n - pr ===> {:?}", results);
-    let mut table_name = table.to_owned();
-    table_name.pop();
-    table_name.pop();
-    if table_name != TABLE_ORIGIN_NAME && table_name != TABLE_DESTINATION_NAME {
+    //println!("\n - pr ===> {:?}", results);
+    if table.contains(TABLE_ORIGIN_NAME) && table.contains(TABLE_DESTINATION_NAME) {
         if let Some(node) = results.keys().collect::<Vec<&IpAddr>>().first() {
             if let Some(result) = results.get(*node) {
                 return result.to_vec();
@@ -142,21 +124,17 @@ fn process_results(
         }
         _ => {
             if read_repair_needed(results.clone()) {
-                println!("Read repair needed");
                 let node = look_newer(results);
                 if let Some(result) = results.get(&node) {
-                    read_repair(result, nodes_with_result, &node, &table_name, logger);
+                    read_repair(result, nodes_with_result, &node, &get_table_name_from_path(table), logger);
                     result.to_vec()
                 } else {
-                    println!("ERROR EN READ REPAIR: No deberia llegar aca");
                     vec![]
                 }
             } else {
-                println!("Read repair not needed");
                 if let Some(result) = results.values().collect::<Vec<&Vec<String>>>().first() {
                     result.to_vec()
                 } else {
-                    println!("ERROR EN READ REPAIR: No deberia llegar aca");
                     vec![]
                 }
             }
@@ -245,8 +223,6 @@ fn read_repair(
     table: &str,
     logger: Arc<RwLock<Logger>>,
 ) {
-    println!("Mandando mensaje de Read Repair");
-
     for node_neighbor in nodes_with_result {
         let logger_clone = Arc::clone(&logger);
         if node_neighbor.ip == *node {
@@ -280,7 +256,6 @@ pub fn hinted_handoff(
             write!(f, "{}", query.query).map_err(|e| MyError::FileError(e.to_string()))?;
         }
         Err(e) => {
-            println!("Error al abrir el archivo de logs: {:?}", e);
             return Err(MyError::FileError(e.to_string()));
         }
     };
@@ -299,9 +274,6 @@ pub fn send_query_to_nodes(
         Ok(n) => n,
         Err(e) => {
             let _error = format!("Error al tratar de usar el nodo: {:?}", e);
-            if SHOW_CLIENT {
-                println!("C   {:?}", _error);
-            }
             return Err(MyError::LockingError(_error));
         }
     };
@@ -319,18 +291,11 @@ pub fn send_query_to_nodes(
         // otras queries
         hash.get_nodes(&key)
     };
-
     let is_select = query.query.contains("SELECT");
 
     for neighbor in &nodes_with_result {
         // El nodo original porque puede tener el resultado de la query:
         if neighbor.server_socket == node_guard.server_socket {
-            if SHOW_CLIENT {
-                println!(
-                    "C   - Buscando el resultado en el nodo original: {}",
-                    neighbor.server_socket
-                );
-            }
             match node_guard.process_query(&mut query) {
                 Ok(result) => {
                     // all_response.push(result);
@@ -366,9 +331,6 @@ pub fn send_query_to_nodes(
             if !query.query.contains("SELECT") {
                 hinted_handoff(&node_guard.ip.to_string(), &neighbor.ip.to_string(), &query)?;
             }
-            if SHOW_CLIENT {
-                println!("C   - Nodo desconectado: {}", neighbor.server_socket);
-            }
             continue;
         } else if let Ok(mut socket) = TcpStream::connect(&neighbor.server_socket) {
             // Mando mensaje y el IP del nodo que se conecto con el cliente y en ese mismo stream leo la respuesta que me envia como resultado de la consulta.
@@ -397,18 +359,10 @@ pub fn send_query_to_nodes(
                             }
                             ResultServerBody::Empty(_) => {}
                         },
-                        _ => {
-                            if SHOW_CLIENT {
-                                println!("C   Error entre server y servers");
-                            }
-                        }
+                        _ => {}
                     }
                 }
-                Err(e) => {
-                    if SHOW_CLIENT {
-                        println!("C   Error al leer el paket: {:?}", e);
-                    }
-                }
+                Err(_) => {}
             }
         }
     }

@@ -22,7 +22,6 @@ use std::time::Duration;
 /// Funcion de inicializacíon, donde se crea el nodo indicado y se escucha y responde por los puertos correspondientes.
 pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyError> {
     let mut current_node: Node = Node::new(ip)?;
-    println!("Nodo actual: {:?}", current_node);
     //me agrego a mi mismo a vecinos
     current_node.add_neighbor(NeighborNode::new(current_node.ip.clone()));
     let my_ip = current_node.ip.clone();    
@@ -61,7 +60,7 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
     }
     
     loop {
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(Duration::from_secs(1));
         let logger_clone = Arc::clone(&logger);
         let ips: Vec<IpAddr> = {
             let node = current_node.read().expect("Fallo al leer el nodo actual");
@@ -81,34 +80,9 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
                 };
                 let _ = gossip_msg.send_server_through(&mut s, logger_clone);
             }
-            None => println!("No encuentre otro nodo."),
+            None => {}
         };
     }
-}
-
-/// Lee los puertos del archivo
-fn read_ports_from_file(filename: &str) -> Result<Vec<u16>, MyError> {
-    let file = match File::open(filename) {
-        Ok(f) => f,
-        Err(e) => {
-            return Err(MyError::FileError(format!(
-                "Error 1 {:?}, en archivo: {:?}, dir: {:?}",
-                e,
-                filename,
-                std::env::current_dir()
-            )))
-        }
-    };
-    let reader = BufReader::new(file);
-    reader
-        .lines()
-        .map(|l| {
-            let l_string = l.map_err(|e| MyError::FileError(format!("Error 2 {:?}", e)))?;
-            l_string
-                .parse::<u16>()
-                .map_err(|e| MyError::FileError(format!("Error 3 {:?}", e)))
-        })
-        .collect()
 }
 
 /// Nos conectamos al adress indicado.
@@ -156,10 +130,7 @@ where
             let logger = Arc::clone(&logger);
 
             thread::spawn(move || {
-                match handler(node_thread, &mut s, logger) {
-                    Ok(_) => {}
-                    Err(e) => println!("Error: {:?}", e),
-                };
+                let _ = handler(node_thread, &mut s, logger);
             });
         }
         Ok(())

@@ -80,54 +80,6 @@ services:
     working_dir: /app
     command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.6 10.0.0.2"
                    
-  node7:
-    container_name: node7
-    image: rust:latest
-    platform: linux/amd64
-    networks:
-      network_net:
-        ipv4_address: 10.0.0.7
-    ports:
-      - "8007:8000"
-    stdin_open: true
-    tty: true
-    volumes:
-      - .:/app  # Directorio compartido 
-    working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.7 10.0.0.2"
-                   
-  node8:
-    container_name: node8
-    image: rust:latest
-    platform: linux/amd64
-    networks:
-      network_net:
-        ipv4_address: 10.0.0.8
-    ports:
-      - "8008:8000"
-    stdin_open: true
-    tty: true
-    volumes:
-      - .:/app  # Directorio compartido 
-    working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.8 10.0.0.2"
-                   
-  node9:
-    container_name: node9
-    image: rust:latest
-    platform: linux/amd64
-    networks:
-      network_net:
-        ipv4_address: 10.0.0.9
-    ports:
-      - "8009:8000"
-    stdin_open: true
-    tty: true
-    volumes:
-      - .:/app  # Directorio compartido 
-    working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.9 10.0.0.2"
-                   
 networks:
   network_net:
     external: true
