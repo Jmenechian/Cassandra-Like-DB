@@ -131,7 +131,8 @@ impl ConsistentHash<NeighborNode> {
 
             nodes.push(node.clone());
 
-            if node.status == Status::Connected {
+            if node.status != Status::Disengaged {
+                //Ignoramos al nodo desvinculado
                 *connected_nodes += 1;
             }
 

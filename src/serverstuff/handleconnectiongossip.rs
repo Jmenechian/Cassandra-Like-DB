@@ -109,6 +109,9 @@ fn handle_message_gossip(
         Status::Disconnected => {
             new_neighbor.disconnect_node();
         }
+        Status::Disengaged => {
+            new_neighbor.disengaged_node();
+        }
     }
     let res = node_guard.add_neighbor(new_neighbor.clone());
     if res > 0 {

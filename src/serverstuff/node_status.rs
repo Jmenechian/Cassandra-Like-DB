@@ -6,6 +6,7 @@ use crate::errors::my_errors::MyError;
 pub enum Status {
     Connected = config::CONNECTED,
     Disconnected = config::DISCONNECTED,
+    Disengaged = config::DISENGAGED,
 }
 
 impl Status {
@@ -13,6 +14,7 @@ impl Status {
         match value {
             config::CONNECTED => Ok(Status::Connected),
             config::DISCONNECTED => Ok(Status::Disconnected),
+            config::DISENGAGED => Ok(Status::Disengaged),
             _ => Err(MyError::Error("Invalid Status".to_string())),
         }
     }
