@@ -56,24 +56,18 @@ UPDATE origin SET status = boarding WHERE flight = 101 AND airport = MEX AND dat
 ``` sql
 DELETE FROM origin WHERE flight = 101 AND airport = MEX AND date = 24-12-24
 ```
-<<<<<<< HEAD
 
+### Docker
+(solo se usa para server)
 
-keys [417, 983, 1440, 1977, 2042, 2807, 2842, 2872, 3383, 4230, 4264, 4405, 4627, 4631, 4659, 4852, 5077, 5218, 5321, 5368, 5420, 5858, 6008, 6024, 7319, 7468, 7577]
+./start.sh n
 
-keys [2, 9, 9, 6, 3, 2, 4, 4, 5, 8, 1, 7, 6, 3, 1, 3, 5, 5, 4, 8, 8, 9, 6, 7, 2, 7, 1]
+con n igual a la contidad de nodos que se desean levantar
 
+cargo run --bin client 127.0.0.1 800n
 
-Tokens: [4264, 7577, 4659] => 1
-Tokens: [2807, 417, 7319] => 2
-Tokens: [2042, 4631, 4852] => 3
-Tokens: [2872, 5321, 2842] => 4
-Tokens: [5218, 3383, 5077] => 5
-Tokens: [1977, 6008, 4627] => 6
-Tokens: [4405, 6024, 7468] => 7
-Tokens: [4230, 5420, 5368] => 8
+cargo run --bin gui 127.0.0.1 800n
 
-Tokens: [5858, 1440, 983] => 9
-=======
-UPDATE origin SET status = delayed WHERE flight = 123 AND airport = MEX AND date = 24-12-24 
->>>>>>> docker-raro
+Para agregar un nuevo serveidor
+
+docker run -d --name noden --platform linux/amd64 --network network_net --ip 10.0.0.n -p 800n:8000 -v $(pwd):/app -w /app rust:latest bash -c 'apt-get update && apt-get install -y iputils-ping && cargo run --bin server 10.0.0.n 10.0.0.2'

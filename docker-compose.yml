@@ -15,7 +15,7 @@ services:
     volumes:
       - .:/app  # Directorio compartido 
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                   sleep 15 &&                    cargo run --bin server 10.0.0.2"
+    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                   cargo run --bin server 10.0.0.2"
   node3:
     container_name: node3
     image: rust:latest
@@ -30,7 +30,7 @@ services:
     volumes:
       - .:/app  # Directorio compartido 
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    sleep 15 &&                    cargo run --bin server 10.0.0.3 10.0.0.2"
+    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.3 10.0.0.2"
                    
   node4:
     container_name: node4
@@ -46,7 +46,7 @@ services:
     volumes:
       - .:/app  # Directorio compartido 
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    sleep 15 &&                    cargo run --bin server 10.0.0.4 10.0.0.2"
+    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.4 10.0.0.2"
                    
   node5:
     container_name: node5
@@ -62,7 +62,7 @@ services:
     volumes:
       - .:/app  # Directorio compartido 
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    sleep 15 &&                    cargo run --bin server 10.0.0.5 10.0.0.2"
+    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.5 10.0.0.2"
                    
   node6:
     container_name: node6
@@ -78,7 +78,7 @@ services:
     volumes:
       - .:/app  # Directorio compartido 
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    sleep 15 &&                    cargo run --bin server 10.0.0.6 10.0.0.2"
+    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.6 10.0.0.2"
                    
   node7:
     container_name: node7
@@ -94,7 +94,7 @@ services:
     volumes:
       - .:/app  # Directorio compartido 
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    sleep 15 &&                    cargo run --bin server 10.0.0.7 10.0.0.2"
+    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.7 10.0.0.2"
                    
   node8:
     container_name: node8
@@ -110,7 +110,7 @@ services:
     volumes:
       - .:/app  # Directorio compartido 
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    sleep 15 &&                    cargo run --bin server 10.0.0.8 10.0.0.2"
+    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.8 10.0.0.2"
                    
   node9:
     container_name: node9
@@ -126,7 +126,7 @@ services:
     volumes:
       - .:/app  # Directorio compartido 
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    sleep 15 &&                    cargo run --bin server 10.0.0.9 10.0.0.2"
+    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.9 10.0.0.2"
                    
 networks:
   network_net:

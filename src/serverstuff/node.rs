@@ -30,7 +30,7 @@ pub struct Node {
 }
 
 impl Node {
-    /// Se crea el nodo.
+    
 
     /// Obtenemos los paths de las tablas que se crearon a traves de la query CREATED.
     pub fn tables_created(&self) -> Vec<String> {
@@ -43,7 +43,7 @@ impl Node {
         }
         tables
     }
-
+    /// Se crea el nodo.
     pub fn new(ip: IpAddr) -> Result<Self, MyError>  {
         let logger = match Logger::new(ip.to_string()) {
             Ok(logger) => Arc::new(RwLock::new(logger)),
@@ -142,7 +142,7 @@ impl Node {
     /// Proceso la query y devuelve la tabla en formato String.
     pub fn process_query(&self, query: &mut Query) -> Result<Vec<String>, MyError> {
         query.parse_query()?;
-        // println!("\n\n Query: {:?} \n\n", query);
+        println!("\n\n Query: {:?} \n\n", query);
         let path_table: Arc<RwLock<String>>;
 
         if [

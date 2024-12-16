@@ -131,10 +131,8 @@ impl ConsistentHash<NeighborNode> {
 
             nodes.push(node.clone());
 
-            if node.status == Status::Connected {
-                *connected_nodes += 1;
-            }
-
+            *connected_nodes += 1;
+            
             if *connected_nodes == self.rf {
                 break;
             }

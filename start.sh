@@ -55,13 +55,11 @@ for i in $(seq 2 $((NUM_NODOS + 1))); do
   if [ "$i" -eq 2 ]; then
     COMMAND="bash -c \"apt-get update && apt-get install -y \
                    iputils-ping &&\
-                   sleep 15 && \
                    cargo run --bin server 10.0.0.2\""
   else
     # Comando para los demás nodos
     COMMAND="bash -c \"apt-get update && apt-get install -y \
                    iputils-ping && \
-                   sleep 15 && \
                    cargo run --bin server ${IP_ADDRESS} 10.0.0.2\"
                    "
   fi
@@ -99,12 +97,8 @@ else
   echo "Hubo un error al levantar el contenedor node2."
   exit 1
 fi
-sleep 25
-# Verificar que node2 esté corriendo y listo
-echo "Esperando a que node2 esté completamente listo..."
-until docker inspect -f '{{.State.Running}}' node2 | grep true &>/dev/null; do
-  sleep 25
-done
+sleep 15
+
 echo "El contenedor node2 está en ejecución."
 
 # Levantar los demás contenedores

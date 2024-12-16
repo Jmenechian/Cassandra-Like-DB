@@ -12,7 +12,6 @@ pub struct NeighborNode {
     pub ip: IpAddr,
     pub status: Status,
     pub time: DateTime<Local>,
-    pub fecha: String,
 }
 
 impl NeighborNode {
@@ -23,7 +22,6 @@ impl NeighborNode {
             ip: ip,
             status: Status::Connected, // Deberia empezar desconectado?
             time: Local::now(),
-            fecha: Utc::now().to_string(),
         }
     }
 

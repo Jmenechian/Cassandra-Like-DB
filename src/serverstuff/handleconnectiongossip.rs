@@ -117,7 +117,7 @@ fn handle_message_gossip(
             handle_send_backlog(&node_guard.ip.to_string(), &new_neighbor, logger);
         }
 
-        if res == 2 && !date_is_recent(node_guard.connection_date) {
+        if res == 2 &&  !date_is_recent(node_guard.connection_date) {
             println!("G   Me llego un nuevo vecino: {:?}", new_neighbor);
             let mut agg_node = NewNodeAgregator::new(new_neighbor, node_guard.clone());
             agg_node.new_node_in_ring();
