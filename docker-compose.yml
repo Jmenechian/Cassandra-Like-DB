@@ -4,7 +4,6 @@ services:
   node2:
     container_name: node2
     image: rust:latest
-    platform: linux/amd64
     networks:
       network_net:
         ipv4_address: 10.0.0.2
@@ -19,7 +18,6 @@ services:
   node3:
     container_name: node3
     image: rust:latest
-    platform: linux/amd64
     networks:
       network_net:
         ipv4_address: 10.0.0.3
@@ -35,7 +33,6 @@ services:
   node4:
     container_name: node4
     image: rust:latest
-    platform: linux/amd64
     networks:
       network_net:
         ipv4_address: 10.0.0.4
@@ -51,7 +48,6 @@ services:
   node5:
     container_name: node5
     image: rust:latest
-    platform: linux/amd64
     networks:
       network_net:
         ipv4_address: 10.0.0.5
@@ -67,7 +63,6 @@ services:
   node6:
     container_name: node6
     image: rust:latest
-    platform: linux/amd64
     networks:
       network_net:
         ipv4_address: 10.0.0.6

@@ -104,7 +104,7 @@ fn process_results(
     table: &str,
     logger: Arc<RwLock<Logger>>,
 ) -> Vec<String> {
-    //println!("\n - pr ===> {:?}", results);
+    println!("\n - pr ===> {:?}", results);
     if table.contains(TABLE_ORIGIN_NAME) && table.contains(TABLE_DESTINATION_NAME) {
         if let Some(node) = results.keys().collect::<Vec<&IpAddr>>().first() {
             if let Some(result) = results.get(*node) {
@@ -277,7 +277,7 @@ pub fn send_query_to_nodes(
             return Err(MyError::LockingError(_error));
         }
     };
-    let mut all_response: Vec<Vec<String>> = vec![];
+    //let mut all_response: Vec<Vec<String>> = vec![];
     let mut all_response_dict: HashMap<IpAddr, Vec<String>> = HashMap::new();
     let mut hash = ConsistentHash::new(RF);
     let mut query: Query = Query::new(_query.clone(), node_guard.ip.to_string()/*, node.client_socket.to_string()*/);
@@ -299,7 +299,7 @@ pub fn send_query_to_nodes(
             match node_guard.process_query(&mut query) {
                 Ok(result) => {
                     // all_response.push(result);
-                    all_response_dict.insert(neighbor.ip, result);
+                    all_response_dict.insert(neighbor.ip, result.clone());
 
                     if consistency_level == config::ONE && all_response_dict.len() == 1 {
                         if is_select {
@@ -311,10 +311,7 @@ pub fn send_query_to_nodes(
                                 node_guard.logger.clone(),
                             ));
                         } else {
-                            if let Some(result) = all_response.pop() {
-                                return Ok(result);
-                            }
-                            return Ok(vec![]);
+                            return Ok(result);
                         }
                     }
                 }
@@ -351,7 +348,7 @@ pub fn send_query_to_nodes(
                                     .insert(neighbor.ip, r.rows_content.clone());
                             }
                             ResultServerBody::Void(_) => {
-                                all_response.push(vec!["Invalid Query".to_string()]);
+                                //all_response.push(vec!["Invalid Query".to_string()]);
                                 all_response_dict.insert(
                                     neighbor.ip,
                                     vec!["Invalid Query".to_string()],

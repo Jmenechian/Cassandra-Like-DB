@@ -594,7 +594,7 @@ impl MapApp {
                 self.login_status = format!("Welcome {}!", user.username);
                 self.user = Some(user);
             }
-            Err(err) => {
+            Err(_) => {
                 self.login_status = "Username or password incorrect".to_string();
                 self.user = None;
             }
