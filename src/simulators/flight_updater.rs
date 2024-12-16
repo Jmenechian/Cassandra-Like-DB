@@ -1,5 +1,5 @@
 use std::{
-    net::TcpStream,
+    net::{IpAddr, TcpStream},
     sync::{mpsc::Sender, Arc, Mutex},
 };
 use threadpool::ThreadPool;
@@ -85,9 +85,9 @@ impl FlightUpdater {
     }
 
     /// Se ejecutan las queries.
-    pub fn update_flights(path: Arc<Mutex<String>>, number_node: String) -> Result<(), MyError> {
+    pub fn update_flights(path: Arc<Mutex<String>>, ip: IpAddr, port: u16) -> Result<(), MyError> {
         // Buscamos un nodo conectado:
-        let mut client = Client::initialize(number_node.to_string());
+        let mut client = Client::initialize(ip, port);
         let stream: TcpStream = if let Ok(stream) = client.connect() {
             stream
         } else {

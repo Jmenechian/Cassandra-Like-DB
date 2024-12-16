@@ -275,15 +275,11 @@ pub fn get_rustic_airline_path_tables(node_number: String) -> Vec<String> {
         TABLE_PATH, TABLE_ORIGIN_NAME, node_number
     ));
     tables.push(format!(
-        "{}/{}_{}",
-        TABLE_PATH, TABLE_ORIGIN_NAME, node_number
-    ));
-    tables.push(format!(
-        "{}/{}_{}",
+        "{}/{}_{}.csv",
         TABLE_PATH, TABLE_DESTINATION_NAME, node_number
     ));
     tables.push(format!(
-        "{}/{}_{}",
+        "{}/{}_{}.csv",
         TABLE_PATH, TABLE_FLIGHT_SIMULATOR, node_number
     ));
     tables

@@ -3,24 +3,25 @@
 
 use crate::{serverstuff::node_status::Status, utils::date_is_not_recent};
 use chrono::{DateTime, Local, Utc};
+use std::net::{IpAddr, SocketAddr};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NeighborNode {
-    pub server_ip: String, // uso su ip para saber a quien mandarle la query --> Consistent Hashing
-    pub gossip_ip: String,
-    pub number: String,
+    pub server_socket: SocketAddr, // uso su ip para saber a quien mandarle la query --> Consistent Hashing
+    pub gossip_socket: SocketAddr,
+    pub ip: IpAddr,
     pub status: Status,
     pub time: DateTime<Local>,
     pub last_connected: DateTime<Utc>,
 }
 
 impl NeighborNode {
-    pub fn new(port: &str) -> Self {
+    pub fn new(ip: IpAddr) -> Self {
         Self {
-            server_ip: format!("127.0.0.1:700{}", port),
-            gossip_ip: format!("127.0.0.1:900{}", port),
-            number: port.to_string(),
-            status: Status::Connected, // Deberia empezar desconectado?
+            server_socket: SocketAddr::new(ip, 7000 as u16),
+            gossip_socket: SocketAddr::new(ip, 9000 as u16),
+            ip: ip,
+            status: Status::Connected,
             time: Local::now(),
             last_connected: Utc::now()
         }
