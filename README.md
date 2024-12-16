@@ -56,16 +56,30 @@ DELETE FROM origin WHERE flight = 101 AND airport = MEX AND date = 24-12-24
 ```
 
 ### Docker
-(solo se usa para server)
+(Se usa sólo para server).
 
+#### Iniciar n nodos:
+``` bash
 ./start.sh n
+```
+Siendo n la cantidad de nodos que se desean levantar.
 
-con n igual a la contidad de nodos que se desean levantar
-
+#### Cliente:
+``` bash
 cargo run --bin client 127.0.0.1 800n
+```
 
+#### GUI:
+``` bash
 cargo run --bin gui 127.0.0.1 800n
+```
 
-Para agregar un nuevo serveidor
+#### Simulador:
+``` bash
+cargo run --bin simulator 127.0.0.1 800n
+```
 
+#### Agregar un nuevo servidor:
+``` bash
 docker run -d --name node7 --network network_net --ip 10.0.0.7 -p 8007:8000 -v $(pwd):/app -w /app rust:latest bash -c 'apt-get update && apt-get install -y iputils-ping && cargo run --bin server 10.0.0.7 10.0.0.5'
+```
