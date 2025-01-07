@@ -52,17 +52,10 @@ for i in $(seq 2 $((NUM_NODOS + 1))); do
     docker rm "$EXISTING_CONTAINER" >/dev/null 2>&1
   fi
   # Comando para el primer nodo
-  if [ "$i" -eq 2 ]; then
-    COMMAND="bash -c \"apt-get update && apt-get install -y \
-                   iputils-ping &&\
-                   cargo run --bin server 10.0.0.2\""
-  else
-    # Comando para los demás nodos
-    COMMAND="bash -c \"apt-get update && apt-get install -y \
-                   iputils-ping && \
-                   cargo run --bin server ${IP_ADDRESS} 10.0.0.2\"
-                   "
-  fi
+  COMMAND="bash -c \"apt-get update && apt-get install -y \
+          iputils-ping && \
+          cargo run --bin server ${IP_ADDRESS}\"
+          "
 
   # Exportar las variables de entorno
   export NODE_NAME=$NODE_NAME
@@ -89,36 +82,3 @@ networks:
   network_net:
     external: true
 EOF
-
-# Levantar solo el contenedor node2
-if docker compose -f "$TMP_COMPOSE_FILE" up -d node2; then
-  echo "El contenedor node2 se levantó correctamente."
-else
-  echo "Hubo un error al levantar el contenedor node2."
-  exit 1
-fi
-sleep 15
-
-echo "El contenedor node2 está en ejecución."
-
-# Levantar los demás contenedores
-if docker compose -f "$TMP_COMPOSE_FILE" up -d; then
-  echo "Todos los demás contenedores se levantaron correctamente."
-else
-  echo "Hubo un error al levantar los demás contenedores."
-  exit 1
-fi
-
-
-# Ejecutar docker-compose para levantar los contenedores
-#if docker-compose -f "$TMP_COMPOSE_FILE" up -d; then
-#  echo "Todos los contenedores se levantaron correctamente."
-#else
-#  echo "Hubo un error al levantar los contenedores."
-#  exit 1
-#fi
-
-# Limpiar archivo temporal
-#rm -f "$TMP_COMPOSE_FILE"
-#-c '/app/ping_check.sh $NUM_NODOS'
-echo "Todos los nodos han sido creados."

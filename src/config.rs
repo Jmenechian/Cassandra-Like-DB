@@ -11,6 +11,7 @@ pub static TABLE_PATH: &str = "src/tables";
 pub static TABLE_ORIGIN_NAME: &str = "origin";
 pub static TABLE_DESTINATION_NAME: &str = "destination";
 pub static TABLE_FLIGHT_SIMULATOR: &str = "flights_in_progress";
+pub static IPS: &str = "src/serverstuff/ip.txt";
 
 // Consistent Hashing:
 pub static RF: usize = 3; // Valor del Replication Factor.

@@ -1,15 +1,12 @@
 
   ${NODE_NAME}:
     container_name: ${NODE_NAME}
-    image: rust:latest
+    build:
+      context: .
+      dockerfile: dockerfile
     networks:
       network_net:
         ipv4_address: ${IP_ADDRESS}
     ports:
       - "${NODE_NUMBER}:8000"
-    stdin_open: true
-    tty: true
-    volumes:
-      - .:/app  # Directorio compartido 
-    working_dir: /app
     command: ${COMMAND}

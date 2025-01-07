@@ -15,9 +15,11 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
+use std::fs;
+use crate::config::IPS;
 
 /// Funcion de inicializacíon, donde se crea el nodo indicado y se escucha y responde por los puertos correspondientes.
-pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyError> {
+pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
     let mut current_node: Node = Node::new(ip)?;
     //me agrego a mi mismo a vecinos
     current_node.add_neighbor(NeighborNode::new(current_node.ip));
@@ -56,6 +58,7 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
     )?;
 
     //empiezo gossip
+    /*
     if let Some(neighbor_ip) = neighbor {
         let logger_clone = Arc::clone(&logger);
         let neighbor_gossip_socket = SocketAddr::new(neighbor_ip, 9000_u16);
@@ -70,6 +73,27 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
             return Err(MyError::TcpStreamError(
                 "No se pudo conectar al vecino inicial".to_string(),
             ));
+        }
+    }
+    */
+    let binding = fs::read_to_string(IPS)
+        .expect("Should have been able to read the file");
+    let ips: Vec<&str> = binding.split("\n").collect();
+
+    for ip in ips {
+        let ip_node_addr: IpAddr = match ip.parse() {
+            Ok(_ip) => _ip,
+            Err(_) => continue
+        };
+        let logger_clone = Arc::clone(&logger);
+        if let Some(mut stream) = try_connect(SocketAddr::new(ip_node_addr, 9000_u16)) {
+            let gossip_msg = GossipMessage {
+                ip: my_ip.to_string(),
+                status: Status::Connected,
+                ttl: 5_u8,
+            };
+            let _ = gossip_msg.send_server_through(&mut stream, logger_clone);
+            break; 
         }
     }
 
