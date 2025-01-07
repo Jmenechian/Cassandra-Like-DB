@@ -1,3 +1,5 @@
+use rand::seq::SliceRandom;
+
 use crate::errors::my_errors::MyError;
 use crate::loggerstuff::logger::Logger;
 use crate::messagestuff::{message::*, message_server::gossipmessage::*};
@@ -11,6 +13,7 @@ use crate::serverstuff::{
     handleconnectionserver::handle_connection_server,
 };
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
@@ -57,28 +60,16 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
         handle_connection_client,
     )?;
 
-    //empiezo gossip
-    /*
-    if let Some(neighbor_ip) = neighbor {
-        let logger_clone = Arc::clone(&logger);
-        let neighbor_gossip_socket = SocketAddr::new(neighbor_ip, 9000_u16);
-        if let Ok(mut s) = TcpStream::connect(neighbor_gossip_socket) {
-            let gossip_msg = GossipMessage {
-                ip: my_ip.to_string(),
-                status: Status::Connected,
-                ttl: 5_u8,
-            };
-            let _ = gossip_msg.send_server_through(&mut s, logger_clone);
-        } else {
-            return Err(MyError::TcpStreamError(
-                "No se pudo conectar al vecino inicial".to_string(),
-            ));
-        }
+    if handle_disconnect(&current_node) {
+        return Ok(());
     }
-    */
+
+    //empiezo gossip
     let binding = fs::read_to_string(IPS)
         .expect("Should have been able to read the file");
-    let ips: Vec<&str> = binding.split("\n").collect();
+    let mut rng = rand::thread_rng();
+    let mut ips: Vec<&str> = binding.split("\n").collect();
+    ips.shuffle(&mut rng);
 
     for ip in ips {
         let ip_node_addr: IpAddr = match ip.parse() {
@@ -93,7 +84,6 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
                 ttl: 5_u8,
             };
             let _ = gossip_msg.send_server_through(&mut stream, logger_clone);
-            break; 
         }
     }
 
@@ -118,6 +108,35 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
             let _ = gossip_msg.send_server_through(&mut s, logger_clone);
         };
     }
+}
+
+/// Vemos si el nodo manda una señal de Desconetado defitinitamente.
+pub fn handle_disconnect(node: &Arc<RwLock<Node>>) -> bool {
+    let node = node.read().expect("Fallo al leer el nodo actual");
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+
+    ctrlc::set_handler(move || {
+        r.store(false, Ordering::SeqCst);
+    }).expect("Error setting Ctrl-C handler");
+
+    while running.load(Ordering::SeqCst) {}
+
+    // Se realizo un docker kill (= ctrc)
+    if let Some(n) = node.get_random_neighbor() {
+        if let Some(mut stream) = try_connect(n.gossip_socket) {
+            let gossip_msg = GossipMessage {
+                ip: n.ip.to_string(),
+                status: Status::Disengaged,
+                ttl: 5_u8,
+            };
+            let _ = gossip_msg
+                .clone()
+                .send_server_through(&mut stream, node.logger.clone());
+        }
+    }
+
+    true
 }
 
 /// Nos conectamos al adress indicado.

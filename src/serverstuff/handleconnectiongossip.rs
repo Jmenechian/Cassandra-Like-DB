@@ -38,7 +38,6 @@ fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: Gos
 }
 
 fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, logger: Arc<RwLock<Logger>>) {
-    //4 ...
     let file = format!("logs/logs_{}_{}", node_number, neighbor.ip);
     let rdr = match get_reader(TABLE_PATH, &file) {
         Ok(r) => r,
