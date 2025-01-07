@@ -1,7 +1,7 @@
 // Representa a cada uno de los otros nodos del ring
 // El nodo actual (tipo Nodo) tiene una lista de estos nodos vecinos (tipo NeighborNode)
 
-use crate::{serverstuff::node_status::Status, utils::date_is_not_recent};
+use crate::serverstuff::node_status::Status;
 use chrono::{DateTime, Local, Utc};
 use std::net::{IpAddr, SocketAddr};
 
@@ -34,9 +34,6 @@ impl NeighborNode {
 
     pub fn disconnect_node(&mut self) {
         self.status = Status::Disconnected;
-        if !date_is_not_recent(self.last_connected) {
-            self.disengaged_node();
-        }
     }
 
     pub fn disengaged_node(&mut self) {
