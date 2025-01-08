@@ -12,14 +12,15 @@ use crate::messagestuff::{
     },
 };
 use crate::serverstuff::node::Node;
-use crate::Logger;
 use std::net::TcpStream;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 fn handle_message_query(
     node: Arc<RwLock<Node>>,
     query: QueryServerMessage,
     stream: &mut TcpStream,
+    sender: Sender<String>,
 ) -> Result<(), MyError> {
     let node = match node.read() {
         Ok(n) => n,
@@ -39,7 +40,7 @@ fn handle_message_query(
         .into_result_server_message(),
         Err(_) => ResultVoidServerMessage.into_result_server_message(),
     };
-    let _ = msg.send_server_through(stream, node.logger.clone());
+    let _ = msg.send_server_through(stream, sender);
     Ok(())
 }
 
@@ -142,11 +143,11 @@ fn contains_row(rows: &Vec<String>, row: &str) -> bool {
 pub fn handle_connection_server(
     node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
-    logger: Arc<RwLock<Logger>>,
+    sender: Sender<String>,
 ) -> Result<(), MyError> {
-    match Packet::from_stream(stream, logger) {
+    match Packet::from_stream(stream, sender.clone()) {
         Ok(packet) => match packet.body {
-            ServerMessage::Query(query) => handle_message_query(node, query, stream),
+            ServerMessage::Query(query) => handle_message_query(node, query, stream, sender),
             ServerMessage::ReadRepair(msg) => handle_message_read_repair(node, msg),
             _ => {
                 let _error = "Error entre server y servers".to_string();

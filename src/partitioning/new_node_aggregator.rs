@@ -15,11 +15,7 @@ use crate::{
 };
 
 use std::{
-    collections::HashMap,
-    fs::File,
-    io::{BufRead, BufReader},
-    net::TcpStream,
-    vec,
+    collections::HashMap, fs::File, io::{BufRead, BufReader}, net::TcpStream, sync::mpsc::Sender, vec
 };
 
 #[derive(Debug)]
@@ -50,7 +46,7 @@ impl NewNodeAgregator {
     /// Se indica al nuevo nodo que cree las tablas que le faltan.
     /// El nodo que identidicó que se conecto un nuevo nodo, borra de sus tablas las lineas que le corresponden
     /// al nuevo nodo, y le pasa a este los INSERTs que debe hacer para tener la info que le corresponde.
-    pub fn new_node_in_ring(&mut self) {
+    pub fn new_node_in_ring(&mut self, sender: Sender<String>) {
         let mut lines_to_insert: HashMap<String, Vec<Vec<String>>> = HashMap::new();
         for table in self.tables.clone() {
             if table.contains("origin") {
@@ -95,7 +91,7 @@ impl NewNodeAgregator {
                 }
             }
         }
-        self.send_info(lines_to_insert);
+        self.send_info(lines_to_insert, sender);
     }
 
     fn get_lines_to_insert(&self) -> HashMap<String, Vec<Vec<String>>> {
@@ -186,9 +182,9 @@ impl NewNodeAgregator {
         ))
     }
 
-    fn send_info(&self, lines: HashMap<String, Vec<Vec<String>>>) {
+    fn send_info(&self, lines: HashMap<String, Vec<Vec<String>>>, sender: Sender<String>) {
         for table in lines.keys() {
-            self.create_table(table);
+            self.create_table(table, sender.clone());
             let lines_table = match lines.get(table) {
                 Some(lines_result) => lines_result,
                 None => continue,
@@ -204,24 +200,24 @@ impl NewNodeAgregator {
                         query,
                         consistency: 0,
                     };
-                    let _ = msg.send_server_through(&mut socket, self.node.logger.clone());
+                    let _ = msg.send_server_through(&mut socket, sender.clone());
 
-                    let _ = Packet::from_stream(&mut socket, self.node.logger.clone());
+                    let _ = Packet::from_stream(&mut socket, sender.clone());
                 }
             }
         }
     }
 
-    fn create_table(&self, table: &str) {
+    fn create_table(&self, table: &str, sender: Sender<String>) {
         let query = get_create_query(table);
         if let Ok(mut socket) = TcpStream::connect(self.new_node.server_socket) {
             let msg = QueryServerMessage {
                 query,
                 consistency: 0,
             };
-            let _ = msg.send_server_through(&mut socket, self.node.logger.clone());
+            let _ = msg.send_server_through(&mut socket, sender.clone());
 
-            let _ = Packet::from_stream(&mut socket, self.node.logger.clone());
+            let _ = Packet::from_stream(&mut socket, sender);
         }
     }
 }

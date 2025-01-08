@@ -3,7 +3,6 @@ use crate::config::{
 };
 use crate::cql::query::Query;
 use crate::errors::my_errors::*;
-use crate::loggerstuff::logger::Logger;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node_status::Status;
 use crate::utils::get_rustic_airline_path_tables;
@@ -25,7 +24,6 @@ pub struct Node {
     pub path_table_origin: Arc<RwLock<String>>, // path donde se encuntra el archivo que representan la tabla
     pub path_table_destination: Arc<RwLock<String>>,
     pub path_table_simulator: Arc<RwLock<String>>,
-    pub logger: Arc<RwLock<Logger>>, // logger para guardar los logs
     pub connection_date: DateTime<Utc>,
 }
 
@@ -43,10 +41,6 @@ impl Node {
     }
     /// Se crea el nodo.
     pub fn new(ip: IpAddr) -> Result<Self, MyError> {
-        let logger = match Logger::new(ip.to_string()) {
-            Ok(logger) => Arc::new(RwLock::new(logger)),
-            Err(_) => return Err(MyError::LoggerError("Error al crear logger".to_string())),
-        };
         Ok(Self {
             ip,
             server_socket: SocketAddr::new(ip, 7000_u16),
@@ -57,7 +51,6 @@ impl Node {
             path_table_destination: Self::lock_path_table(&ip.to_string(), "destination"),
             path_table_simulator: Self::lock_path_table(&ip.to_string(), "simulator"),
             connection_date: Utc::now(),
-            logger,
         })
     }
 

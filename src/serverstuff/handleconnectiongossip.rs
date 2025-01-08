@@ -1,7 +1,6 @@
 use super::node_initializer::try_connect;
 use crate::config::TABLE_PATH;
 use crate::errors::my_errors::*;
-use crate::loggerstuff::logger::Logger;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
 use crate::messagestuff::{
     message::*,
@@ -17,27 +16,28 @@ use crate::utils::{date_is_recent, delete_file, get_reader};
 use rand::seq::SliceRandom;
 use std::io::BufRead;
 use std::net::{IpAddr, SocketAddr, TcpStream};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
-fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: GossipMessage) {
+fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: GossipMessage, sender: Sender<String>,) {
     if let Some(n) = node.get_random_neighbor() {
         if let Some(mut stream) = try_connect(n.gossip_socket) {
             let _ = gossip
                 .clone()
-                .send_server_through(&mut stream, node.logger.clone());
+                .send_server_through(&mut stream, sender);
         } else {
             let gossip_msg = GossipMessage {
                 ip: n.ip.to_string(),
                 status: Status::Disconnected,
                 ttl: 5_u8,
             };
-            reenviar_gossip(node, gossip);
-            reenviar_gossip(node, gossip_msg)
+            reenviar_gossip(node, gossip, sender.clone());
+            reenviar_gossip(node, gossip_msg, sender.clone())
         }
     }
 }
 
-fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, logger: Arc<RwLock<Logger>>) {
+fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, sender: Sender<String>) {
     //4 ...
     let file = format!("logs/logs_{}_{}", node_number, neighbor.ip);
     let rdr = match get_reader(TABLE_PATH, &file) {
@@ -47,16 +47,14 @@ fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, logger: Ar
         }
     };
     for line in rdr.lines().map_while(Result::ok) {
-        let logger_clone = Arc::clone(&logger);
-        let logger_clone_sender = Arc::clone(&logger);
         if let Ok(mut socket) = TcpStream::connect(neighbor.server_socket) {
             let msg = QueryServerMessage {
                 query: line.clone(),
                 consistency: 0,
             };
-            let _ = msg.send_server_through(&mut socket, logger_clone_sender);
+            let _ = msg.send_server_through(&mut socket, sender.clone());
 
-            let _ = Packet::from_stream(&mut socket, logger_clone);
+            let _ = Packet::from_stream(&mut socket, sender.clone());
         }
     }
     let _ = delete_file(&file, TABLE_PATH);
@@ -65,7 +63,7 @@ fn handle_send_backlog(node_number: &String, neighbor: &NeighborNode, logger: Ar
 fn handle_message_gossip(
     node: Arc<RwLock<Node>>,
     gossip: &mut GossipMessage,
-    logger: Arc<RwLock<Logger>>,
+    sender: Sender<String>,
 ) -> Result<(), MyError> {
     let mut node_guard: std::sync::RwLockWriteGuard<'_, Node> = match node.write() {
         Ok(n) => n,
@@ -94,17 +92,17 @@ fn handle_message_gossip(
     let res = node_guard.add_neighbor(new_neighbor.clone());
     if res > 0 {
         if res == 1 && new_neighbor.status == Status::Connected {
-            handle_send_backlog(&node_guard.ip.to_string(), &new_neighbor, logger);
+            handle_send_backlog(&node_guard.ip.to_string(), &new_neighbor, sender.clone());
         }
 
         if res == 2 && !date_is_recent(node_guard.connection_date) {
             let mut agg_node = NewNodeAgregator::new(new_neighbor, node_guard.clone());
-            agg_node.new_node_in_ring();
+            agg_node.new_node_in_ring(sender.clone());
         }
     } else if let Some(false) = gossip.decrease_ttl() {
         return Ok(());
     }
-    reenviar_gossip(&mut node_guard, gossip.clone());
+    reenviar_gossip(&mut node_guard, gossip.clone(), sender);
     Ok(())
 }
 
@@ -113,13 +111,12 @@ fn handle_message_gossip(
 pub fn handle_connection_gossip(
     node: Arc<RwLock<Node>>,
     stream: &mut TcpStream,
-    logger: Arc<RwLock<Logger>>,
+    sender: Sender<String>,
 ) -> Result<(), MyError> {
-    let logger_clone = Arc::clone(&logger);
-    match Packet::from_stream(stream, logger) {
+    match Packet::from_stream(stream, sender.clone()) {
         Ok(packet) => {
             if let ServerMessage::Gossip(mut gossip) = packet.body {
-                handle_message_gossip(node, &mut gossip, logger_clone)?;
+                handle_message_gossip(node, &mut gossip, sender)?;
             }
         }
         Err(e) => {
