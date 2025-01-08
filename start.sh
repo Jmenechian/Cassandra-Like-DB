@@ -63,47 +63,8 @@ for i in $(seq 2 $((NUM_NODOS + 1))); do
   export NODE_NUMBER=$NODE_NUMBER
   export COMMAND=$COMMAND
 
-  if [ "$i" -eq 2 ]; then
-  cat <<EOL >> "$TMP_COMPOSE_FILE"
-  builder:
-    container_name: builder
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: my_build_image
-    healthcheck:
-      test: ["CMD", "sh", "-c", "test -f /target/release/server"]  # Check if the binary is created
-      interval: 10s
-      timeout: 15s
-      retries: 5
-    command: bash -c "cargo build --release && sleep infinity" 
-EOL
-  fi 
-
-
   # Usar envsubst para sustituir las variables en la plantilla y agregarlas al archivo
   envsubst < "$TEMPLATE_FILE" >> "$TMP_COMPOSE_FILE"
-
-  if [ "$i" -eq 2 ]; then
-    cat <<EOL >> "$TMP_COMPOSE_FILE"
-    healthcheck:
-      test: ["CMD", "sh", "-c", "nc -z localhost 8002"] # Check if TCP port 8002 is open
-      interval: 10s
-      timeout: 15s
-      retries: 100
-    depends_on:
-      builder:
-        condition: service_healthy
-EOL
-  else 
-    cat <<EOL >> "$TMP_COMPOSE_FILE"
-    depends_on:
-      node2:
-        condition: service_healthy
-      builder:
-        condition: service_healthy
-EOL
-  fi
 
   # Limpiar las variables de entorno después de usarlas
   unset NODE_NAME

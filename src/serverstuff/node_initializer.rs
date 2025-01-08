@@ -65,49 +65,55 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
     }
 
     //empiezo gossip
+    
     let binding = fs::read_to_string(IPS)
         .expect("Should have been able to read the file");
     let mut rng = rand::thread_rng();
     let mut ips: Vec<&str> = binding.split("\n").collect();
-    ips.shuffle(&mut rng);
 
-    for ip in ips {
-        let ip_node_addr: IpAddr = match ip.parse() {
-            Ok(_ip) => _ip,
-            Err(_) => continue
-        };
-        let logger_clone = Arc::clone(&logger);
-        if let Some(mut stream) = try_connect(SocketAddr::new(ip_node_addr, 9000_u16)) {
-            let gossip_msg = GossipMessage {
-                ip: my_ip.to_string(),
-                status: Status::Connected,
-                ttl: 5_u8,
+    loop{
+        let mut ips_shuffle = ips.clone();
+        ips_shuffle.shuffle(&mut rng);
+        for ip in ips_shuffle.into_iter(){ 
+            let ip_node_addr: IpAddr = match ip.parse() {
+                Ok(_ip) => _ip,
+                Err(_) => continue
             };
-            let _ = gossip_msg.send_server_through(&mut stream, logger_clone);
+            let logger_clone = Arc::clone(&logger);
+            if let Some(mut stream) = try_connect(SocketAddr::new(ip_node_addr, 9000_u16)) {
+                let gossip_msg = GossipMessage {
+                    ip: my_ip.to_string(),
+                    status: Status::Connected,
+                    ttl: 5_u8,
+                };
+                let _ = gossip_msg.send_server_through(&mut stream, logger_clone);
+                break;
+            }
         }
     }
 
-    loop {
-        thread::sleep(Duration::from_secs(1));
-        let logger_clone = Arc::clone(&logger);
-        let ips: Vec<IpAddr> = {
-            let node = current_node.read().expect("Fallo al leer el nodo actual");
-            node.neighbors
-                .iter()
-                .filter(|n| n.ip != node.ip)
-                .map(|n| n.ip)
-                .collect()
-        };
 
-        if let Some(mut s) = connect_to_random_gossip(ips) {
-            let gossip_msg = GossipMessage {
-                ip: my_ip.to_string(),
-                status: Status::Connected,
-                ttl: 5_u8,
-            };
-            let _ = gossip_msg.send_server_through(&mut s, logger_clone);
-        };
-    }
+    // loop {
+    //     thread::sleep(Duration::from_secs(1));
+    //     let logger_clone = Arc::clone(&logger);
+    //     let ips: Vec<IpAddr> = {
+    //         let node = current_node.read().expect("Fallo al leer el nodo actual");
+    //         node.neighbors
+    //             .iter()
+    //             .filter(|n| n.ip != node.ip)
+    //             .map(|n| n.ip)
+    //             .collect()
+    //     };
+
+    //     if let Some(mut s) = connect_to_random_gossip(ips) {
+    //         let gossip_msg = GossipMessage {
+    //             ip: my_ip.to_string(),
+    //             status: Status::Connected,
+    //             ttl: 5_u8,
+    //         };
+    //         let _ = gossip_msg.send_server_through(&mut s, logger_clone);
+    //     };
+    // }
 }
 
 /// Vemos si el nodo manda una señal de Desconetado defitinitamente.
