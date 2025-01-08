@@ -1,83 +1,84 @@
 version: '3.8'
 services:
-
-  node2:
-    container_name: node2
+  builder:
+    container_name: builder
     build:
       context: .
       dockerfile: Dockerfile
+    image: my_build_image
+    healthcheck:
+      test: ["CMD", "sh", "-c", "test -f /target/release/server"]  # Check if the binary is created
+      interval: 10s
+      timeout: 15s
+      retries: 5
+    command: bash -c "cargo build --release && sleep infinity" 
+
+  node2:
+    container_name: node2
+    image: my_build_image
     networks:
       network_net:
         ipv4_address: 10.0.0.2
     ports:
       - "8002:8000"
+    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.2"
+          
     healthcheck:
-      test: ["CMD", "sh", "-c", "nc -z localhost 8002"] # Check if TCP port 8000 is open
+      test: ["CMD", "sh", "-c", "nc -z localhost 8002"] # Check if TCP port 8002 is open
       interval: 10s
       timeout: 15s
       retries: 100
-    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.2"
+    depends_on:
+      builder:
+        condition: service_healthy
 
   node3:
     container_name: node3
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: my_build_image
     networks:
       network_net:
         ipv4_address: 10.0.0.3
     ports:
       - "8003:8000"
+    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.3"
+          
     depends_on:
       node2:
         condition: service_healthy
-    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.3"
-          
+      builder:
+        condition: service_healthy
+
   node4:
     container_name: node4
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: my_build_image
     networks:
       network_net:
         ipv4_address: 10.0.0.4
     ports:
       - "8004:8000"
+    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.4"
+          
     depends_on:
       node2:
         condition: service_healthy
-    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.4"
-          
+      builder:
+        condition: service_healthy
+
   node5:
     container_name: node5
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: my_build_image
     networks:
       network_net:
         ipv4_address: 10.0.0.5
     ports:
       - "8005:8000"
-    depends_on:
-      node2:
-        condition: service_healthy
     command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.5"
           
-  node6:
-    container_name: node6
-    build:
-      context: .
-      dockerfile: Dockerfile
-    networks:
-      network_net:
-        ipv4_address: 10.0.0.6
-    ports:
-      - "8006:8000"
     depends_on:
       node2:
         condition: service_healthy
-    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.6"
-          
+      builder:
+        condition: service_healthy
 networks:
   network_net:
     external: true
