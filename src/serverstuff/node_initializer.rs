@@ -11,7 +11,8 @@ use crate::serverstuff::{
     handleconnectionserver::handle_connection_server,
 };
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
-use std::sync::{Arc, RwLock};
+use std::sync::mpsc::Sender;
+use std::sync::{mpsc, Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -27,15 +28,19 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
     let client_socket = current_node.client_socket;
     let gossip_socket = current_node.gossip_socket;
 
-    let logger = current_node.logger.clone();
-
     let current_node: Arc<RwLock<Node>> = Arc::new(RwLock::new(current_node));
+
+    let channel = mpsc::channel();
+    let sender = channel.0;
+    let receiver = channel.1;
+    let mut logger = Logger::new(ip.to_string())?;
+    thread::spawn(move || if logger.listen_log(receiver).is_ok() {});
 
     // Seccion servidor-servidor
     listen(
         server_socket,
         &current_node,
-        logger.clone(),
+        sender.clone(),
         handle_connection_server,
     )?;
 
@@ -43,7 +48,7 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
     listen(
         gossip_socket,
         &current_node,
-        logger.clone(),
+        sender.clone(),
         handle_connection_gossip,
     )?;
 
@@ -51,13 +56,12 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
     listen(
         client_socket,
         &current_node,
-        logger.clone(),
+        sender.clone(),
         handle_connection_client,
     )?;
 
     //empiezo gossip
     if let Some(neighbor_ip) = neighbor {
-        let logger_clone = Arc::clone(&logger);
         let neighbor_gossip_socket = SocketAddr::new(neighbor_ip, 9000_u16);
         if let Ok(mut s) = TcpStream::connect(neighbor_gossip_socket) {
             let gossip_msg = GossipMessage {
@@ -65,7 +69,7 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
                 status: Status::Connected,
                 ttl: 5_u8,
             };
-            let _ = gossip_msg.send_server_through(&mut s, logger_clone);
+            let _ = gossip_msg.send_server_through(&mut s, sender.clone());
         } else {
             return Err(MyError::TcpStreamError(
                 "No se pudo conectar al vecino inicial".to_string(),
@@ -75,7 +79,6 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
 
     loop {
         thread::sleep(Duration::from_secs(1));
-        let logger_clone = Arc::clone(&logger);
         let ips: Vec<IpAddr> = {
             let node = current_node.read().expect("Fallo al leer el nodo actual");
             node.neighbors
@@ -91,7 +94,7 @@ pub fn node_initialize(ip: IpAddr, neighbor: Option<IpAddr>) -> Result<(), MyErr
                 status: Status::Connected,
                 ttl: 5_u8,
             };
-            let _ = gossip_msg.send_server_through(&mut s, logger_clone);
+            let _ = gossip_msg.send_server_through(&mut s, sender.clone());
         };
     }
 }
@@ -107,11 +110,11 @@ pub fn try_connect(socket: SocketAddr) -> Option<TcpStream> {
 fn listen<F>(
     socket: SocketAddr,
     node: &Arc<RwLock<Node>>,
-    logger: Arc<RwLock<Logger>>,
+    sender: Sender<String>,
     handler: F,
 ) -> Result<JoinHandle<Result<(), MyError>>, MyError>
 where
-    F: Fn(Arc<RwLock<Node>>, &mut TcpStream, Arc<RwLock<Logger>>) -> Result<(), MyError>
+    F: Fn(Arc<RwLock<Node>>, &mut TcpStream, Sender<String>) -> Result<(), MyError>
         + Send
         + 'static
         + Copy,
@@ -138,10 +141,10 @@ where
             };
 
             let node_thread = Arc::clone(&current_node);
-            let logger = Arc::clone(&logger);
+            let sender = sender.clone();
 
             thread::spawn(move || {
-                let _ = handler(node_thread, &mut s, logger);
+                let _ = handler(node_thread, &mut s, sender);
             });
         }
         Ok(())

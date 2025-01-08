@@ -2,6 +2,7 @@ use crate::errors::my_errors::MyError;
 use crate::utils::append_row;
 use chrono::prelude::*;
 use std::fs::{self, File};
+use std::sync::mpsc::Receiver;
 
 #[derive(Debug)]
 /// Estructura Logger que se encarga de guardar
@@ -21,7 +22,10 @@ impl Logger {
             .open(format!("src/loggerstuff/logs/log_{}.txt", num_node))
             .map_err(|_| MyError::FileError("Error al abrir archivo de logs".to_string()))?;
 
-        Ok(Logger { file, num_node })
+        Ok(Logger { 
+            file, 
+            num_node,
+         })
     }
 
     /// Escribe un mensaje en el archivo de logs
@@ -33,5 +37,15 @@ impl Logger {
         println!("\n- {}", log);
         append_row(&mut self.file, &[log])?;
         Ok(())
+    }
+
+    pub fn listen_log(&mut self, receiver: Receiver<String>) -> Result<(), MyError> {
+        loop {
+            let log = receiver
+                .recv()
+                .map_err(|e| MyError::ChannelReceiveError(e.to_string()))?;
+
+            self.write_log(&log)?;
+        }
     }
 }
