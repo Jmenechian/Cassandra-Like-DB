@@ -27,9 +27,14 @@ fn handle_message_query(
     node: &Arc<RwLock<Node>>,
     querymessage: QueryMessage,
     stream: &mut TcpStream,
-    sender: Sender<String>
+    sender: Sender<String>,
 ) -> Result<(), MyError> {
-    let table = match send_query_to_nodes(node, querymessage.query, querymessage.consistency, sender.clone()) {
+    let table = match send_query_to_nodes(
+        node,
+        querymessage.query,
+        querymessage.consistency,
+        sender.clone(),
+    ) {
         Ok(r) => r,
         Err(e) => {
             handle_message_error(
@@ -71,20 +76,18 @@ pub fn handle_connection_client(
 ) -> Result<(), MyError> {
     loop {
         match Envelope::from_stream(stream, Some(sender.clone())) {
-            Ok(env) => {
-                match env.body {
-                    CqlMessage::Query(querymessage) => {
-                        handle_message_query(&node, querymessage, stream, sender.clone())?;
-                    }
-                    _ => {
-                        handle_message_error(
-                            stream,
-                            "Error: Solo me puede llegar un QueryMessage".to_string(),
-                            sender.clone(),
-                        );
-                    }
+            Ok(env) => match env.body {
+                CqlMessage::Query(querymessage) => {
+                    handle_message_query(&node, querymessage, stream, sender.clone())?;
                 }
-            }
+                _ => {
+                    handle_message_error(
+                        stream,
+                        "Error: Solo me puede llegar un QueryMessage".to_string(),
+                        sender.clone(),
+                    );
+                }
+            },
             Err(_) => {
                 break;
             }
@@ -100,7 +103,7 @@ fn process_results(
     results: &mut HashMap<IpAddr, Vec<String>>,
     nodes_with_result: &Vec<NeighborNode>,
     table: &str,
-    sender: Sender<String>
+    sender: Sender<String>,
 ) -> Vec<String> {
     println!("\n - pr ===> {:?}", results);
     if table.contains(TABLE_ORIGIN_NAME) && table.contains(TABLE_DESTINATION_NAME) {
@@ -223,7 +226,7 @@ fn read_repair(
     nodes_with_result: &Vec<NeighborNode>,
     node: &IpAddr,
     table: &str,
-    sender: Sender<String>
+    sender: Sender<String>,
 ) {
     for node_neighbor in nodes_with_result {
         if node_neighbor.ip == *node {
@@ -270,7 +273,7 @@ pub fn send_query_to_nodes(
     node: &Arc<RwLock<Node>>,
     _query: String,
     consistency_level: u16,
-    sender: Sender<String>
+    sender: Sender<String>,
 ) -> Result<Vec<String>, MyError> {
     println!("send query to nodes");
     let node_guard = match node.read() {

@@ -1,3 +1,4 @@
+use crate::config::IPS;
 use crate::errors::my_errors::MyError;
 use crate::loggerstuff::logger::Logger;
 use crate::messagestuff::{message::*, message_server::gossipmessage::*};
@@ -9,15 +10,14 @@ use crate::serverstuff::{
     handleconnectiongossip::handle_connection_gossip,
     handleconnectionserver::handle_connection_server,
 };
+use std::fs;
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
-use std::sync::mpsc::Sender;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{mpsc, Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
-use std::fs;
 use std::time::Duration;
-use crate::config::IPS;
 
 use super::handleconnectiongossip::connect_to_random_gossip;
 
@@ -65,21 +65,25 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
         handle_connection_client,
     )?;
 
-    // if handle_disconnect(&current_node, sender.clone()) {
-    //     return Ok(());
-    // }
+    let channel = mpsc::channel();
+    let sender_disengage: Sender<u8> = channel.0;
+    let receiver_disengage: Receiver<u8> = channel.1;
+    let sender_clone = sender.clone();
+
+    thread::spawn(move || {
+        handle_disengage(&current_node, sender_clone, sender_disengage);
+    });
 
     //empiezo gossip
-    let binding = fs::read_to_string(IPS)
-        .expect("Should have been able to read the file");
+    let binding = fs::read_to_string(IPS).expect("Should have been able to read the file");
     let ips: Vec<&str> = binding.split("\n").collect();
 
-    loop{
+    loop {
         let ips: Vec<IpAddr> = ips
-                        .iter()
-                        .filter(|n| n.parse() != Ok(my_ip))
-                        .map(|n| n.parse().unwrap())
-                        .collect();
+            .iter()
+            .filter(|n| n.parse() != Ok(my_ip))
+            .map(|n| n.parse().unwrap())
+            .collect();
 
         if let Some(mut stream) = connect_to_random_gossip(ips) {
             let gossip_msg = GossipMessage {
@@ -89,44 +93,32 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
             };
             let _ = gossip_msg.send_server_through(&mut stream, sender.clone());
         }
+        if receiver_disengage.recv().unwrap() == 1 {
+            return Ok(());
+        }
         thread::sleep(Duration::from_secs(1));
     }
-
-
-    // loop {
-    //     thread::sleep(Duration::from_secs(1));
-    //     let logger_clone = Arc::clone(&logger);
-    //     let ips: Vec<IpAddr> = {
-    //         let node = current_node.read().expect("Fallo al leer el nodo actual");
-    //         node.neighbors
-    //             .iter()
-    //             .filter(|n| n.ip != node.ip)
-    //             .map(|n| n.ip)
-    //             .collect()
-    //     };
-
-    //     if let Some(mut s) = connect_to_random_gossip(ips) {
-    //         let gossip_msg = GossipMessage {
-    //             ip: my_ip.to_string(),
-    //             status: Status::Connected,
-    //             ttl: 5_u8,
-    //         };
-    //         let _ = gossip_msg.send_server_through(&mut s, logger_clone);
-    //     };
-    // }
 }
 
 /// Vemos si el nodo manda una señal de Desconetado defitinitamente.
-pub fn handle_disconnect(node: &Arc<RwLock<Node>>, sender: Sender<String>) -> bool {
+pub fn handle_disengage(
+    node: &Arc<RwLock<Node>>,
+    sender_logger: Sender<String>,
+    sender_disengage: Sender<u8>,
+) -> bool {
     let node = node.read().expect("Fallo al leer el nodo actual");
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
 
     ctrlc::set_handler(move || {
         r.store(false, Ordering::SeqCst);
-    }).expect("Error setting Ctrl-C handler");
+    })
+    .expect("Error setting Ctrl-C handler");
 
-    while running.load(Ordering::SeqCst) {}
+    while running.load(Ordering::SeqCst) {
+        thread::sleep(Duration::from_secs(1));
+        let _ = sender_disengage.send(0);
+    }
 
     // Se realizo un docker kill (= ctrc)
     if let Some(n) = node.get_random_neighbor() {
@@ -136,10 +128,11 @@ pub fn handle_disconnect(node: &Arc<RwLock<Node>>, sender: Sender<String>) -> bo
                 status: Status::Disengaged,
                 ttl: 5_u8,
             };
-            let _ = gossip_msg.send_server_through(&mut stream, sender.clone());
+            let _ = gossip_msg.send_server_through(&mut stream, sender_logger.clone());
         };
     }
 
+    let _ = sender_disengage.send(1);
     true
 }
 

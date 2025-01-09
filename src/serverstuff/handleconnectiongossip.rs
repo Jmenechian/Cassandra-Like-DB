@@ -19,12 +19,14 @@ use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
-fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: GossipMessage, sender: Sender<String>,) {
+fn reenviar_gossip(
+    node: &mut std::sync::RwLockWriteGuard<'_, Node>,
+    gossip: GossipMessage,
+    sender: Sender<String>,
+) {
     if let Some(n) = node.clone().get_random_neighbor() {
         if let Some(mut stream) = try_connect(n.gossip_socket) {
-            let _ = gossip
-                .clone()
-                .send_server_through(&mut stream, sender);
+            let _ = gossip.clone().send_server_through(&mut stream, sender);
         } else {
             let status = match n.status {
                 Status::Disconnected => Status::Disconnected,

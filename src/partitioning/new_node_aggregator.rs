@@ -15,7 +15,12 @@ use crate::{
 };
 
 use std::{
-    collections::HashMap, fs::File, io::{BufRead, BufReader}, net::TcpStream, sync::mpsc::Sender, vec
+    collections::HashMap,
+    fs::File,
+    io::{BufRead, BufReader},
+    net::TcpStream,
+    sync::mpsc::Sender,
+    vec,
 };
 
 #[derive(Debug)]
