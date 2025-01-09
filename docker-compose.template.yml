@@ -12,7 +12,8 @@
     volumes:
       - .:/app
       - ./data_${NODE_NUMBER}/tables:/app/src/tables
-      - ./data_${NODE_NUMBER}/hinted_handoff:/app/src/tables/logs
       - ./data_${NODE_NUMBER}/logger:/app/src/loggerstuff/logs
+      - ./data_${NODE_NUMBER}/hinted_handoff:/app/src/tables/logs
+      - ./target:/app/target
     working_dir: /app
     command: ${COMMAND}

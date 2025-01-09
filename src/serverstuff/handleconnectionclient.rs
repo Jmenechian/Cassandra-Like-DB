@@ -34,7 +34,7 @@ fn handle_message_query(
         Err(e) => {
             handle_message_error(
                 stream,
-                "Error: algo fallo en send_query_to_node".to_string(),
+                format!("Error: algo fallo en send_query_to_node: {:?}", e),
                 sender,
             );
             return Err(e);
@@ -272,6 +272,7 @@ pub fn send_query_to_nodes(
     consistency_level: u16,
     sender: Sender<String>
 ) -> Result<Vec<String>, MyError> {
+    println!("send query to nodes");
     let node_guard = match node.read() {
         Ok(n) => n,
         Err(e) => {
@@ -279,6 +280,7 @@ pub fn send_query_to_nodes(
             return Err(MyError::LockingError(_error));
         }
     };
+    println!("desbloquenaod nodo");
     //let mut all_response: Vec<Vec<String>> = vec![];
     let mut all_response_dict: HashMap<IpAddr, Vec<String>> = HashMap::new();
     let mut hash = ConsistentHash::new(RF);
@@ -296,11 +298,11 @@ pub fn send_query_to_nodes(
     let is_select = query.query.contains("SELECT");
 
     for neighbor in &nodes_with_result {
+        println!("neighbor: {:?}", neighbor);
         // El nodo original porque puede tener el resultado de la query:
         if neighbor.server_socket == node_guard.server_socket {
             match node_guard.process_query(&mut query) {
                 Ok(result) => {
-                    // all_response.push(result);
                     all_response_dict.insert(neighbor.ip, result.clone());
 
                     if consistency_level == config::ONE && all_response_dict.len() == 1 {
@@ -318,18 +320,19 @@ pub fn send_query_to_nodes(
                     }
                 }
                 Err(error) => {
-                    // all_response.push(vec![format!("Invalid Query: {}", error)]);
                     all_response_dict
                         .insert(neighbor.ip, vec![format!("Invalid Query: {}", error)]);
                 }
             }
             continue;
         } else if neighbor.status == Status::Disconnected {
+            println!("en neighbor disconnected: {:?}", neighbor);
             if !query.query.contains("SELECT") {
                 hinted_handoff(&node_guard.ip.to_string(), &neighbor.ip.to_string(), &query)?;
             }
             continue;
         } else if let Ok(mut socket) = TcpStream::connect(neighbor.server_socket) {
+            println!("abajo de tcp stream connect, neighbor: {:?}", neighbor);
             // Mando mensaje y el IP del nodo que se conecto con el cliente y en ese mismo stream leo la respuesta que me envia como resultado de la consulta.
 
             let msg = QueryServerMessage {

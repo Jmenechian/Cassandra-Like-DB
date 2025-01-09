@@ -116,7 +116,7 @@ impl Node {
         let filtered: Vec<&NeighborNode> = self
             .neighbors
             .iter()
-            .filter(|n| n.ip != self.ip && n.status != Status::Disengaged)
+            .filter(|n| n.ip != self.ip && n.status == Status::Connected)
             .collect();
         filtered.choose(&mut rng).copied()
     }

@@ -20,16 +20,24 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: GossipMessage, sender: Sender<String>,) {
-    if let Some(n) = node.get_random_neighbor() {
+    if let Some(n) = node.clone().get_random_neighbor() {
         if let Some(mut stream) = try_connect(n.gossip_socket) {
             let _ = gossip
                 .clone()
                 .send_server_through(&mut stream, sender);
         } else {
+            let status = match n.status {
+                Status::Disconnected => Status::Disconnected,
+                Status::Disengaged => Status::Disengaged,
+                Status::Connected => Status::Disconnected,
+            };
+            if let Some(_n) = node.neighbors.iter_mut().find(|x| x.ip == n.ip) {
+                _n.status = status;
+            }
             let gossip_msg = GossipMessage {
                 ip: n.ip.to_string(),
-                status: Status::Disconnected,
-                ttl: 5_u8,
+                status,
+                ttl: 3_u8,
             };
             reenviar_gossip(node, gossip, sender.clone());
             reenviar_gossip(node, gossip_msg, sender.clone())
@@ -68,9 +76,11 @@ fn handle_message_gossip(
     let mut node_guard: std::sync::RwLockWriteGuard<'_, Node> = match node.write() {
         Ok(n) => n,
         Err(_) => {
+            println!("No pude obtener el nodo");
             return Err(MyError::LockingError("No puedo usar el nodo".to_string()));
         }
     };
+
     let ip: String = gossip.ip.clone();
 
     let ip_addr: IpAddr = match ip.parse() {
@@ -132,9 +142,7 @@ pub fn connect_to_random_gossip(ips: Vec<IpAddr>) -> Option<TcpStream> {
     ips.clone().shuffle(&mut rand::thread_rng());
 
     for &ip in &ips {
-        println!("Trato de conectarme con: {}", ip);
         if let Some(stream) = try_connect(SocketAddr::new(ip, 9000_u16)) {
-            println!("Me conecte con: {}", ip);
             return Some(stream);
         }
     }
