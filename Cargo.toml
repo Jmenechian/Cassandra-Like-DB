@@ -22,7 +22,7 @@ egui = "0.29"
 image = "0.24" # Para manejar imágenes
 
 aes = "0.8.4"
-
+ctrlc = "3.4.5"
 
 [target.x86_64-apple-darwin]
 linker = "clang"
