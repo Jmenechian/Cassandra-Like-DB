@@ -132,7 +132,9 @@ pub fn connect_to_random_gossip(ips: Vec<IpAddr>) -> Option<TcpStream> {
     ips.clone().shuffle(&mut rand::thread_rng());
 
     for &ip in &ips {
+        println!("Trato de conectarme con: {}", ip);
         if let Some(stream) = try_connect(SocketAddr::new(ip, 9000_u16)) {
+            println!("Me conecte con: {}", ip);
             return Some(stream);
         }
     }

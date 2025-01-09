@@ -1,17 +1,7 @@
-# Usar la imagen base de Rust
-FROM rust:latest
+FROM rust:1.81
 
-# Establecer el directorio de trabajo dentro del contenedor
-WORKDIR /app
+WORKDIR /
 
-# Instalar dependencias necesarias
-RUN apt-get update && \
-    apt-get install -y iputils-ping && \
-    rustup target add x86_64-apple-darwin
+COPY ./Cargo.toml ./Cargo.toml
 
-
-# Copiar los archivos del proyecto al contenedor (opcional)
-COPY . /app
-
-# Mantener el contenedor activo
-CMD ["bash", "-c", "tail -f /dev/null"]
+COPY src ./src

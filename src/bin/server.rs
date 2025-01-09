@@ -16,28 +16,12 @@ fn main() -> Result<(), MyError> {
         Ok(ip) => ip,
         Err(_) => {
             return Err(MyError::Error(format!(
-                "No pude obtener mi ip: {:?}",
-                args[1]
+                "No pude obtener mi ip: {:?}",args[1]
             )))
         }
     };
 
-    let neigbour: Option<IpAddr> = if args.len() > 2 {
-        let neigbor_addr: Option<IpAddr> = match args[2].parse() {
-            Ok(ip) => Some(ip),
-            Err(_) => {
-                return Err(MyError::Error(format!(
-                    "No pude obtener el ip de un vecino: {:?}",
-                    args[2]
-                )))
-            }
-        };
-        neigbor_addr
-    } else {
-        None
-    };
-
-    match node_initialize(ip_node_addr, neigbour) {
+    match node_initialize(ip_node_addr) {
         Ok(result) => result,
         Err(e) => {
             eprintln!("{:?}", e);

@@ -3,7 +3,7 @@ services:
 
   node2:
     container_name: node2
-    image: rust:latest
+    image: rust:1.81
     networks:
       network_net:
         ipv4_address: 10.0.0.2
@@ -12,12 +12,17 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - .:/app  # Directorio compartido 
+      - .:/app
+      - ./data_8002/tables:/app/src/tables
+      - ./data_8002/hinted_handoff:/app/src/tables/logs
+      - ./data_8002/logger:/app/src/loggerstuff/logs
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                   cargo run --bin server 10.0.0.2"
+    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.2"
+          
+
   node3:
     container_name: node3
-    image: rust:latest
+    image: rust:1.81
     networks:
       network_net:
         ipv4_address: 10.0.0.3
@@ -26,13 +31,17 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - .:/app  # Directorio compartido 
+      - .:/app
+      - ./data_8003/tables:/app/src/tables
+      - ./data_8003/hinted_handoff:/app/src/tables/logs
+      - ./data_8003/logger:/app/src/loggerstuff/logs
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.3 10.0.0.2"
-                   
+    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.3"
+          
+
   node4:
     container_name: node4
-    image: rust:latest
+    image: rust:1.81
     networks:
       network_net:
         ipv4_address: 10.0.0.4
@@ -41,13 +50,17 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - .:/app  # Directorio compartido 
+      - .:/app
+      - ./data_8004/tables:/app/src/tables
+      - ./data_8004/hinted_handoff:/app/src/tables/logs
+      - ./data_8004/logger:/app/src/loggerstuff/logs
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.4 10.0.0.2"
-                   
+    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.4"
+          
+
   node5:
     container_name: node5
-    image: rust:latest
+    image: rust:1.81
     networks:
       network_net:
         ipv4_address: 10.0.0.5
@@ -56,13 +69,17 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - .:/app  # Directorio compartido 
+      - .:/app
+      - ./data_8005/tables:/app/src/tables
+      - ./data_8005/hinted_handoff:/app/src/tables/logs
+      - ./data_8005/logger:/app/src/loggerstuff/logs
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.5 10.0.0.2"
-                   
+    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.5"
+          
+
   node6:
     container_name: node6
-    image: rust:latest
+    image: rust:1.81
     networks:
       network_net:
         ipv4_address: 10.0.0.6
@@ -71,10 +88,13 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - .:/app  # Directorio compartido 
+      - .:/app
+      - ./data_8006/tables:/app/src/tables
+      - ./data_8006/hinted_handoff:/app/src/tables/logs
+      - ./data_8006/logger:/app/src/loggerstuff/logs
     working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y                    iputils-ping &&                    cargo run --bin server 10.0.0.6 10.0.0.2"
-                   
+    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.6"
+          
 networks:
   network_net:
     external: true
