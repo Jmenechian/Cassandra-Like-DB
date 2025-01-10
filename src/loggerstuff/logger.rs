@@ -22,10 +22,7 @@ impl Logger {
             .open(format!("src/loggerstuff/logs/log_{}.txt", num_node))
             .map_err(|_| MyError::FileError("Error al abrir archivo de logs".to_string()))?;
 
-        Ok(Logger { 
-            file, 
-            num_node,
-         })
+        Ok(Logger { file, num_node })
     }
 
     /// Escribe un mensaje en el archivo de logs

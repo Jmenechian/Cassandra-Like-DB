@@ -16,7 +16,8 @@ fn main() -> Result<(), MyError> {
         Ok(ip) => ip,
         Err(_) => {
             return Err(MyError::Error(format!(
-                "No pude obtener mi ip: {:?}",args[1]
+                "No pude obtener mi ip: {:?}",
+                args[1]
             )))
         }
     };

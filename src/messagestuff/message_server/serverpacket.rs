@@ -84,10 +84,7 @@ impl Packet {
     }
 
     /// Para deseriarlizar el mensaje
-    pub fn from_stream(
-        stream: &mut TcpStream,
-        sender: Sender<String>,
-    ) -> Result<Self, MyError> {
+    pub fn from_stream(stream: &mut TcpStream, sender: Sender<String>) -> Result<Self, MyError> {
         let _ = stream.set_nonblocking(false);
         let mut header_buffer = [0u8; 5];
         if let Err(e) = stream.read_exact(&mut header_buffer) {
@@ -152,7 +149,6 @@ impl Packet {
         packet: &Packet,
         msg_type: String,
     ) -> Result<(), MyError> {
-
         let ip = match stream.peer_addr() {
             Ok(addr) => format!("{:?}", addr),
             Err(_) => "".to_string(),

@@ -1,4 +1,3 @@
-use super::node_initializer::try_connect;
 use crate::config::TABLE_PATH;
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
@@ -11,6 +10,7 @@ use crate::messagestuff::{
 use crate::partitioning::new_node_aggregator::NewNodeAgregator;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
+use crate::serverstuff::node_initializer::try_connect;
 use crate::serverstuff::node_status::Status;
 use crate::utils::{date_is_recent, delete_file, get_reader};
 use rand::seq::SliceRandom;
@@ -19,12 +19,14 @@ use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
-fn reenviar_gossip(node: &mut std::sync::RwLockWriteGuard<'_, Node>, gossip: GossipMessage, sender: Sender<String>,) {
+fn reenviar_gossip(
+    node: &mut std::sync::RwLockWriteGuard<'_, Node>,
+    gossip: GossipMessage,
+    sender: Sender<String>,
+) {
     if let Some(n) = node.clone().get_random_neighbor() {
         if let Some(mut stream) = try_connect(n.gossip_socket) {
-            let _ = gossip
-                .clone()
-                .send_server_through(&mut stream, sender);
+            let _ = gossip.clone().send_server_through(&mut stream, sender);
         } else {
             let status = match n.status {
                 Status::Disconnected => Status::Disconnected,

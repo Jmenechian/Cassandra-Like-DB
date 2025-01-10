@@ -60,6 +60,26 @@ services:
     working_dir: /app
     command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.4"
           
+
+  node5:
+    container_name: node5
+    image: rust:1.81
+    networks:
+      network_net:
+        ipv4_address: 10.0.0.5
+    ports:
+      - "8005:8000"
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+      - ./data_8005/tables:/app/src/tables
+      - ./data_8005/logger:/app/src/loggerstuff/logs
+      - ./data_8005/hinted_handoff:/app/src/tables/logs
+      - ./target:/app/target
+    working_dir: /app
+    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.5"
+          
 networks:
   network_net:
     external: true
