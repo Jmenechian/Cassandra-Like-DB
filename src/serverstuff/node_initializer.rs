@@ -68,10 +68,9 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
     let channel = mpsc::channel();
     let sender_disengage: Sender<u8> = channel.0;
     let receiver_disengage: Receiver<u8> = channel.1;
-    let sender_clone = sender.clone();
 
     thread::spawn(move || {
-        handle_disengage(&current_node, sender_clone, sender_disengage);
+        handle_disengage(sender_disengage);
     });
 
     //empiezo gossip
@@ -84,29 +83,34 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
             .filter(|n| n.parse() != Ok(my_ip))
             .map(|n| n.parse().unwrap())
             .collect();
-
+        
         if let Some(mut stream) = connect_to_random_gossip(ips) {
+            let mut status : Status = Status::Connected;
+            let mut exit = false;
+            
+            if receiver_disengage.recv().unwrap() == 1 {
+                status = Status::Disengaged;
+                exit = true;
+            }
+            
             let gossip_msg = GossipMessage {
                 ip: my_ip.to_string(),
-                status: Status::Connected,
+                status,
                 ttl: 5_u8,
             };
             let _ = gossip_msg.send_server_through(&mut stream, sender.clone());
+            
+            if exit{
+                return Ok(());
+            }
         }
-        if receiver_disengage.recv().unwrap() == 1 {
-            return Ok(());
-        }
+        
         thread::sleep(Duration::from_secs(1));
     }
 }
 
 /// Vemos si el nodo manda una señal de Desconetado defitinitamente.
-pub fn handle_disengage(
-    node: &Arc<RwLock<Node>>,
-    sender_logger: Sender<String>,
-    sender_disengage: Sender<u8>,
-) -> bool {
-    let node = node.read().expect("Fallo al leer el nodo actual");
+pub fn handle_disengage(sender_disengage: Sender<u8>){
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
 
@@ -120,20 +124,7 @@ pub fn handle_disengage(
         let _ = sender_disengage.send(0);
     }
 
-    // Se realizo un docker kill (= ctrc)
-    if let Some(n) = node.get_random_neighbor() {
-        if let Some(mut stream) = try_connect(n.gossip_socket) {
-            let gossip_msg = GossipMessage {
-                ip: n.ip.to_string(),
-                status: Status::Disengaged,
-                ttl: 5_u8,
-            };
-            let _ = gossip_msg.send_server_through(&mut stream, sender_logger.clone());
-        };
-    }
-
     let _ = sender_disengage.send(1);
-    true
 }
 
 /// Nos conectamos al adress indicado.

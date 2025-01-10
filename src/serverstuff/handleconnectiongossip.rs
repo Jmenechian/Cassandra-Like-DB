@@ -1,4 +1,4 @@
-use super::node_initializer::try_connect;
+use crate::serverstuff::node_initializer::try_connect;
 use crate::config::TABLE_PATH;
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
