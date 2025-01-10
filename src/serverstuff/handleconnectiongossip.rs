@@ -1,4 +1,3 @@
-use crate::serverstuff::node_initializer::try_connect;
 use crate::config::TABLE_PATH;
 use crate::errors::my_errors::*;
 use crate::messagestuff::message_server::gossipmessage::GossipMessage;
@@ -11,6 +10,7 @@ use crate::messagestuff::{
 use crate::partitioning::new_node_aggregator::NewNodeAgregator;
 use crate::serverstuff::neighbor_node::NeighborNode;
 use crate::serverstuff::node::Node;
+use crate::serverstuff::node_initializer::try_connect;
 use crate::serverstuff::node_status::Status;
 use crate::utils::{date_is_recent, delete_file, get_reader};
 use rand::seq::SliceRandom;

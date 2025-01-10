@@ -74,25 +74,21 @@ pub fn handle_connection_client(
     stream: &mut TcpStream,
     sender: Sender<String>,
 ) -> Result<(), MyError> {
-    loop {
-        match Envelope::from_stream(stream, Some(sender.clone())) {
-            Ok(env) => match env.body {
-                CqlMessage::Query(querymessage) => {
-                    handle_message_query(&node, querymessage, stream, sender.clone())?;
-                }
-                _ => {
-                    handle_message_error(
-                        stream,
-                        "Error: Solo me puede llegar un QueryMessage".to_string(),
-                        sender.clone(),
-                    );
-                }
-            },
-            Err(_) => {
-                break;
+    while let Ok(env) = Envelope::from_stream(stream, Some(sender.clone())) {
+        match env.body {
+            CqlMessage::Query(querymessage) => {
+                handle_message_query(&node, querymessage, stream, sender.clone())?;
+            }
+            _ => {
+                handle_message_error(
+                    stream,
+                    "Error: Solo me puede llegar un QueryMessage".to_string(),
+                    sender.clone(),
+                );
             }
         }
     }
+
     Ok(())
 }
 

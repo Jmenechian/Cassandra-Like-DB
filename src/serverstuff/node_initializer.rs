@@ -83,34 +83,34 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
             .filter(|n| n.parse() != Ok(my_ip))
             .map(|n| n.parse().unwrap())
             .collect();
-        
+
         if let Some(mut stream) = connect_to_random_gossip(ips) {
-            let mut status : Status = Status::Connected;
+            let mut status: Status = Status::Connected;
             let mut exit = false;
-            
+
             if receiver_disengage.recv().unwrap() == 1 {
                 status = Status::Disengaged;
                 exit = true;
             }
-            
+
             let gossip_msg = GossipMessage {
                 ip: my_ip.to_string(),
                 status,
                 ttl: 5_u8,
             };
             let _ = gossip_msg.send_server_through(&mut stream, sender.clone());
-            
-            if exit{
+
+            if exit {
                 return Ok(());
             }
         }
-        
+
         thread::sleep(Duration::from_secs(1));
     }
 }
 
 /// Vemos si el nodo manda una señal de Desconetado defitinitamente.
-pub fn handle_disengage(sender_disengage: Sender<u8>){
+pub fn handle_disengage(sender_disengage: Sender<u8>) {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
 
