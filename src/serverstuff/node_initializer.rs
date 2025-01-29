@@ -69,26 +69,27 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
     let sender_disengage: Sender<u8> = channel.0;
     let receiver_disengage: Receiver<u8> = channel.1;
 
-    thread::spawn(move || {
-        handle_disengage(sender_disengage);
+    thread::spawn(move || match handle_disengage(sender_disengage) {
+        Ok(_) => println!("Desconectado"),
+        Err(e) => println!("Error: {:?}", e),
     });
 
     //empiezo gossip
-    let binding = fs::read_to_string(IPS).expect("Should have been able to read the file");
+    let binding = fs::read_to_string(IPS)
+        .map_err(|_| MyError::Error("Error al leer el archivo".to_string()))?;
     let ips: Vec<&str> = binding.split("\n").collect();
 
     loop {
         let ips: Vec<IpAddr> = ips
             .iter()
-            .filter(|n| n.parse() != Ok(my_ip))
-            .map(|n| n.parse().unwrap())
+            .filter_map(|n| n.parse().ok().filter(|&parsed_ip| parsed_ip != my_ip))
             .collect();
 
         if let Some(mut stream) = connect_to_random_gossip(ips) {
             let mut status: Status = Status::Connected;
             let mut exit = false;
 
-            if receiver_disengage.recv().unwrap() == 1 {
+            if receiver_disengage.recv().unwrap_or(0) == 1 {
                 status = Status::Disengaged;
                 exit = true;
             }
@@ -110,14 +111,14 @@ pub fn node_initialize(ip: IpAddr) -> Result<(), MyError> {
 }
 
 /// Vemos si el nodo manda una señal de Desconetado defitinitamente.
-pub fn handle_disengage(sender_disengage: Sender<u8>) {
+pub fn handle_disengage(sender_disengage: Sender<u8>) -> Result<(), MyError> {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
 
     ctrlc::set_handler(move || {
         r.store(false, Ordering::SeqCst);
     })
-    .expect("Error setting Ctrl-C handler");
+    .map_err(|e| MyError::Error(format!("Error al setear el handler: {:?}", e)))?;
 
     while running.load(Ordering::SeqCst) {
         thread::sleep(Duration::from_secs(1));
@@ -125,6 +126,7 @@ pub fn handle_disengage(sender_disengage: Sender<u8>) {
     }
 
     let _ = sender_disengage.send(1);
+    Ok(())
 }
 
 /// Nos conectamos al adress indicado.
