@@ -101,3 +101,9 @@ pub mod errors {
     pub mod my_errors;
     pub mod simulator_errors;
 }
+
+pub mod pool {
+    pub mod job;
+    pub mod threadpool;
+    pub mod worker;
+}

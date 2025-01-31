@@ -12,7 +12,6 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 [dependencies]
 chrono = "0.4"
 rand = "0.8.5"
-threadpool = "1.8.1"
 bufstream = "0.1.4"
 fasthash = "0.4.0"
 

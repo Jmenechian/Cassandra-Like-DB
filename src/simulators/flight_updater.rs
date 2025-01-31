@@ -2,12 +2,12 @@ use std::{
     net::{IpAddr, TcpStream},
     sync::{mpsc::Sender, Arc, Mutex},
 };
-use threadpool::ThreadPool;
 
 use crate::{
     client_cql::Client,
     config::{N_WORKERS, QUERIES_PATH},
     errors::{my_errors::MyError, simulator_errors::SimulatorErrors},
+    pool::threadpool::ThreadPool,
     utils::{append_row, get_and_remove_first_line, is_file_empty, open_file},
 };
 
@@ -94,7 +94,7 @@ impl FlightUpdater {
             return Err(MyError::AllNodesDisconnected());
         };
 
-        let threadpool = ThreadPool::new(N_WORKERS);
+        let threadpool = ThreadPool::build(N_WORKERS)?;
 
         loop {
             if is_file_empty(QUERIES_PATH) {
@@ -107,7 +107,7 @@ impl FlightUpdater {
 
             let path = Arc::clone(&path);
 
-            threadpool.clone().execute(move || {
+            threadpool.execute(move || {
                 if let Ok((query, consistency)) = FlightUpdater::dequeue(path) {
                     let _ = FlightUpdater::make_query(&mut stream, query, consistency);
                 }
