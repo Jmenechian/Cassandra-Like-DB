@@ -1,6 +1,5 @@
-use super::{job::Job, worker::Worker};
-use crate::errors::my_errors::MyError;
-
+use crate::pool::job::Job;
+use crate::pool::worker::Worker;
 use std::sync::{mpsc, Arc, Mutex};
 
 /// Estructura que representa un threadpool con la cantidad de workers indicado.
@@ -11,15 +10,9 @@ pub struct ThreadPool {
 }
 
 impl ThreadPool {
-    /// Cre un TreadPool.
+    /// Crea un ThreadPool.
     /// size indica la cantidad de hilos que se crean. Este parametro debe ser mayor a 0.
-    pub fn build(size: usize) -> Result<ThreadPool, MyError> {
-        if size <= 0 {
-            return Err(MyError::ThreadError(
-                "Cantidad de pool menor o igual a 0.".to_string(),
-            ));
-        }
-
+    pub fn new(size: usize) -> ThreadPool {
         let (sender, receiver) = mpsc::channel();
 
         let receiver = Arc::new(Mutex::new(receiver));
@@ -27,14 +20,13 @@ impl ThreadPool {
         let mut workers = Vec::with_capacity(size);
 
         for id in 0..size {
-            let worker = Worker::build(id, Arc::clone(&receiver))?;
-            workers.push(worker);
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        Ok(ThreadPool {
+        ThreadPool {
             workers,
             sender: Some(sender),
-        })
+        }
     }
 
     /// Se envía por el channel el trabajo a realizar.
@@ -46,9 +38,7 @@ impl ThreadPool {
     {
         let job = Box::new(f);
 
-        if let Some(sender) = self.sender.as_ref() {
-            let _ = sender.send(job);
-        }
+        self.sender.as_ref().unwrap().send(job).unwrap();
     }
 }
 
@@ -60,7 +50,7 @@ impl Drop for ThreadPool {
             println!("Shutting down worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
-                let _ = thread.join();
+                thread.join().unwrap();
             }
         }
     }

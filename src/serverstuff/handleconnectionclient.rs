@@ -277,7 +277,6 @@ pub fn send_query_to_nodes(
             return Err(MyError::LockingError(_error));
         }
     };
-    //let mut all_response: Vec<Vec<String>> = vec![];
     let mut all_response_dict: HashMap<IpAddr, Vec<String>> = HashMap::new();
     let mut hash = ConsistentHash::new(RF);
     let mut query: Query = Query::new(_query.clone(), node_guard.ip.to_string());
