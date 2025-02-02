@@ -227,13 +227,15 @@ impl FlightSimulator {
             // Si vuelo en scheduled -> 3 UPDATE: actualizamos el estado del vuelo a 'Boarding', y en sus corresponientes tablas de origen y destino.
             if flight.status == FlightStatus::Scheduled {
                 flight.set_status(FlightStatus::Boarding);
-                self.update_flight(&flight)?;
+                self.update_flight(&flight, vec!["origin", "destination", "flights_in_progress"])?;
                 continue;
             }
 
             // Si status es boarding -> actualizamos a Airborne
             if flight.status == FlightStatus::Boarding {
                 flight.set_status(FlightStatus::Airborne);
+                self.update_flight(&flight, vec!["origin", "destination", "flights_in_progress"])?;
+                continue;
             }
 
             flight.update_speed();
@@ -247,9 +249,9 @@ impl FlightSimulator {
                 flight.set_status(FlightStatus::Landed);
                 flight.update_speed();
                 flight.update_height();
-                self.update_flight(&flight)?;
+                self.update_flight(&flight, vec!["origin", "destination", "flights_in_progress"])?;
             } else {
-                self.update_flight(&flight)?;
+                self.update_flight(&flight, vec!["flights_in_progress"])?;
             }
         }
         Ok(())
@@ -269,8 +271,8 @@ impl FlightSimulator {
         Ok(())
     }
 
-    fn update_flight(&self, flight: &Flight) -> Result<(), MyError> {
-        for table in ["origin", "destination", "flights_in_progress"] {
+    fn update_flight(&self, flight: &Flight, tables: Vec<&str>) -> Result<(), MyError> {
+        for table in tables {
             let query = match table {
                 "origin" => get_query_update_in_origin(flight),
                 "destination" => get_query_update_in_destination(flight),
