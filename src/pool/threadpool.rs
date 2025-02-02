@@ -46,7 +46,9 @@ impl ThreadPool {
     {
         let job = Box::new(f);
 
-        self.sender.as_ref().unwrap().send(job).unwrap();
+        if let Some(sender) = self.sender.as_ref() {
+            let _ = sender.send(job);
+        }
     }
 }
 
@@ -58,7 +60,7 @@ impl Drop for ThreadPool {
             println!("Shutting down worker {}", worker.id);
 
             if let Some(thread) = worker.thread.take() {
-                thread.join().unwrap();
+                let _ = thread.join();
             }
         }
     }
