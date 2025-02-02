@@ -43,8 +43,11 @@ INSERT INTO destination (airport, origin, date, flight, status) VALUES (AEP, MEX
 
 - Ver valores de vuelos:
 ``` sql
-SELECT * FROM origin WHERE date = 25-12-24 AND airport = SVO
+SELECT * FROM origin WHERE date = 25-12-24 AND airport = AEP
 ``` 
+
+
+MEX,AEP,24-12-24,2,scheduled,
 
 - Actualizar vuelos:
 ``` sql
@@ -101,3 +104,27 @@ docker run -d \
   rust:1.81 \
   bash -c 'apt-get update && apt-get install -y iputils-ping && cargo run --bin server 10.0.0.7'
 ```
+
+##### Otro servidor de ejemplo
+```bash
+docker run -d \
+  --name node8 \
+  --network network_net \
+  --ip 10.0.0.8\
+  -p 8008:8000 \
+  -v $(pwd):/app \
+  -v $(pwd)/data_8008/tables:/app/src/tables \
+  -v $(pwd)/data_8008/logger:/app/src/loggerstuff/logs \
+  -v $(pwd)/data_8008/hinted_handoff:/app/src/tables/logs \
+  -v $(pwd)/target:/app/target \
+  -w /app \
+  rust:1.81 \
+  bash -c 'apt-get update && apt-get install -y iputils-ping && cargo run --bin server 10.0.0.8'
+```
+
+
+#### Para matar un nodo:
+```bash
+docker kill --signal=SIGINT container_name
+```
+

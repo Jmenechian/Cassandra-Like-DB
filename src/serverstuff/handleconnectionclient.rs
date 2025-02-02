@@ -101,7 +101,6 @@ fn process_results(
     table: &str,
     sender: Sender<String>,
 ) -> Vec<String> {
-    println!("\n - pr ===> {:?}", results);
     if table.contains(TABLE_ORIGIN_NAME) && table.contains(TABLE_DESTINATION_NAME) {
         if let Some(node) = results.keys().collect::<Vec<&IpAddr>>().first() {
             if let Some(result) = results.get(*node) {
@@ -271,7 +270,6 @@ pub fn send_query_to_nodes(
     consistency_level: u16,
     sender: Sender<String>,
 ) -> Result<Vec<String>, MyError> {
-    println!("send query to nodes");
     let node_guard = match node.read() {
         Ok(n) => n,
         Err(e) => {
@@ -279,7 +277,6 @@ pub fn send_query_to_nodes(
             return Err(MyError::LockingError(_error));
         }
     };
-    println!("desbloquenaod nodo");
     //let mut all_response: Vec<Vec<String>> = vec![];
     let mut all_response_dict: HashMap<IpAddr, Vec<String>> = HashMap::new();
     let mut hash = ConsistentHash::new(RF);
@@ -297,7 +294,6 @@ pub fn send_query_to_nodes(
     let is_select = query.query.contains("SELECT");
 
     for neighbor in &nodes_with_result {
-        println!("neighbor: {:?}", neighbor);
         // El nodo original porque puede tener el resultado de la query:
         if neighbor.server_socket == node_guard.server_socket {
             match node_guard.process_query(&mut query) {
@@ -325,13 +321,11 @@ pub fn send_query_to_nodes(
             }
             continue;
         } else if neighbor.status == Status::Disconnected {
-            println!("en neighbor disconnected: {:?}", neighbor);
             if !query.query.contains("SELECT") {
                 hinted_handoff(&node_guard.ip.to_string(), &neighbor.ip.to_string(), &query)?;
             }
             continue;
         } else if let Ok(mut socket) = TcpStream::connect(neighbor.server_socket) {
-            println!("abajo de tcp stream connect, neighbor: {:?}", neighbor);
             // Mando mensaje y el IP del nodo que se conecto con el cliente y en ese mismo stream leo la respuesta que me envia como resultado de la consulta.
 
             let msg = QueryServerMessage {

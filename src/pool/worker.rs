@@ -19,16 +19,21 @@ impl Worker {
     /// Esto indica que el channel ya no existe y se debe desconevtar el worker.
     pub fn build(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Result<Worker, MyError> {
         let thread = thread::spawn(move || loop {
-            let message = receiver.lock().unwrap().recv();
+            match receiver.lock() {
+                Ok(aux) => {
+                    let message = aux.recv();
 
-            match message {
-                Ok(job) => {
-                    job();
+                    match message {
+                        Ok(job) => {
+                            job();
+                        }
+                        Err(_) => {
+                            println!("Worker {id} disconnected; shutting down.");
+                            break;
+                        }
+                    }
                 }
-                Err(_) => {
-                    println!("Worker {id} disconnected; shutting down.");
-                    break;
-                }
+                _ => println!("Error de lock.")
             }
         });
 
