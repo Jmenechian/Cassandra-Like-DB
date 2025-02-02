@@ -7,8 +7,6 @@
         ipv4_address: ${IP_ADDRESS}
     ports:
       - "${NODE_NUMBER}:8000"
-    stdin_open: true
-    tty: true
     volumes:
       - .:/app
       - ./data_${NODE_NUMBER}/tables:/app/src/tables

@@ -9,8 +9,6 @@ services:
         ipv4_address: 10.0.0.2
     ports:
       - "8002:8000"
-    stdin_open: true
-    tty: true
     volumes:
       - .:/app
       - ./data_8002/tables:/app/src/tables
@@ -29,8 +27,6 @@ services:
         ipv4_address: 10.0.0.3
     ports:
       - "8003:8000"
-    stdin_open: true
-    tty: true
     volumes:
       - .:/app
       - ./data_8003/tables:/app/src/tables
@@ -49,8 +45,6 @@ services:
         ipv4_address: 10.0.0.4
     ports:
       - "8004:8000"
-    stdin_open: true
-    tty: true
     volumes:
       - .:/app
       - ./data_8004/tables:/app/src/tables
@@ -69,8 +63,6 @@ services:
         ipv4_address: 10.0.0.5
     ports:
       - "8005:8000"
-    stdin_open: true
-    tty: true
     volumes:
       - .:/app
       - ./data_8005/tables:/app/src/tables
@@ -79,26 +71,6 @@ services:
       - ./target:/app/target
     working_dir: /app
     command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.5"
-          
-
-  node6:
-    container_name: node6
-    image: rust:1.81
-    networks:
-      network_net:
-        ipv4_address: 10.0.0.6
-    ports:
-      - "8006:8000"
-    stdin_open: true
-    tty: true
-    volumes:
-      - .:/app
-      - ./data_8006/tables:/app/src/tables
-      - ./data_8006/logger:/app/src/loggerstuff/logs
-      - ./data_8006/hinted_handoff:/app/src/tables/logs
-      - ./target:/app/target
-    working_dir: /app
-    command: bash -c "apt-get update && apt-get install -y           iputils-ping &&           cargo run --bin server 10.0.0.6"
           
 networks:
   network_net:
