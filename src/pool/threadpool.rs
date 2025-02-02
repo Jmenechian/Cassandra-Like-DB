@@ -1,24 +1,15 @@
-use super::{job::Job, worker::Worker};
-use crate::errors::my_errors::MyError;
-
 use std::sync::{mpsc, Arc, Mutex};
 
-/// Estructura que representa un threadpool con la cantidad de workers indicado.
-/// Envia por un extremo del channel (sender), los jobs que deben realizar los threads.
+use super::{job::Job, worker::Worker};
+
 pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: Option<mpsc::Sender<Job>>,
 }
 
 impl ThreadPool {
-    /// Cre un TreadPool.
-    /// size indica la cantidad de hilos que se crean. Este parametro debe ser mayor a 0.
-    pub fn build(size: usize) -> Result<ThreadPool, MyError> {
-        if size <= 0 {
-            return Err(MyError::ThreadError(
-                "Cantidad de pool menor o igual a 0.".to_string(),
-            ));
-        }
+    pub fn new(size: usize) -> ThreadPool {
+        assert!(size > 0);
 
         let (sender, receiver) = mpsc::channel();
 
@@ -27,19 +18,15 @@ impl ThreadPool {
         let mut workers = Vec::with_capacity(size);
 
         for id in 0..size {
-            let worker = Worker::build(id, Arc::clone(&receiver))?;
-            workers.push(worker);
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        Ok(ThreadPool {
+        ThreadPool {
             workers,
             sender: Some(sender),
-        })
+        }
     }
 
-    /// Se envía por el channel el trabajo a realizar.
-    /// Los workers estaran escuchando estos jobs del otro extremo del channel.
-    /// Esta lectura estara lockeada para un correcto funcionamiento (no ejecutar una tarea más de una vez).
     pub fn execute<F>(&self, f: F)
     where
         F: FnOnce() + Send + 'static,

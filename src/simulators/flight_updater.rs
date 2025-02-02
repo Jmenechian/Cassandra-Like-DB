@@ -94,7 +94,7 @@ impl FlightUpdater {
             return Err(MyError::AllNodesDisconnected());
         };
 
-        let threadpool = ThreadPool::build(N_WORKERS)?;
+        let threadpool = ThreadPool::new(N_WORKERS);
 
         loop {
             if is_file_empty(QUERIES_PATH) {
@@ -119,7 +119,7 @@ impl FlightUpdater {
     /// Se envia por el channel la respuesta.
     fn make_query(stream: &mut TcpStream, query: String, consistency: u16) -> Result<(), MyError> {
         if Client::send_message(stream, query, consistency).is_ok() {
-            Client::read_response(stream).map_err(|e| MyError::Error(e.to_string()))?;
+            let _ = Client::read_response(stream);
         }
 
         Ok(())
