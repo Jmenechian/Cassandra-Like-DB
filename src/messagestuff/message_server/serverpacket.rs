@@ -5,7 +5,7 @@
 //   - Para enviar el packet y leerlo por stream estan las funciones to_bytes() y from_stream().
 
 use crate::config;
-use crate::config::SHOW_GOSSIP_LOGGER;
+use crate::config::{SHOW_GOSSIP, SHOW_SERVER};
 use crate::encryption::encrypt::{decrypt_body_aes128, encrypt_body_aes128};
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::{
@@ -149,6 +149,10 @@ impl Packet {
         packet: &Packet,
         msg_type: String,
     ) -> Result<(), MyError> {
+        if !SHOW_SERVER {
+            // Se apaga el logger para el simulador
+            return Ok(());
+        }
         let ip = match stream.peer_addr() {
             Ok(addr) => format!("{:?}", addr),
             Err(_) => "".to_string(),
@@ -156,7 +160,7 @@ impl Packet {
 
         match &packet.body {
             ServerMessage::Gossip(msg) => {
-                if SHOW_GOSSIP_LOGGER {
+                if SHOW_GOSSIP {
                     let message = format!(
                         "[SERVER] {} [{}] Gossip protocol. Node at: {} with status: {:?}",
                         msg_type, ip, msg.ip, msg.status

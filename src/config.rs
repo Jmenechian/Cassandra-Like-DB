@@ -3,9 +3,7 @@ pub static PORTS_FILE: &str = "puertos.txt";
 pub static KEY_FILE: &str = "src/encryption/config_aes/aes_key.bin";
 
 pub const SHOW_GOSSIP: bool = false; // Para hacer registro de mensajes de gossip
-pub const SHOW_SERVER: bool = false; // Para hacer registro de mensajes de servidor
-pub const SHOW_CLIENT: bool = false; // Para hacer registro de mensajes de cliente
-pub const SHOW_GOSSIP_LOGGER: bool = false;
+pub const SHOW_SERVER: bool = true; // Para hacer registro de mensajes de servidor, apagar para simulador
 
 pub static TABLE_PATH: &str = "src/tables";
 pub static TABLE_ORIGIN_NAME: &str = "origin";

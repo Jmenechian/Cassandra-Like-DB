@@ -6,6 +6,7 @@
 // - `CqlMessage`: Contiene al mensaje en si
 
 use crate::config;
+use crate::config::SHOW_SERVER;
 use crate::encryption::encrypt::{decrypt_body_aes128, encrypt_body_aes128};
 use crate::errors::my_errors::MyError;
 use crate::messagestuff::{
@@ -147,6 +148,10 @@ impl Envelope {
         sender: Sender<String>,
         env: &Envelope,
     ) -> Result<(), MyError> {
+        if !SHOW_SERVER {
+            // Se apaga el logger para el simulador
+            return Ok(());
+        }
         let ip = match stream.peer_addr() {
             Ok(addr) => format!("{:?}", addr),
             Err(_) => "".to_string(),
