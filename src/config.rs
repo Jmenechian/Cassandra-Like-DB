@@ -21,7 +21,7 @@ pub static DIFFERENCE_DATE_IS_RECENT: i64 = 30;
 pub static DIFFERENCE_DATE_IS_NOT_RECENT: i64 = 1;
 
 // SIMULADOR DE VUELOS:
-pub static N_WORKERS: usize = 5; // Cantidad de workers para el thread pool.
+pub static N_WORKERS: usize = 10; // Cantidad de workers para el thread pool.
 pub static FLIGHT_STEP: f32 = 10.0; // Cantidad de pasos que da un avión hasta la mitad del vuelo.
 pub static CRUISING_SPEED: f32 = 840.0; // Velocidad crucero de un avion, en km/h
 pub static STEPS_AT_CRUISING_SPEED: f32 = 2.0; // Mitad de pasos en los que el avion viajara a la velocidad crucero.
