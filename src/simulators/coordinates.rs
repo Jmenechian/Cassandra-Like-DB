@@ -4,7 +4,7 @@ use crate::{
 };
 use std::{collections::HashMap, f32::consts::PI, fs::read_to_string, sync::mpsc::Receiver};
 
-use super::{airport::Airport, flight::Flight, queries::get_query_select_in_simulator};
+use super::{airport::Airport, flight::Flight, flight_status::FlightStatus, queries::get_query_select_in_simulator};
 
 /// Se devuelve un Hash de los aeropuestos del archivo ubicado en AIRPORTS_PATH.
 /// La clave será nombre de cada aeropuerto.
@@ -126,5 +126,9 @@ pub fn integrate_simulator(
         }
     }
 
-    (mid_x, mid_y)
+    match flight.status {
+        FlightStatus::Airborne => (mid_x, mid_y),
+        FlightStatus::Landed => get_coordinate_positioning_on_map(flight.return_airport.coordinates, [width, height]),
+        _ => get_coordinate_positioning_on_map(flight.origin_airport.coordinates, [width, height])
+    }
 }
