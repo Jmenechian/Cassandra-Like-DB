@@ -46,9 +46,6 @@ INSERT INTO destination (airport, origin, date, flight, status) VALUES (AEP, MEX
 SELECT * FROM origin WHERE date = 25-12-24 AND airport = AEP
 ``` 
 
-
-MEX,AEP,24-12-24,2,scheduled,
-
 - Actualizar vuelos:
 ``` sql
 UPDATE origin SET status = boarding WHERE flight = 101 AND airport = MEX AND date = 24-12-24
